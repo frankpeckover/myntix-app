@@ -44,6 +44,12 @@ import type { StudentListItem } from "@/domains/users/user-service";
 
 type TeacherDashboardPanelProps = {
   currencyName: string;
+  groupNavigation?: {
+    groupId: string;
+    groupName: string;
+    version: number;
+  } | null;
+  onGroupNavigationConsumed?: () => void;
   schoolName: string;
 };
 
@@ -75,6 +81,8 @@ const defaultPersonalPresets: PersonalTransactionPresets = {
 
 export function TeacherDashboardPanel({
   currencyName,
+  groupNavigation,
+  onGroupNavigationConsumed,
 }: TeacherDashboardPanelProps) {
   const [currentClass, setCurrentClass] = useState<CurrentClass | null>(null);
   const [studentBalances, setStudentBalances] = useState<StudentBalanceItem[]>(
@@ -164,6 +172,46 @@ export function TeacherDashboardPanel({
     setPage: setStudentPage,
     totalPages: studentTotalPages,
   } = usePagedList(visibleStudents);
+
+  useEffect(() => {
+    if (!groupNavigation) {
+      return;
+    }
+
+    const navigation = groupNavigation;
+    let isMounted = true;
+
+    async function loadNavigatedGroup() {
+      try {
+        const members = await listGroupMembers(navigation.groupId);
+
+        if (isMounted) {
+          setSearch("");
+          setSelectedGroupView({
+            memberIds: new Set(members.map((member) => member.id)),
+            name: navigation.groupName,
+          });
+          setStudentPage(1);
+          setError(null);
+        }
+      } catch {
+        if (isMounted) {
+          setError(`Could not load students in ${navigation.groupName}.`);
+        }
+      } finally {
+        if (isMounted) {
+          onGroupNavigationConsumed?.();
+        }
+      }
+    }
+
+    loadNavigatedGroup();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [groupNavigation, onGroupNavigationConsumed, setStudentPage]);
+
   const isDefaultingToCurrentClass =
     search.trim().length === 0 &&
     studentDisplayScope === "current-class" &&

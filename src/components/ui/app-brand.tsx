@@ -25,6 +25,8 @@ export function AppBrand({
       : variant === "wordmark"
         ? "h-7 max-w-[9.25rem]"
         : "h-9 max-w-[10.5rem]";
+  const composedLogoClassName =
+    size === "large" ? "h-10 w-24" : "h-7 w-16";
   const brandImageUrl =
     variant === "wordmark" ? appConfig.wordmarkUrl : appConfig.lockupUrl;
 
@@ -32,7 +34,7 @@ export function AppBrand({
     if (showLogoWithImage) {
       return (
         <div className="flex min-w-0 items-center gap-2.5">
-          <AppLogo className="h-8 w-8 rounded-lg" />
+          <AppLogo className={composedLogoClassName} />
           {/* eslint-disable-next-line @next/next/no-img-element -- Branding paths are runtime-configurable and may not be known to next/image. */}
           <img
             alt={`${appConfig.name} logo`}

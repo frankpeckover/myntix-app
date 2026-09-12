@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AdminAuditLogPanel } from "@/components/admin-audit-log-panel";
 import { AdminDashboardPanel } from "@/components/admin-dashboard-panel";
 import { AdminErrorLogPanel } from "@/components/admin-error-log-panel";
@@ -19,6 +19,7 @@ import { ShopPanel } from "@/components/shop/shop-panel";
 import { StaffSettingsPanel } from "@/components/staff-settings-panel";
 import { StudentDashboardPanel } from "@/components/student-dashboard-panel";
 import { TeacherDashboardPanel } from "@/components/teacher-dashboard-panel";
+import { TeacherTimetablePanel } from "@/components/teacher-timetable-panel";
 import { TransactionLogPanel } from "@/components/transactions/transaction-log-panel";
 import { AppBrand } from "@/components/ui/app-brand";
 import { AppFooter } from "@/components/ui/app-footer";
@@ -45,6 +46,12 @@ type DashboardShellProps = {
   onLogout: () => void;
 };
 
+type TeacherGroupNavigation = {
+  groupId: string;
+  groupName: string;
+  version: number;
+};
+
 export function DashboardShell({
   maintenanceMessage,
   user,
@@ -53,6 +60,8 @@ export function DashboardShell({
   const [activeNavItem, setActiveNavItem] =
     useState<NavigationItem>("Dashboard");
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [teacherGroupNavigation, setTeacherGroupNavigation] =
+    useState<TeacherGroupNavigation | null>(null);
   const [greeting, setGreeting] = useState("Hello");
   const [schoolInfo, setSchoolInfo] = useState<SchoolInfo>({
     name: appConfig.defaultSchoolName,
@@ -100,6 +109,9 @@ export function DashboardShell({
 
   const schoolName = schoolInfo.name.trim() || appConfig.defaultSchoolName;
   const shellRoleClassName = getShellRoleClassName(user);
+  const clearTeacherGroupNavigation = useCallback(() => {
+    setTeacherGroupNavigation(null);
+  }, []);
 
   return (
     <div className={`app-shell-surface min-h-screen overflow-x-hidden bg-background text-foreground ${shellRoleClassName}`}>
@@ -126,7 +138,7 @@ export function DashboardShell({
               <div className="lg:hidden">
                 <AppBrand />
               </div>
-              <p className="min-w-0 flex-1 truncate text-left text-base font-medium text-text-control sm:text-center sm:text-lg lg:text-left">
+              <p className="min-w-0 flex-1 truncate text-left text-base font-medium text-text-control sm:text-center sm:text-lg lg:text-left lg:text-2xl">
                 {greeting}, {getGreetingName(user)}!
               </p>
               <div className="hidden min-w-0 items-center gap-2 md:flex">
@@ -173,6 +185,8 @@ export function DashboardShell({
         {isTeacher(user) && activeNavItem === "Dashboard" && (
           <TeacherDashboardPanel
             currencyName={schoolInfo.currencyName}
+            groupNavigation={teacherGroupNavigation}
+            onGroupNavigationConsumed={clearTeacherGroupNavigation}
             schoolName={schoolName}
           />
         )}
@@ -187,7 +201,21 @@ export function DashboardShell({
           <StudentDashboardPanel
             currencyName={schoolInfo.currencyName}
             currentUser={user}
+            schoolLogoUrl={schoolInfo.logoUrl}
             schoolName={schoolName}
+          />
+        )}
+
+        {isTeacher(user) && activeNavItem === "Timetable" && (
+          <TeacherTimetablePanel
+            onOpenGroup={(groupId, groupName) => {
+              setTeacherGroupNavigation((current) => ({
+                groupId,
+                groupName,
+                version: (current?.version ?? 0) + 1,
+              }));
+              setActiveNavItem("Dashboard");
+            }}
           />
         )}
 

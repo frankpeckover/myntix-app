@@ -33,6 +33,7 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 
 const defaultNavigationItems = [
   "Dashboard",
+  "Timetable",
   "Analytics",
   "Rewards",
   "Transaction Log",
@@ -222,7 +223,7 @@ export function DesktopSideNav({
           >
             {isExpanded && (
               <div className="min-w-0">
-                <AppBrand showLogoWithImage showNameOnMobile variant="wordmark" />
+                <AppBrand showNameOnMobile variant="wordmark" />
               </div>
             )}
             <button

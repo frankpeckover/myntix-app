@@ -93,6 +93,34 @@ type CurrentClassStudentRow = {
 const auditService = new AuditService();
 
 export class TimetableService {
+  async listTeacherEntries(currentUser: SessionUser): Promise<TimetableEntry[]> {
+    const result = await db.query<TimetableEntryRow>(
+      `
+        select
+          timetable_entries.id,
+          timetable_entries.teacher_user_id,
+          trim(teachers.first_name || ' ' || teachers.last_name) as teacher_name,
+          timetable_entries.group_id,
+          student_groups.name as group_name,
+          timetable_entries.day_of_week,
+          timetable_entries.start_time::text as start_time,
+          timetable_entries.end_time::text as end_time,
+          timetable_entries.is_active,
+          timetable_entries.created_at
+        from timetable_entries
+        join users teachers on teachers.id = timetable_entries.teacher_user_id
+        join student_groups on student_groups.id = timetable_entries.group_id
+        where timetable_entries.teacher_user_id = $1
+          and timetable_entries.is_active = true
+          and student_groups.is_active = true
+        order by timetable_entries.day_of_week, timetable_entries.start_time
+      `,
+      [currentUser.id],
+    );
+
+    return result.rows.map(mapTimetableEntryRow);
+  }
+
   async listEntries(includeInactive = false): Promise<TimetableEntry[]> {
     const result = await db.query<TimetableEntryRow>(
       `

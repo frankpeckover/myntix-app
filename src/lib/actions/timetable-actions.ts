@@ -48,3 +48,8 @@ export async function getCurrentTeacherClass() {
   const currentUser = await requireLedgerAdjuster();
   return timetableService.getCurrentClass(currentUser);
 }
+
+export async function listMyTimetableEntries() {
+  const currentUser = await requireLedgerAdjuster();
+  return timetableService.listTeacherEntries(currentUser);
+}

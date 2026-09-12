@@ -108,6 +108,20 @@
   --wallet-holder-border: rgba(255, 255, 255, 0.38);
   --wallet-holder-name: color-mix(in srgb, var(--accent-primary) 86%, black);
   --wallet-card-shadow: 0 8px 20px color-mix(in srgb, var(--shadow-panel) 56%, transparent);
+  --student-card-background:
+    radial-gradient(circle at 88% 18%, rgba(122, 228, 183, 0.2) 0%, transparent 28%),
+    radial-gradient(circle at 8% 108%, rgba(112, 184, 149, 0.16) 0%, transparent 34%),
+    repeating-linear-gradient(118deg, transparent 0 18px, rgba(255, 255, 255, 0.025) 18px 19px),
+    linear-gradient(
+      112deg,
+      var(--balance-bg) 0%,
+      color-mix(in srgb, var(--balance-bg) 94%, var(--accent-primary)) 58%,
+      color-mix(in srgb, var(--balance-bg) 82%, var(--accent-primary)) 100%
+    );
+  --student-card-border: rgba(255, 255, 255, 0.16);
+  --student-card-text: #f5fffc;
+  --student-card-muted: #b9d5d0;
+  --student-card-accent: #7ae4b7;
   --progress-track: #d7dee7;
   --activity-meta: #687386;
   --shell-gradient-accent: color-mix(in srgb, var(--accent-primary) 10%, transparent);
@@ -179,6 +193,20 @@ html[data-theme="dark"] {
   --wallet-holder-border: rgba(255, 255, 255, 0.1);
   --wallet-holder-name: color-mix(in srgb, var(--accent-secondary) 68%, white);
   --wallet-card-shadow: 0 10px 24px color-mix(in srgb, var(--shadow-panel) 76%, transparent);
+  --student-card-background:
+    radial-gradient(circle at 88% 18%, rgba(122, 228, 183, 0.16) 0%, transparent 28%),
+    radial-gradient(circle at 8% 108%, rgba(112, 184, 149, 0.12) 0%, transparent 34%),
+    repeating-linear-gradient(118deg, transparent 0 18px, rgba(255, 255, 255, 0.018) 18px 19px),
+    linear-gradient(
+      112deg,
+      #102a2d 0%,
+      color-mix(in srgb, #102a2d 94%, var(--accent-primary)) 58%,
+      color-mix(in srgb, #102a2d 80%, var(--accent-primary)) 100%
+    );
+  --student-card-border: rgba(255, 255, 255, 0.12);
+  --student-card-text: #f5fffc;
+  --student-card-muted: #a8c8c2;
+  --student-card-accent: #7ae4b7;
   --progress-track: #3d444f;
   --activity-meta: #b3bbc6;
   --shell-gradient-accent: color-mix(in srgb, var(--accent-primary) 14%, transparent);
@@ -439,7 +467,15 @@ html[data-theme="dark"] .professional-shell {
 }
 
 .student-wallet-card {
+  background: var(--student-card-background);
+  border: 1px solid var(--student-card-border);
+  color: var(--student-card-text);
   box-shadow: var(--wallet-card-shadow);
+}
+
+.student-wallet-card::before,
+.student-wallet-card::after {
+  display: none;
 }
 
 .student-dashboard-card {
@@ -474,8 +510,8 @@ html[data-theme="dark"] .professional-shell {
 }
 
 .student-wallet-holder {
-  background: var(--wallet-holder-background);
-  border-top: 1px solid var(--wallet-holder-border);
+  background: transparent;
+  border-top: 0;
 }
 
 .wallet-card::before,

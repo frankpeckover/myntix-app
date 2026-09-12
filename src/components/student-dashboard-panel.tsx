@@ -39,6 +39,7 @@ import type { UnseenTransaction } from "@/domains/ledger/transaction-notificatio
 type StudentDashboardPanelProps = {
   currencyName: string;
   currentUser: SessionUser;
+  schoolLogoUrl: string;
   schoolName: string;
 };
 
@@ -64,6 +65,7 @@ type StudentMetricTimeframeDays =
 export function StudentDashboardPanel({
   currencyName,
   currentUser,
+  schoolLogoUrl,
   schoolName,
 }: StudentDashboardPanelProps) {
   const [balance, setBalance] = useState(0);
@@ -186,6 +188,7 @@ export function StudentDashboardPanel({
           balance={balance}
           currencyName={currencyName}
           currentUser={currentUser}
+          schoolLogoUrl={schoolLogoUrl}
           schoolName={schoolName}
         />
         <BalanceTrendCard
@@ -235,56 +238,80 @@ function StudentWalletCard({
   balance,
   currencyName,
   currentUser,
+  schoolLogoUrl,
   schoolName,
 }: {
   balance: number;
   currencyName: string;
   currentUser: SessionUser;
+  schoolLogoUrl: string;
   schoolName: string;
 }) {
   const balanceAmount = useAnimatedWholeNumber(Math.abs(balance));
+  const [cardDate, setCardDate] = useState("");
+
+  useEffect(() => {
+    window.queueMicrotask(() => {
+      setCardDate(formatWalletDate(new Date()));
+    });
+  }, []);
 
   return (
-    <article className="student-dashboard-card student-wallet-card dashboard-unit-2 wallet-card rounded-3xl border border-transparent text-foreground">
+    <article className="student-dashboard-card student-wallet-card dashboard-unit-2 wallet-card rounded-2xl">
       <div className="relative flex h-full min-h-52 flex-col">
-        <div className="relative z-10 flex flex-1 flex-col gap-5 p-5 sm:p-6">
+        <div className="relative z-10 flex flex-1 flex-col p-5 sm:p-6">
           <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-kicker">
-                Student Wallet
-              </p>
-            </div>
-            <span className="shrink-0 rounded-md bg-surface/55 px-3 py-1 text-xs font-semibold text-text-muted">
-              Primary
-            </span>
-          </div>
-
-          <div>
-            <p className="text-sm font-semibold text-text-muted">
+            <p className="text-xs font-medium uppercase tracking-[0.12em] text-[color:var(--student-card-muted)]">
               My Credits
             </p>
-            <p className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 break-words text-brand-ink">
-              <span className="wallet-balance-number text-6xl leading-none sm:text-7xl">
-                {formatAmount(balanceAmount)}
-              </span>
-              <span className="text-lg font-semibold text-text-control sm:text-xl">
-                {currencyName}
-              </span>
+            <p className="max-w-56 truncate text-right text-xs font-medium uppercase tracking-[0.08em] text-[color:var(--student-card-muted)]">
+              {schoolName}
             </p>
           </div>
-        </div>
 
-        <div className="student-wallet-holder relative z-10 flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
-          <h2 className="min-w-0 truncate text-lg font-semibold text-[color:var(--wallet-holder-name)] sm:text-xl">
-            {currentUser.displayName}
-          </h2>
-          <p className="max-w-56 shrink-0 truncate text-right text-xs font-medium uppercase tracking-[0.18em] text-text-muted/75">
-            {schoolName}
-          </p>
+          <div className="grid flex-1 grid-cols-[minmax(0,1.35fr)_minmax(7rem,0.65fr)] items-center gap-4 py-4">
+            <div className="min-w-0">
+              <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1 break-words text-[color:var(--student-card-text)]">
+                <span className="wallet-balance-number text-6xl leading-none sm:text-7xl">
+                  {formatAmount(balanceAmount)}
+                </span>
+                <span className="text-base font-medium text-[color:var(--student-card-accent)] sm:text-lg">
+                  {currencyName}
+                </span>
+              </p>
+            </div>
+            <p
+              aria-label={cardDate ? `Today's date ${cardDate}` : undefined}
+              className="min-h-5 text-right font-number text-lg font-medium tracking-[0.18em] text-[color:var(--student-card-muted)] sm:text-xl"
+            >
+              {cardDate}
+            </p>
+          </div>
+
+          <div className="flex min-h-8 items-end justify-between gap-4">
+            <h2 className="min-w-0 truncate text-sm font-medium uppercase tracking-[0.1em] text-[color:var(--student-card-text)] sm:text-base">
+              {currentUser.displayName}
+            </h2>
+            {schoolLogoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element -- Organisation logos are uploaded at runtime.
+              <img
+                alt={`${schoolName} logo`}
+                className="h-8 max-w-16 shrink-0 object-contain object-right opacity-85"
+                src={schoolLogoUrl}
+              />
+            )}
+          </div>
         </div>
       </div>
     </article>
   );
+}
+
+function formatWalletDate(date: Date) {
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+
+  return `${day}${month} ${date.getFullYear()}`;
 }
 
 function BalanceTrendCard({

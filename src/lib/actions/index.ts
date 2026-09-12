@@ -65,6 +65,7 @@ export {
   createTimetableEntry,
   deleteTimetableEntry,
   getCurrentTeacherClass,
+  listMyTimetableEntries,
   importTimetableEntries,
   listTimetableEntries,
   listTimetableTeachers,

@@ -12,16 +12,16 @@ export const appConfig = {
     getInitials(configuredAppName),
   logoUrl:
     process.env.NEXT_PUBLIC_APP_LOGO_URL?.trim() ||
-    "/brand/myntix-ledger-app-icon.png",
+    "/brand/myntix-stacked-coins.png",
   lockupUrl:
     process.env.NEXT_PUBLIC_APP_LOCKUP_URL?.trim() ||
-    "/brand/myntix-ledger-lockup.png",
+    "/brand/myntix-lockup.png",
   marketingSiteUrl:
     process.env.NEXT_PUBLIC_MARKETING_SITE_URL?.trim() ||
     "https://myntix.com",
   wordmarkUrl:
     process.env.NEXT_PUBLIC_APP_WORDMARK_URL?.trim() ||
-    "/brand/myntix-ledger-wordmark.png",
+    "/brand/myntix-wordmark.png",
   name: configuredAppName,
   supportEmail:
     process.env.NEXT_PUBLIC_APP_SUPPORT_EMAIL?.trim() || "support@example.com",
