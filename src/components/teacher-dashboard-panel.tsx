@@ -376,18 +376,18 @@ export function TeacherDashboardPanel({
               title="Reward Requests"
             />
 
-            <div className="theme-panel mb-4 p-4">
-              <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="teacher-mobile-controls theme-panel mb-4 p-3 sm:p-4">
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row">
                 <SearchInput
                   aria-label="Search students or groups"
-                  className="min-w-0 flex-1"
+                  className="col-span-2 min-w-0 sm:flex-1"
                   id="teacherDashboardSearch"
                   onChange={handleSearchChanged}
                   placeholder="Search students or groups, or separate multiple searches with a semicolon"
                   value={search}
                 />
                 <button
-                  className="inline-flex h-[46px] shrink-0 items-center justify-center rounded-md border border-button-border px-4 text-sm font-semibold text-text-control transition hover:bg-panel-soft"
+                  className="inline-flex h-[46px] min-w-0 shrink-0 items-center justify-center rounded-md border border-button-border px-3 text-sm font-semibold text-text-control transition hover:bg-panel-soft sm:px-4"
                   onClick={toggleStudentDisplayScope}
                   type="button"
                 >
@@ -395,9 +395,9 @@ export function TeacherDashboardPanel({
                     ? "Show all students"
                     : "Show current class"}
                 </button>
-                <div className="flex shrink-0 items-center gap-2">
+                <div className="flex min-w-0 shrink-0 items-center gap-2">
                   <button
-                    className="inline-flex h-[46px] items-center justify-center gap-2 rounded-md border border-brand bg-brand px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:border-button-border disabled:bg-panel-soft disabled:text-text-muted disabled:shadow-none"
+                    className="inline-flex h-[46px] min-w-0 flex-1 items-center justify-center gap-2 rounded-md border border-brand bg-brand px-3 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:border-button-border disabled:bg-panel-soft disabled:text-text-muted disabled:shadow-none sm:px-4"
                     disabled={visibleStudents.length === 0}
                     onClick={handleIssueAllShown}
                     type="button"
@@ -450,7 +450,7 @@ export function TeacherDashboardPanel({
 
             {visibleStudents.length > 0 && (
               <>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4">
                   {visibleStudentPage.map((student) => (
                     <StudentBalanceCard
                       currencyName={currencyName}

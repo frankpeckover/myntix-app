@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { ClockIcon } from "@/components/ui/icons";
 import { listMyTimetableEntries } from "@/lib/actions";
@@ -16,12 +16,17 @@ const calendarDays = [
   { dayOfWeek: 0, label: "Sunday", shortLabel: "Sun" },
 ] as const;
 
-const defaultCalendarStartHour = 8;
-const defaultCalendarEndHour = 17;
+const fullDayCalendarStartHour = 0;
+const fullDayCalendarEndHour = 24;
+const initialVisibleHour = 7;
 const minutesPerHour = 60;
 const calendarHourHeight = 64;
 const minimumClassHeight = 32;
 const classBlockGap = 4;
+const fullDayCalendarRange = {
+  endHour: fullDayCalendarEndHour,
+  startHour: fullDayCalendarStartHour,
+} as const;
 
 type CurrentMoment = { dayOfWeek: number; minuteOfDay: number };
 type CalendarRange = { endHour: number; startHour: number };
@@ -68,7 +73,6 @@ export function TeacherTimetablePanel({
   }, []);
 
   const entriesByDay = useMemo(() => groupEntriesByDay(entries), [entries]);
-  const calendarRange = useMemo(() => getCalendarRange(entries), [entries]);
 
   return (
     <section className="motion-panel mt-2 min-w-0">
@@ -95,7 +99,7 @@ export function TeacherTimetablePanel({
         <>
           <div className="hidden xl:block">
             <WeeklyCalendar
-              calendarRange={calendarRange}
+              calendarRange={fullDayCalendarRange}
               currentMoment={currentMoment}
               entriesByDay={entriesByDay}
               onOpenGroup={onOpenGroup}
@@ -124,12 +128,23 @@ function WeeklyCalendar({ calendarRange, currentMoment, entriesByDay, onOpenGrou
   entriesByDay: Map<number, TimetableEntry[]>;
   onOpenGroup: (groupId: string, groupName: string) => void;
 }) {
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const hourMarkers = getHourMarkers(calendarRange);
   const calendarHeight = (calendarRange.endHour - calendarRange.startHour) * calendarHourHeight;
 
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop =
+        (initialVisibleHour - calendarRange.startHour) * calendarHourHeight;
+    }
+  }, [calendarRange.startHour]);
+
   return (
-    <div className="min-w-0 overflow-hidden rounded-lg bg-surface">
-      <div className="grid grid-cols-[4.5rem_repeat(7,minmax(0,1fr))] bg-surface-muted">
+    <div
+      className="max-h-[calc(100dvh-12rem)] min-w-0 overflow-y-auto rounded-lg bg-surface"
+      ref={scrollContainerRef}
+    >
+      <div className="sticky top-0 z-30 grid grid-cols-[4.5rem_repeat(7,minmax(0,1fr))] bg-surface-muted shadow-sm">
         <div aria-hidden="true" />
         {calendarDays.map((day) => (
           <div
@@ -290,15 +305,6 @@ function groupEntriesByDay(entries: TimetableEntry[]) {
   return groupedEntries;
 }
 
-function getCalendarRange(entries: TimetableEntry[]): CalendarRange {
-  if (entries.length === 0) return { endHour: defaultCalendarEndHour, startHour: defaultCalendarStartHour };
-
-  return {
-    startHour: Math.min(defaultCalendarStartHour, ...entries.map((entry) => Math.floor(parseTimeToMinutes(entry.startTime) / minutesPerHour))),
-    endHour: Math.max(defaultCalendarEndHour, ...entries.map((entry) => Math.ceil(parseTimeToMinutes(entry.endTime) / minutesPerHour))),
-  };
-}
-
 function getHourMarkers(range: CalendarRange) {
   return Array.from({ length: range.endHour - range.startHour + 1 }, (_, index) => range.startHour + index);
 }
@@ -327,5 +333,6 @@ function formatCompactTime(value: string) {
 }
 
 function formatHour(hour: number) {
-  return `${hour % 12 || 12} ${hour >= 12 ? "pm" : "am"}`;
+  const normalisedHour = hour % fullDayCalendarEndHour;
+  return `${normalisedHour % 12 || 12} ${normalisedHour >= 12 ? "pm" : "am"}`;
 }

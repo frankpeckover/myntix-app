@@ -134,11 +134,11 @@ export function DashboardShell({
         >
           <h1 className="sr-only">{getCurrentPageHeading(activeNavItem, user)}</h1>
           <header className="relative z-50 pb-2 pt-4">
-            <div className="flex min-w-0 items-center justify-between gap-2 sm:gap-3">
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 sm:gap-3 lg:flex-nowrap">
               <div className="lg:hidden">
                 <AppBrand />
               </div>
-              <p className="min-w-0 flex-1 truncate text-left text-base font-medium text-text-control sm:text-center sm:text-lg lg:text-left lg:text-2xl">
+              <p className="order-3 w-full min-w-0 flex-1 truncate pt-1 text-left text-lg font-medium text-text-control sm:text-xl lg:order-none lg:w-auto lg:pt-0 lg:text-left lg:text-2xl">
                 {greeting}, {getGreetingName(user)}!
               </p>
               <div className="hidden min-w-0 items-center gap-2 md:flex">

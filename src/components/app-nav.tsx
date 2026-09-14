@@ -11,6 +11,7 @@ import type { Role } from "@/lib/session";
 import { isAdmin, isStudent } from "@/lib/permissions";
 import { useAccentTheme } from "@/lib/use-accent-theme";
 import { useThemeMode } from "@/lib/use-theme-mode";
+import { useWalletStyle } from "@/lib/use-wallet-style";
 import {
   AlertTriangleIcon,
   ClockIcon,
@@ -139,7 +140,7 @@ export function HeaderNavMenu({
   return (
     <nav
       aria-label="Mobile navigation"
-      className="relative z-[100] flex items-center gap-2"
+      className="relative order-2 z-[100] ml-auto flex items-center gap-2 lg:order-none lg:ml-0"
       ref={navRef}
     >
       <button
@@ -180,6 +181,7 @@ export function HeaderNavMenu({
             onLogout={handleLogout}
             onPasswordChange={handlePasswordChange}
             onThemeToggle={toggleThemeMode}
+            showWalletStyles={role === "student"}
           />
         </NavMenuPanel>
       )}
@@ -258,6 +260,7 @@ export function DesktopSideNav({
             onLogout={onLogout}
             onPasswordChange={onPasswordChange}
             profileImageUrl={profileImageUrl}
+            role={role}
             userDisplayName={userDisplayName}
           />
         </div>
@@ -314,12 +317,14 @@ function SideNavAccountMenu({
   onLogout,
   onPasswordChange,
   profileImageUrl,
+  role,
   userDisplayName,
 }: Pick<
   HeaderNavMenuProps,
   | "onLogout"
   | "onPasswordChange"
   | "profileImageUrl"
+  | "role"
   | "userDisplayName"
 > & {
   isExpanded: boolean;
@@ -412,6 +417,7 @@ function SideNavAccountMenu({
             onLogout={handleLogout}
             onPasswordChange={handlePasswordChange}
             onThemeToggle={toggleThemeMode}
+            showWalletStyles={role === "student"}
           />
         </NavMenuPanel>
       )}
@@ -515,6 +521,7 @@ export function DesktopAccountMenu({
             onLogout={handleLogout}
             onPasswordChange={handlePasswordChange}
             onThemeToggle={toggleThemeMode}
+            showWalletStyles={false}
           />
         </NavMenuPanel>
       )}
@@ -563,9 +570,9 @@ function NavMenuPanel({
 }) {
   return (
     <div
-      className={`motion-pop absolute z-[110] w-64 border border-border bg-surface p-2 shadow-lg ${
-        align === "left" ? "left-0" : "right-0"
-      } ${placement === "up" ? "bottom-12" : "top-12"}`}
+      className={`motion-pop fixed inset-x-3 top-16 z-[110] max-h-[calc(100dvh-5rem)] overflow-y-auto border border-border bg-surface p-2 shadow-lg lg:absolute lg:inset-x-auto lg:top-auto lg:w-64 ${
+        align === "left" ? "lg:left-0" : "lg:right-0"
+      } ${placement === "up" ? "lg:bottom-12" : "lg:top-12"}`}
     >
       {children}
     </div>
@@ -584,7 +591,7 @@ function MenuItemButton({
   return (
     <button
       aria-current={isActive ? "page" : undefined}
-      className={`block w-full px-3 py-2.5 text-left text-xs font-light tracking-[0.01em] transition ${
+      className={`flex min-h-11 w-full items-center gap-3 px-3 py-2.5 text-left text-sm font-light tracking-[0.01em] transition lg:min-h-0 lg:text-xs ${
         isActive
           ? "bg-brand-soft text-foreground"
           : "text-text-muted hover:bg-surface-muted hover:text-text-control"
@@ -592,7 +599,8 @@ function MenuItemButton({
       onClick={() => onItemChange(item)}
       type="button"
     >
-      {item}
+      <NavigationItemIcon item={item} />
+      <span>{item}</span>
     </button>
   );
 }
@@ -644,6 +652,7 @@ function AccountMenuItems({
   onLogout,
   onPasswordChange,
   onThemeToggle,
+  showWalletStyles,
 }: {
   accentTheme: AccentTheme;
   accentThemeOptions: AccentThemeOption[];
@@ -655,6 +664,7 @@ function AccountMenuItems({
   onLogout: () => void;
   onPasswordChange: () => void;
   onThemeToggle: () => void;
+  showWalletStyles: boolean;
 }) {
   const colorInputValue = getColorInputValue(customAccentColor);
   const [isCustomColorPickerOpen, setIsCustomColorPickerOpen] =
@@ -759,6 +769,7 @@ function AccountMenuItems({
           ))}
         </div>
       </div>
+      {showWalletStyles && <WalletStylePicker />}
       <button
         className="block w-full border-l-2 border-transparent px-3 py-2.5 text-left text-xs font-light tracking-[0.01em] text-text-muted transition hover:bg-surface-muted hover:text-text-control"
         onClick={onPasswordChange}
@@ -775,6 +786,64 @@ function AccountMenuItems({
         <span>Sign out</span>
       </button>
     </>
+  );
+}
+
+function WalletStylePicker() {
+  const {
+    setWalletPattern,
+    setWalletStyle,
+    walletPattern,
+    walletPatternOptions,
+    walletStyle,
+    walletStyleOptions,
+  } = useWalletStyle();
+
+  return (
+    <div className="border-t border-border-subtle px-3 py-3">
+      <p className="text-xs font-light uppercase tracking-[0.14em] text-text-kicker">
+        Wallet
+      </p>
+      <div className="mt-3 flex items-center gap-2">
+        {walletStyleOptions.map((option) => (
+          <button
+            aria-label={`${option.label} wallet`}
+            aria-pressed={walletStyle === option.value}
+            className={`h-7 w-11 rounded-md border transition ${
+              walletStyle === option.value
+                ? "border-foreground ring-2 ring-brand-soft-strong"
+                : "border-border-subtle hover:scale-105"
+            }`}
+            key={option.value}
+            onClick={() => setWalletStyle(option.value)}
+            style={{ background: option.preview }}
+            title={option.label}
+            type="button"
+          />
+        ))}
+      </div>
+      <p className="mt-4 text-xs font-light uppercase tracking-[0.14em] text-text-kicker">
+        Pattern
+      </p>
+      <div className="mt-3 flex items-center gap-2">
+        {walletPatternOptions.map((option) => (
+          <button
+            aria-label={`${option.label} wallet pattern`}
+            aria-pressed={walletPattern === option.value}
+            className={`h-7 w-9 rounded-md border bg-brand bg-[length:8px_8px] transition ${
+              walletPattern === option.value
+                ? "border-foreground ring-2 ring-brand-soft-strong"
+                : "border-border-subtle hover:scale-105"
+            }`}
+            key={option.value}
+            onClick={() => setWalletPattern(option.value)}
+            style={{ backgroundImage: option.preview }}
+            title={option.label}
+            type="button"
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 

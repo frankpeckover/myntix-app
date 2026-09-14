@@ -562,7 +562,7 @@ function TransactionMobileRow({
   transaction: TransactionLogItem;
 }) {
   return (
-    <article className="theme-card flex w-full min-w-0 items-center justify-between gap-3 overflow-hidden p-3">
+    <article className="theme-card grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 overflow-hidden p-3">
       <div className="min-w-0 flex-1 overflow-hidden">
         <p className="break-words text-sm font-semibold">
           {transaction.reason}
@@ -570,8 +570,8 @@ function TransactionMobileRow({
         <p className="mt-1 truncate text-xs text-text-muted">
           {formatDateTime(transaction.createdAt)}
         </p>
-        <TransactionAmount amount={transaction.amount} variant="mobile" />
       </div>
+      <TransactionAmount amount={transaction.amount} variant="mobile" />
       <div className="shrink-0">
         <IconButton
           label="Transaction details"
@@ -594,7 +594,7 @@ function TransactionAmount({
   const layoutClassName =
     variant === "desktop"
       ? "min-w-20 text-right text-base"
-      : "mt-2 text-left text-sm";
+      : "min-w-16 text-right text-base";
 
   return (
     <span

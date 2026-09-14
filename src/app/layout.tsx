@@ -8,6 +8,12 @@ import {
   defaultAccentTheme,
 } from "@/lib/accent-theme-config";
 import { themeStorageKey } from "@/lib/theme-config";
+import {
+  defaultWalletStyle,
+  defaultWalletPattern,
+  walletPatternStorageKey,
+  walletStyleStorageKey,
+} from "@/lib/wallet-style-config";
 import "./globals.css";
 import { SessionChecker } from "@/components/session-checker";
 
@@ -44,6 +50,20 @@ const themeInitScript = `
       "--custom-accent-primary",
       customAccent
     );
+    const savedWalletStyle = window.localStorage.getItem(${JSON.stringify(
+      walletStyleStorageKey,
+    )});
+    document.documentElement.dataset.walletStyle =
+      ["classic", "mint", "graphite"].includes(savedWalletStyle)
+        ? savedWalletStyle
+        : ${JSON.stringify(defaultWalletStyle)};
+    const savedWalletPattern = window.localStorage.getItem(${JSON.stringify(
+      walletPatternStorageKey,
+    )});
+    document.documentElement.dataset.walletPattern =
+      ["none", "pinstripe", "grid", "dots", "orbit"].includes(savedWalletPattern)
+        ? savedWalletPattern
+        : ${JSON.stringify(defaultWalletPattern)};
   } catch {
     document.documentElement.dataset.theme = "light";
     document.documentElement.dataset.accent = ${JSON.stringify(
@@ -53,6 +73,12 @@ const themeInitScript = `
       "--custom-accent-primary",
       ${JSON.stringify(defaultCustomAccentColor)}
     );
+    document.documentElement.dataset.walletStyle = ${JSON.stringify(
+      defaultWalletStyle,
+    )};
+    document.documentElement.dataset.walletPattern = ${JSON.stringify(
+      defaultWalletPattern,
+    )};
   }
 })();
 `;

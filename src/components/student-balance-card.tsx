@@ -43,12 +43,12 @@ export function StudentBalanceCard({
   const hasActions = Boolean(onAdjust || onQuickAdd || onQuickRemove);
 
   return (
-    <article className="theme-card p-3">
-      <div className="flex items-center gap-3">
+    <article className="theme-card min-w-0 p-2.5 sm:p-3">
+      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         <UserAvatar
           displayName={student.displayName}
           imageUrl={student.profileImageUrl}
-          size="lg"
+          size="md"
           tone="neutral"
         />
         <div className="min-w-0 flex-1">
@@ -69,12 +69,14 @@ export function StudentBalanceCard({
           <div className="mt-3 flex items-center gap-2">
             {onAdjust && (
               <button
-                className="inline-flex h-8 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-md border border-button-border bg-surface px-3 text-xs font-semibold text-text-control transition hover:bg-panel-soft"
+                aria-label={`Custom adjustment for ${student.displayName}`}
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center gap-1.5 rounded-md border border-button-border bg-surface px-0 text-xs font-semibold text-text-control transition hover:bg-panel-soft sm:w-auto sm:min-w-0 sm:flex-1 sm:px-3"
                 onClick={() => onAdjust(student)}
+                title={`Custom adjustment for ${student.displayName}`}
                 type="button"
               >
                 <PencilIcon className="h-3.5 w-3.5" />
-                Custom
+                <span className="hidden sm:inline">Custom</span>
               </button>
             )}
             {(onQuickAdd || onQuickRemove) && (

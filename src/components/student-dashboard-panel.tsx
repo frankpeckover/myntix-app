@@ -25,11 +25,9 @@ import {
 } from "@/lib/actions";
 import {
   buildBalanceTimeSeries,
-  chartTimeScaleOptions,
   getBalanceAxisTicks,
   getTimeAxisTicks,
   type BalanceTimePoint,
-  type ChartTimeScale,
 } from "@/lib/chart-time-scale";
 import { formatAmount, formatCurrencyAmount } from "@/lib/formatters";
 import type { SessionUser } from "@/lib/session";
@@ -49,11 +47,22 @@ type BalanceTrendTooltipProps = {
   payload?: { payload: BalanceTimePoint }[];
 };
 
+type BalanceHistoryWindow = "day" | "week" | "month" | "custom";
+
 const ACTIVE_CHART_POINT_RADIUS = 6;
 const CHART_STROKE_WIDTH = 2;
 const CHART_CURSOR_WIDTH = 2;
 const BALANCE_COUNT_ANIMATION_DURATION_MS = 650;
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+const balanceHistoryWindowOptions: {
+  label: string;
+  value: BalanceHistoryWindow;
+}[] = [
+  { label: "24H", value: "day" },
+  { label: "7D", value: "week" },
+  { label: "30D", value: "month" },
+  { label: "Custom", value: "custom" },
+];
 const studentMetricTimeframeOptions = [
   { label: "7 days", value: 7 },
   { label: "30 days", value: 30 },
@@ -323,8 +332,18 @@ function BalanceTrendCard({
   isLoading: boolean;
   transactions: TransactionLogItem[];
 }) {
-  const [timeScale, setTimeScale] = useState<ChartTimeScale>("daily");
-  const chartPoints = buildBalanceChartPoints(transactions, timeScale);
+  const [selectedWindow, setSelectedWindow] =
+    useState<BalanceHistoryWindow>("month");
+  const [customStartDate, setCustomStartDate] = useState(() =>
+    formatDateInput(addDays(new Date(), -29)),
+  );
+  const [customEndDate, setCustomEndDate] = useState(() =>
+    formatDateInput(new Date()),
+  );
+  const chartPoints = buildBalanceChartPoints(transactions, selectedWindow, {
+    endDate: customEndDate,
+    startDate: customStartDate,
+  });
   const balanceTicks = getBalanceAxisTicks(chartPoints);
   const timeTicks = getTimeAxisTicks(chartPoints);
 
@@ -339,10 +358,35 @@ function BalanceTrendCard({
             <h2 className="text-base font-semibold text-foreground">Balance</h2>
           </div>
           <ChartScaleMenu
-            onScaleChange={setTimeScale}
-            selectedScale={timeScale}
+            onWindowChange={setSelectedWindow}
+            selectedWindow={selectedWindow}
           />
         </div>
+        {selectedWindow === "custom" && (
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <label className="text-xs font-medium text-text-muted">
+              Start
+              <input
+                className="mt-1 w-full rounded-md border border-border bg-surface px-2 py-1.5 text-xs text-text-control outline-none ring-brand focus:ring-2"
+                max={customEndDate}
+                onChange={(event) => setCustomStartDate(event.target.value)}
+                type="date"
+                value={customStartDate}
+              />
+            </label>
+            <label className="text-xs font-medium text-text-muted">
+              End
+              <input
+                className="mt-1 w-full rounded-md border border-border bg-surface px-2 py-1.5 text-xs text-text-control outline-none ring-brand focus:ring-2"
+                max={formatDateInput(new Date())}
+                min={customStartDate}
+                onChange={(event) => setCustomEndDate(event.target.value)}
+                type="date"
+                value={customEndDate}
+              />
+            </label>
+          </div>
+        )}
         {isLoading && (
           <div className="flex flex-1 items-center justify-center">
             <p className="text-sm text-text-muted">Loading trend...</p>
@@ -575,17 +619,71 @@ function BalanceTrendTooltip({
 
 function buildBalanceChartPoints(
   transactions: TransactionLogItem[],
-  scale: ChartTimeScale,
+  selectedWindow: BalanceHistoryWindow,
+  customRange: { endDate: string; startDate: string },
 ): BalanceTimePoint[] {
   const balanceTransactions = transactions.filter(doesTransactionAffectBalance);
+  const { end, start } = getBalanceHistoryRange(selectedWindow, customRange);
+  const scale = selectedWindow === "day" ? "hourly" : "daily";
+  const openingBalance = balanceTransactions.reduce((total, transaction) => {
+    const transactionTime = new Date(transaction.createdAt).getTime();
+    return transactionTime < start.getTime()
+      ? total + transaction.amount
+      : total;
+  }, 0);
+  const windowTransactions = balanceTransactions.filter((transaction) => {
+    const transactionTime = new Date(transaction.createdAt).getTime();
+    return transactionTime >= start.getTime() && transactionTime <= end.getTime();
+  });
+
   return buildBalanceTimeSeries({
-    events: balanceTransactions.map((transaction) => ({
+    events: windowTransactions.map((transaction) => ({
       amount: transaction.amount,
       createdAt: transaction.createdAt,
     })),
+    rangeEnd: end,
+    rangeStart: start,
     scale,
-    startingBalance: 0,
+    startingBalance: openingBalance,
   });
+}
+
+function getBalanceHistoryRange(
+  selectedWindow: BalanceHistoryWindow,
+  customRange: { endDate: string; startDate: string },
+) {
+  const now = new Date();
+
+  if (selectedWindow === "custom") {
+    const start = parseDateInput(customRange.startDate, false);
+    const end = parseDateInput(customRange.endDate, true);
+
+    if (start && end && start <= end) {
+      return { end: end > now ? now : end, start };
+    }
+  }
+
+  const days = selectedWindow === "day" ? 1 : selectedWindow === "week" ? 7 : 30;
+  return { end: now, start: new Date(now.getTime() - days * MILLISECONDS_PER_DAY) };
+}
+
+function parseDateInput(value: string, endOfDay: boolean) {
+  if (!value) return null;
+  const date = new Date(`${value}T${endOfDay ? "23:59:59.999" : "00:00:00"}`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function addDays(date: Date, days: number) {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
+}
+
+function formatDateInput(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function doesTransactionAffectBalance(transaction: TransactionLogItem) {
@@ -626,19 +724,19 @@ function getStudentMetrics(
 }
 
 function ChartScaleMenu({
-  onScaleChange,
-  selectedScale,
+  onWindowChange,
+  selectedWindow,
 }: {
-  onScaleChange: (scale: ChartTimeScale) => void;
-  selectedScale: ChartTimeScale;
+  onWindowChange: (window: BalanceHistoryWindow) => void;
+  selectedWindow: BalanceHistoryWindow;
 }) {
   return (
     <div className="ml-auto flex items-center gap-2">
       <InlineSelectMenu
         ariaLabel="Change balance graph scale"
-        onChange={onScaleChange}
-        options={chartTimeScaleOptions}
-        value={selectedScale}
+        onChange={onWindowChange}
+        options={balanceHistoryWindowOptions}
+        value={selectedWindow}
       />
     </div>
   );
