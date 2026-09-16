@@ -12,11 +12,13 @@ import {
 } from "recharts";
 import { StudentShopRequestsPanel } from "@/components/shop/student-shop-requests-panel";
 import { StudentGoalCard } from "@/components/student-goal-card";
+import { StudentActivityRecap } from "@/components/student-activity-recap";
 import { StudentTransactionNotificationModal } from "@/components/student-transaction-notification-modal";
 import { TransactionLogPanel } from "@/components/transactions/transaction-log-panel";
 import { FixedNotification } from "@/components/ui/fixed-notification";
-import { WalletIcon } from "@/components/ui/icons";
+import { SparkleIcon, WalletIcon } from "@/components/ui/icons";
 import { InlineSelectMenu } from "@/components/ui/inline-select-menu";
+import { LoadFailure } from "@/components/ui/load-failure";
 import {
   getStudentBalance,
   listUnseenTransactions,
@@ -81,6 +83,8 @@ export function StudentDashboardPanel({
   const [transactions, setTransactions] = useState<TransactionLogItem[]>([]);
   const [isTransactionsLoading, setIsTransactionsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [transactionsError, setTransactionsError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [unseenTransactions, setUnseenTransactions] = useState<
     UnseenTransaction[]
   >([]);
@@ -113,7 +117,7 @@ export function StudentDashboardPanel({
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [reloadKey]);
 
   useEffect(() => {
     let isMounted = true;
@@ -137,7 +141,7 @@ export function StudentDashboardPanel({
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [reloadKey]);
 
   async function dismissTransactionNotifications() {
     if (isDismissingNotifications || unseenTransactions.length === 0) {
@@ -147,33 +151,40 @@ export function StudentDashboardPanel({
     setIsDismissingNotifications(true);
     setNotificationError(null);
 
-    const result = await markTransactionsSeen(
-      unseenTransactions.map((transaction) => transaction.id),
-    );
+    try {
+      const result = await markTransactionsSeen(
+        unseenTransactions.map((transaction) => transaction.id),
+      );
 
-    if (!result.ok) {
-      setNotificationError(result.message);
+      if (!result.ok) {
+        setNotificationError(result.message);
+        return;
+      }
+
+      setUnseenTransactions([]);
+    } catch {
+      setNotificationError("Could not dismiss these updates. Please try again.");
+    } finally {
       setIsDismissingNotifications(false);
-      return;
     }
-
-    setUnseenTransactions([]);
-    setIsDismissingNotifications(false);
   }
 
   useEffect(() => {
     let isMounted = true;
 
     async function loadTransactions() {
+      setIsTransactionsLoading(true);
+
       try {
         const loadedTransactions = await listTransactionLog();
 
         if (isMounted) {
           setTransactions(loadedTransactions);
+          setTransactionsError(null);
         }
       } catch {
         if (isMounted) {
-          setTransactions([]);
+          setTransactionsError("Could not load activity history.");
         }
       } finally {
         if (isMounted) {
@@ -187,14 +198,24 @@ export function StudentDashboardPanel({
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [reloadKey]);
 
   return (
     <>
-      <FixedNotification error={error} />
+      <FixedNotification error={error ?? transactionsError} />
+      {(error || transactionsError) && (
+        <div className="mt-2">
+          <LoadFailure
+            description="Some dashboard data is temporarily unavailable. Existing records have not been changed."
+            onRetry={() => setReloadKey((current) => current + 1)}
+            title="Could not refresh your dashboard"
+          />
+        </div>
+      )}
       <section className="student-dashboard-section dashboard-grid motion-panel mt-2">
         <StudentWalletCard
           balance={balance}
+          celebrate={unseenTransactions.some((transaction) => transaction.amount > 0)}
           currencyName={currencyName}
           currentUser={currentUser}
           schoolLogoUrl={schoolLogoUrl}
@@ -202,13 +223,21 @@ export function StudentDashboardPanel({
         />
         <BalanceTrendCard
           currencyName={currencyName}
-          isLoading={isTransactionsLoading}
+          isLoading={isTransactionsLoading && !transactionsError}
           transactions={transactions}
         />
         <StudentGoalCard
           balance={balance}
           className="dashboard-unit-1"
           currencyName={currencyName}
+        />
+      </section>
+
+      <section className="student-dashboard-section dashboard-grid mt-5">
+        <StudentActivityRecap
+          currencyName={currencyName}
+          isLoading={isTransactionsLoading && !transactionsError}
+          transactions={transactions}
         />
       </section>
 
@@ -245,12 +274,14 @@ export function StudentDashboardPanel({
 
 function StudentWalletCard({
   balance,
+  celebrate,
   currencyName,
   currentUser,
   schoolLogoUrl,
   schoolName,
 }: {
   balance: number;
+  celebrate: boolean;
   currencyName: string;
   currentUser: SessionUser;
   schoolLogoUrl: string;
@@ -266,13 +297,20 @@ function StudentWalletCard({
   }, []);
 
   return (
-    <article className="student-dashboard-card student-wallet-card dashboard-unit-2 wallet-card rounded-2xl">
+    <article className={`student-dashboard-card student-wallet-card dashboard-unit-2 wallet-card rounded-2xl ${celebrate ? "student-wallet-celebrate" : ""}`}>
       <div className="relative flex h-full min-h-52 flex-col">
         <div className="relative z-10 flex flex-1 flex-col p-5 sm:p-6">
           <div className="flex items-start justify-between gap-4">
-            <p className="text-xs font-medium uppercase tracking-[0.12em] text-[color:var(--student-card-muted)]">
-              My Credits
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-[color:var(--student-card-muted)]">
+                My Credits
+              </p>
+              {celebrate && (
+                <span className="wallet-credit-spark text-[color:var(--student-card-accent)]">
+                  <SparkleIcon className="h-4 w-4" />
+                </span>
+              )}
+            </div>
             <p className="max-w-56 truncate text-right text-xs font-medium uppercase tracking-[0.08em] text-[color:var(--student-card-muted)]">
               {schoolName}
             </p>

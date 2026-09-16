@@ -6,5 +6,5 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## Project specification
 
-Read `PROJECT_DESIGN.md` before changing product behaviour, UI, database design,
+Read `docs/PROJECT_DESIGN.md` before changing product behaviour, UI, database design,
 security, permissions, tenancy, or architecture.

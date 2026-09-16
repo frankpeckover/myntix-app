@@ -21,6 +21,7 @@ import { StudentDashboardPanel } from "@/components/student-dashboard-panel";
 import { TeacherDashboardPanel } from "@/components/teacher-dashboard-panel";
 import { TeacherTimetablePanel } from "@/components/teacher-timetable-panel";
 import { TransactionLogPanel } from "@/components/transactions/transaction-log-panel";
+import { NotificationCentre } from "@/components/notifications/notification-centre";
 import { AppBrand } from "@/components/ui/app-brand";
 import { AppFooter } from "@/components/ui/app-footer";
 import { GlobalMaintenanceBanner } from "@/components/ui/global-maintenance-banner";
@@ -104,7 +105,24 @@ export function DashboardShell({
   }, []);
 
   useEffect(() => {
-    document.title = getBrowserTabTitle(activeNavItem, user);
+    const title = getBrowserTabTitle(activeNavItem, user);
+
+    function applyTitle() {
+      if (document.title !== title) {
+        document.title = title;
+      }
+    }
+
+    applyTitle();
+
+    const titleObserver = new MutationObserver(applyTitle);
+    titleObserver.observe(document.head, {
+      characterData: true,
+      childList: true,
+      subtree: true,
+    });
+
+    return () => titleObserver.disconnect();
   }, [activeNavItem, user]);
 
   const schoolName = schoolInfo.name.trim() || appConfig.defaultSchoolName;
@@ -151,6 +169,9 @@ export function DashboardShell({
                   {schoolName}
                 </span>
               </div>
+              <NotificationCentre
+                onNavigate={(target) => setActiveNavItem(target)}
+              />
               <HeaderNavMenu
                 activeItem={activeNavItem}
                 onItemChange={setActiveNavItem}

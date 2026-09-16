@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { CheckIcon, ChevronDownIcon } from "@/components/ui/icons";
+import { useMenuKeyboard } from "@/components/ui/use-menu-keyboard";
 
 type InlineSelectOption<TValue extends number | string> = {
   label: string;
@@ -22,7 +23,16 @@ export function InlineSelectMenu<TValue extends number | string>({
   value,
 }: InlineSelectMenuProps<TValue>) {
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const popupRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const menuId = useId();
+  const handleMenuKeyDown = useMenuKeyboard({
+    isOpen,
+    menuRef: popupRef,
+    onClose: () => setIsOpen(false),
+    triggerRef,
+  });
   const selectedOption = options.find((option) => option.value === value);
 
   useEffect(() => {
@@ -58,9 +68,12 @@ export function InlineSelectMenu<TValue extends number | string>({
     >
       <button
         aria-expanded={isOpen}
+        aria-controls={isOpen ? menuId : undefined}
+        aria-haspopup="menu"
         aria-label={ariaLabel}
         className="inline-flex h-[46px] items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 text-xs font-medium text-text-control transition hover:bg-panel-soft hover:text-foreground"
         onClick={() => setIsOpen((currentValue) => !currentValue)}
+        ref={triggerRef}
         type="button"
       >
         <span>{selectedOption?.label ?? "Select"}</span>
@@ -68,7 +81,14 @@ export function InlineSelectMenu<TValue extends number | string>({
       </button>
 
       {isOpen && (
-        <div className="motion-pop absolute right-0 top-10 z-[170] min-w-32 rounded-md border border-border bg-surface p-1.5 text-sm shadow-lg">
+        <div
+          aria-label={ariaLabel}
+          className="motion-pop absolute right-0 top-10 z-[170] min-w-32 rounded-md border border-border bg-surface p-1.5 text-sm shadow-lg"
+          id={menuId}
+          onKeyDown={handleMenuKeyDown}
+          ref={popupRef}
+          role="menu"
+        >
           {options.map((option) => (
             <button
               className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-text-control transition hover:bg-panel-soft"
@@ -77,6 +97,7 @@ export function InlineSelectMenu<TValue extends number | string>({
                 onChange(option.value);
                 setIsOpen(false);
               }}
+              role="menuitem"
               type="button"
             >
               <span className="truncate">{option.label}</span>

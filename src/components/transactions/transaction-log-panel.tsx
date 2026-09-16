@@ -25,6 +25,7 @@ import { TransactionStatusBadge } from "@/components/transactions/transaction-st
 import { EmptyState } from "@/components/ui/empty-state";
 import { FixedNotification } from "@/components/ui/fixed-notification";
 import { IconButton } from "@/components/ui/icon-button";
+import { LoadFailure } from "@/components/ui/load-failure";
 import {
   EyeIcon,
   FileDownIcon,
@@ -192,6 +193,13 @@ export function TransactionLogPanel({
         {isLoading && (
           <p className="text-sm text-text-muted">Loading transactions...</p>
         )}
+        {!isLoading && error && transactions.length === 0 && (
+          <LoadFailure
+            description="The ledger history is temporarily unavailable."
+            onRetry={refreshTransactions}
+            title="Could not load transactions"
+          />
+        )}
         {!isLoading && !error && transactions.length === 0 && (
           <EmptyState
             description="Transactions will appear here after credits are issued, removed, held, spent, or voided."
@@ -199,7 +207,7 @@ export function TransactionLogPanel({
             title="No transactions yet"
           />
         )}
-        {!isLoading && !error && transactions.length > 0 && (
+        {!isLoading && transactions.length > 0 && (
           <>
             <TransactionList
               canViewAllTransactions={canViewAllTransactionsForUser}
@@ -327,7 +335,7 @@ function TransactionList({
 
       <div className="hidden w-full min-w-0 max-w-full overflow-visible md:block">
         {toolbar}
-        <table className="transaction-log-table w-full min-w-0 table-fixed border-collapse text-left text-sm">
+        <table aria-label="Transaction log" className="transaction-log-table w-full min-w-0 table-fixed border-collapse text-left text-sm">
           <TransactionTableColumnGroup
             canViewAllTransactions={canViewAllTransactions}
           />

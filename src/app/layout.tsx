@@ -87,8 +87,8 @@ export const metadata: Metadata = {
   title: appConfig.name,
   description: appConfig.description,
   icons: {
-    apple: "/brand/myntix-stacked-coins.png",
-    icon: "/brand/myntix-stacked-coins.png",
+    apple: "/brand/myntix-favicon.png",
+    icon: "/brand/myntix-favicon.png",
   },
   robots: {
     follow: false,

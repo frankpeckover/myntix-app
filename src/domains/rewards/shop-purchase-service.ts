@@ -8,6 +8,7 @@ import {
 import type { SessionUser } from "@/lib/session";
 import { AuditService } from "@/domains/audit/audit-service";
 import { LedgerService } from "@/domains/ledger/ledger-service";
+import { NotificationService } from "@/domains/notifications/notification-service";
 import type {
   ShopItemRow,
   ShopPurchaseRequest,
@@ -19,6 +20,7 @@ import type {
 
 const ledgerService = new LedgerService();
 const auditService = new AuditService();
+const notificationService = new NotificationService();
 
 export class ShopPurchaseService {
   async listPendingPurchaseRequests(
@@ -53,6 +55,7 @@ export class ShopPurchaseService {
         join users on users.id = shop_purchases.purchased_by_user_id
         where ($1::boolean = false or shop_purchases.status = 'pending')
           and shop_purchases.is_voided = false
+          and shop_purchases.requested_by_api_client_id is null
         order by
           case when shop_purchases.status = 'pending' then 0 else 1 end,
           shop_purchases.purchased_at desc
@@ -185,6 +188,12 @@ export class ShopPurchaseService {
         entityType: "shop_purchase",
       });
 
+      await notificationService.notifyRewardRequested(client, {
+        itemName: item.name,
+        purchaseId,
+        studentName: currentUser.displayName || currentUser.username,
+      });
+
       await client.query("commit");
       return { ok: true };
     } catch (error) {
@@ -233,6 +242,7 @@ export class ShopPurchaseService {
       decisionNote.trim(),
     );
   }
+
 }
 
 function canManagePurchases(currentUser: SessionUser) {
@@ -380,6 +390,12 @@ async function decidePurchaseRequest(
       );
     }
 
+    const itemResult = await client.query<{ name: string }>(
+      `select name from shop_items where id = $1`,
+      [purchase.shop_item_id],
+    );
+    const itemName = itemResult.rows[0]?.name ?? "Your reward";
+
     await auditService.logWithClient(client, {
       action:
         status === "approved"
@@ -394,6 +410,12 @@ async function decidePurchaseRequest(
       },
       entityId: purchaseId,
       entityType: "shop_purchase",
+    });
+    await notificationService.notifyRewardDecision(client, {
+      itemName,
+      purchaseId,
+      status,
+      studentUserId: purchase.purchased_by_user_id,
     });
 
     await client.query("commit");

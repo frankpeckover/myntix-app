@@ -36,6 +36,7 @@ create table if not exists shop_purchases (
   decided_at timestamptz,
   decision_note text not null default '',
   stock_reserved boolean not null default true,
+  requested_by_api_client_id uuid,
   is_voided boolean not null default false,
   voided_at timestamptz,
   purchased_at timestamptz not null default now(),
@@ -46,11 +47,19 @@ create table if not exists shop_purchases (
 
 alter table shop_purchases
   add column if not exists stock_reserved boolean not null default true;
+alter table shop_purchases
+  add column if not exists requested_by_api_client_id uuid;
+alter table account_holds
+  add column if not exists related_purchase_id uuid
+  references shop_purchases(id) on delete restrict;
 
 create index if not exists shop_items_active_idx on shop_items(is_active);
 create index if not exists shop_purchases_user_idx on shop_purchases(purchased_by_user_id);
 create index if not exists shop_purchases_status_idx on shop_purchases(status);
 create index if not exists shop_purchases_voided_idx on shop_purchases(is_voided);
+create unique index if not exists account_holds_purchase_idx
+  on account_holds(related_purchase_id)
+  where related_purchase_id is not null;
 
 insert into permissions (key, name, description, category)
 values

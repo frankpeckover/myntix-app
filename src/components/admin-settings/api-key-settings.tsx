@@ -14,18 +14,22 @@ const scopeOptions: Array<{
   label: string;
   scope: ApiScope;
 }> = [
-  { label: "Read balances", scope: "balances:read" },
+  { label: "Read accounts", scope: "accounts:read" },
+  { label: "Read ledger", scope: "ledger:read" },
   { label: "Add credits", scope: "ledger:credit" },
   { label: "Remove credits", scope: "ledger:debit" },
-  { label: "Place holds", scope: "ledger:hold" },
-  { label: "Void API entries", scope: "ledger:void" },
+  { label: "Read holds", scope: "holds:read" },
+  { label: "Manage holds", scope: "holds:write" },
+  { label: "Read rewards", scope: "rewards:read" },
+  { label: "Read purchases", scope: "purchases:read" },
+  { label: "Manage purchases", scope: "purchases:write" },
 ];
 
 const defaultModuleScopes: ApiScope[] = [
-  "balances:read",
-  "ledger:credit",
-  "ledger:debit",
-  "ledger:hold",
+  "accounts:read",
+  "ledger:read",
+  "holds:read",
+  "holds:write",
 ];
 
 export function ApiKeySettings() {
@@ -165,7 +169,7 @@ export function ApiKeySettings() {
           <p className="p-4 text-sm text-text-muted">No API keys have been created.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full table-fixed text-left text-sm">
+            <table aria-label="API keys" className="w-full table-fixed text-left text-sm">
               <thead>
                 <tr className="border-b-2 border-border text-xs uppercase text-text-muted">
                   <th scope="col" className="w-[28%] px-4 py-3 font-medium">Name</th>

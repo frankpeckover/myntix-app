@@ -9,7 +9,10 @@
     "build": "next build",
     "create-api-client": "node scripts/create-api-client-key.mjs",
     "start": "node scripts/start-production.mjs",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:a11y": "playwright test --project=desktop-chromium",
+    "test:browsers": "playwright test",
+    "test:e2e:install": "playwright install chromium firefox webkit"
   },
   "dependencies": {
     "next": "16.2.9",
@@ -19,6 +22,8 @@
     "recharts": "^3.9.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/pg": "^8.20.0",

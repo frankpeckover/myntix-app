@@ -99,6 +99,13 @@ export {
   markTransactionsSeen,
 } from "@/lib/actions/transaction-notification-actions";
 export {
+  getMyNotificationPreferences,
+  listMyNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+  updateMyNotificationPreferences,
+} from "@/lib/actions/notification-actions";
+export {
   changeOwnPassword,
   createUser,
   importUsers,

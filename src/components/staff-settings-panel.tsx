@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { QuickAdjustmentDefaults } from "@/components/staff-settings/quick-adjustment-defaults";
+import { NotificationPreferences } from "@/components/staff-settings/notification-preferences";
 import {
   getMyTransactionPresets,
   updateMyTransactionPresets,
@@ -194,6 +195,7 @@ export function StaffSettingsPanel() {
           </>
         )}
       </form>
+      <NotificationPreferences />
     </section>
   );
 }

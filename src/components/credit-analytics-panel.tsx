@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/icons";
 import { FixedNotification } from "@/components/ui/fixed-notification";
 import { InlineSelectMenu } from "@/components/ui/inline-select-menu";
+import { LoadFailure } from "@/components/ui/load-failure";
 import { MetricCard } from "@/components/ui/metric-card";
 import { SearchInput } from "@/components/ui/search-input";
 import {
@@ -99,6 +100,7 @@ export function CreditAnalyticsPanel({
   const [trend, setTrend] = useState<CreditAnalyticsTrendPoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const selectedScopeKey = selectedScope
     ? `${selectedScope.kind}:${selectedScope.id}`
@@ -193,7 +195,7 @@ export function CreditAnalyticsPanel({
       isMounted = false;
       window.clearTimeout(timeoutId);
     };
-  }, [customEndDate, customStartDate, selectedScopeKey, selectedWindowInput]);
+  }, [customEndDate, customStartDate, reloadKey, selectedScopeKey, selectedWindowInput]);
 
   function handleScopeSelected(scope: CreditAnalyticsScope) {
     setSelectedScope(scope);
@@ -235,49 +237,63 @@ export function CreditAnalyticsPanel({
         />
       )}
 
-      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-6">
-        <AnalyticsMetricGrid
-          className="lg:col-span-2"
-          currencyName={currencyName}
-          isLoading={isLoading}
-          selectedWindowLabel={selectedWindowLabel}
-          summary={summary}
-        />
-        <NetMovementCard
-          className="lg:col-span-4"
-          currencyName={currencyName}
-          error={error}
-          isLoading={isLoading}
-          scopeLabel={selectedScope?.label ?? "Cohort"}
-          trend={trend}
-        />
-      </div>
+      {!isLoading && error && (
+        <div className="mt-4">
+          <LoadFailure
+            description="The selected analytics could not be retrieved. Your filters are still applied."
+            onRetry={() => setReloadKey((current) => current + 1)}
+            title="Could not load analytics"
+          />
+        </div>
+      )}
 
-      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-6">
-        <BalanceHistoryCard
-          className="lg:col-span-4"
-          currencyName={currencyName}
-          error={error}
-          isLoading={isLoading}
-          points={balanceHistory}
-          scopeLabel={selectedScope?.label ?? "Cohort"}
-        />
-        <BalanceDistributionCard
-          className="lg:col-span-2"
-          buckets={balanceBuckets}
-          error={error}
-          isLoading={isLoading}
-          scopeLabel={selectedScope?.label ?? "Cohort"}
-          summary={summary}
-        />
-        <PurchaseTrendCard
-          className="lg:col-span-2"
-          error={error}
-          isLoading={isLoading}
-          scopeLabel={selectedScope?.label ?? "Cohort"}
-          trend={trend}
-        />
-      </div>
+      {!error && (
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-6">
+          <AnalyticsMetricGrid
+            className="lg:col-span-2"
+            currencyName={currencyName}
+            isLoading={isLoading}
+            selectedWindowLabel={selectedWindowLabel}
+            summary={summary}
+          />
+          <NetMovementCard
+            className="lg:col-span-4"
+            currencyName={currencyName}
+            error={error}
+            isLoading={isLoading}
+            scopeLabel={selectedScope?.label ?? "Cohort"}
+            trend={trend}
+          />
+        </div>
+      )}
+
+      {!error && (
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-6">
+          <BalanceHistoryCard
+            className="lg:col-span-4"
+            currencyName={currencyName}
+            error={error}
+            isLoading={isLoading}
+            points={balanceHistory}
+            scopeLabel={selectedScope?.label ?? "Cohort"}
+          />
+          <BalanceDistributionCard
+            className="lg:col-span-2"
+            buckets={balanceBuckets}
+            error={error}
+            isLoading={isLoading}
+            scopeLabel={selectedScope?.label ?? "Cohort"}
+            summary={summary}
+          />
+          <PurchaseTrendCard
+            className="lg:col-span-2"
+            error={error}
+            isLoading={isLoading}
+            scopeLabel={selectedScope?.label ?? "Cohort"}
+            trend={trend}
+          />
+        </div>
+      )}
     </div>
   );
 }

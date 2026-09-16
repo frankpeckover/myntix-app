@@ -8,6 +8,8 @@ Myntix Ledger is an internal currency ledger for organisations. The core loop is
 
 The app is a Next.js application backed by PostgreSQL. Tenants are resolved through a platform database and can use either a dedicated database or a schema inside a shared app database.
 
+Product, API, notification, operations, and backup documentation is indexed in [docs/README.md](docs/README.md).
+
 ## Tech Stack
 
 - Next.js
@@ -17,7 +19,7 @@ The app is a Next.js application backed by PostgreSQL. Tenants are resolved thro
 
 ## Getting Started
 
-Install Node.js 20.9 or newer. Node.js 22 LTS is preferred for new installs.
+Install Node.js 20.19 or newer. Node.js 22 LTS is preferred for new installs.
 
 Create `.env.local` from `.env.example` and adjust the platform database credentials:
 
@@ -134,7 +136,7 @@ Keep production secrets out of git. `.env`, `.env.local`, `.env.production`, `.e
 
 ## Deployment Checklist
 
-1. Node.js 20.9+ installed.
+1. Node.js 20.19+ installed.
 2. PostgreSQL reachable from the app server.
 3. Platform database created.
 4. Tenant database or schema created.

@@ -1,6 +1,12 @@
 import { db } from "@/lib/db";
 import type { AuditLogItem } from "@/domains/audit/audit-service";
 import type { LedgerEntryStatus, LedgerEntryType } from "@/domains/ledger/ledger-service";
+import {
+  OperationsDashboardService,
+  type OperationsDashboardSnapshot,
+} from "@/domains/operations/operations-dashboard-service";
+
+const operationsDashboardService = new OperationsDashboardService();
 
 export type AdminDashboardSummary = {
   activeUsers: number;
@@ -9,6 +15,7 @@ export type AdminDashboardSummary = {
   ledgerBalance: number;
   moneyIn: number;
   moneyOut: number;
+  operations: OperationsDashboardSnapshot;
   pendingHolds: number;
   pendingShopRequests: number;
   recentAuditEntries: AuditLogItem[];
@@ -96,6 +103,7 @@ export class AdminDashboardService {
       topCreditIssuers,
       topDemeritIssuers,
       recentAuditResult,
+      operations,
     ] = await Promise.all([
       db.query<SummaryRow>(`
         select
@@ -200,6 +208,7 @@ export class AdminDashboardService {
         `,
         [...adminAuditActionPrefixes, recentAuditLimit],
       ),
+      operationsDashboardService.getSnapshot(),
     ]);
 
     const summary = summaryResult.rows[0];
@@ -211,6 +220,7 @@ export class AdminDashboardService {
       ledgerBalance: toNumber(summary.ledger_balance),
       moneyIn: toNumber(summary.money_in),
       moneyOut: toNumber(summary.money_out),
+      operations,
       pendingHolds: toNumber(summary.pending_holds),
       pendingShopRequests: toNumber(summary.pending_shop_requests),
       recentAuditEntries: recentAuditResult.rows.map(mapAuditLogRow),

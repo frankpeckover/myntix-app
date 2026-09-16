@@ -17,20 +17,52 @@ export type IdempotencyResult =
       type: "conflict";
     }
   | {
+      type: "in_progress";
+    }
+  | {
       type: "new";
     };
 
 const maxIdempotencyKeyLength = 128;
 
 export class ApiIdempotencyService {
-  async check(
+  async reserve(
     clientId: string,
     idempotencyKey: string,
     requestHash: string,
   ): Promise<IdempotencyResult> {
-    const result = await db.query<ApiIdempotencyRow>(
+    await db.query(
       `
-        select request_hash, response_body, status_code
+        delete from api_idempotency_keys
+        where client_id = $1
+          and idempotency_key = $2
+          and expires_at <= now()
+      `,
+      [clientId, idempotencyKey],
+    );
+
+    const reservation = await db.query(
+      `
+        insert into api_idempotency_keys (
+          client_id,
+          idempotency_key,
+          request_hash,
+          expires_at
+        )
+        values ($1, $2, $3, now() + interval '24 hours')
+        on conflict (client_id, idempotency_key) do nothing
+        returning id
+      `,
+      [clientId, idempotencyKey, requestHash],
+    );
+
+    if (reservation.rowCount === 1) {
+      return { type: "new" } as const;
+    }
+
+    const result = await db.query<ApiIdempotencyRow & { completed_at: Date | null }>(
+      `
+        select request_hash, response_body, status_code, completed_at
         from api_idempotency_keys
         where client_id = $1
           and idempotency_key = $2
@@ -41,11 +73,15 @@ export class ApiIdempotencyService {
     const existing = result.rows[0];
 
     if (!existing) {
-      return { type: "new" };
+      return { type: "in_progress" };
     }
 
     if (existing.request_hash !== requestHash) {
       return { type: "conflict" };
+    }
+
+    if (!existing.completed_at) {
+      return { type: "in_progress" };
     }
 
     return {
@@ -55,7 +91,7 @@ export class ApiIdempotencyService {
     };
   }
 
-  async record(
+  async complete(
     clientId: string,
     idempotencyKey: string,
     requestHash: string,
@@ -64,15 +100,13 @@ export class ApiIdempotencyService {
   ) {
     await db.query(
       `
-        insert into api_idempotency_keys (
-          client_id,
-          idempotency_key,
-          request_hash,
-          response_body,
-          status_code
-        )
-        values ($1, $2, $3, $4::jsonb, $5)
-        on conflict (client_id, idempotency_key) do nothing
+        update api_idempotency_keys
+        set response_body = $4::jsonb,
+            status_code = $5,
+            completed_at = now()
+        where client_id = $1
+          and idempotency_key = $2
+          and request_hash = $3
       `,
       [
         clientId,
@@ -81,6 +115,19 @@ export class ApiIdempotencyService {
         JSON.stringify(responseBody),
         statusCode,
       ],
+    );
+  }
+
+  async abandon(clientId: string, idempotencyKey: string, requestHash: string) {
+    await db.query(
+      `
+        delete from api_idempotency_keys
+        where client_id = $1
+          and idempotency_key = $2
+          and request_hash = $3
+          and completed_at is null
+      `,
+      [clientId, idempotencyKey, requestHash],
     );
   }
 }

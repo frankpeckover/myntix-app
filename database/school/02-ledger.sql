@@ -52,6 +52,29 @@ create table if not exists ledger_entries (
   )
 );
 
+create table if not exists account_holds (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references accounts(id) on delete restrict,
+  amount integer not null,
+  description text not null,
+  status text not null default 'active',
+  expires_at timestamptz,
+  created_by_api_client_id uuid,
+  captured_ledger_entry_id uuid references ledger_entries(id) on delete restrict,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint account_holds_amount_positive check (amount > 0),
+  constraint account_holds_status_check check (
+    status in ('active', 'captured', 'released')
+  )
+);
+
+create index if not exists account_holds_account_active_idx
+  on account_holds(account_id, status);
+create index if not exists account_holds_expiry_idx
+  on account_holds(expires_at)
+  where status = 'active';
+
 create table if not exists ledger_entry_receipts (
   ledger_entry_id uuid not null references ledger_entries(id) on delete cascade,
   user_id uuid not null references users(id) on delete cascade,

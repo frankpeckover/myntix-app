@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/list-pagination";
 import { CreditActionControl } from "@/components/ui/credit-action-control";
 import { SearchInput } from "@/components/ui/search-input";
+import { LoadFailure } from "@/components/ui/load-failure";
 import { useDialogFocus } from "@/components/ui/use-dialog-focus";
 import {
   createLedgerAdjustment,
@@ -95,6 +96,7 @@ export function TeacherDashboardPanel({
   const [studentDisplayScope, setStudentDisplayScope] =
     useState<StudentDisplayScope>("current-class");
   const [isLoading, setIsLoading] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [personalPresets, setPersonalPresets] =
@@ -111,20 +113,39 @@ export function TeacherDashboardPanel({
     let isMounted = true;
 
     async function loadDashboard() {
+      setIsLoading(true);
+
       try {
-        const [loadedCurrentClass, loadedBalances, loadedGroups, loadedPresets] =
-          await Promise.all([
+        const [currentClassResult, balancesResult, groupsResult, presetsResult] =
+          await Promise.allSettled([
             getCurrentTeacherClass(),
             listStudentBalances(),
             listGroups(false),
             getMyTransactionPresets(),
           ]);
 
+        if (currentClassResult.status === "rejected") {
+          throw currentClassResult.reason;
+        }
+
+        if (balancesResult.status === "rejected") {
+          throw balancesResult.reason;
+        }
+
         if (isMounted) {
-          setCurrentClass(loadedCurrentClass);
-          setStudentBalances(loadedBalances.filter((student) => student.isActive));
-          setGroups(loadedGroups.filter((group) => group.isActive));
-          setPersonalPresets(loadedPresets);
+          setCurrentClass(currentClassResult.value);
+          setStudentBalances(
+            balancesResult.value.filter((student) => student.isActive),
+          );
+
+          if (groupsResult.status === "fulfilled") {
+            setGroups(groupsResult.value.filter((group) => group.isActive));
+          }
+
+          if (presetsResult.status === "fulfilled") {
+            setPersonalPresets(presetsResult.value);
+          }
+
           setError(null);
         }
       } catch {
@@ -143,7 +164,7 @@ export function TeacherDashboardPanel({
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [reloadKey]);
 
   const visibleStudents = useMemo(
     () =>
@@ -362,6 +383,14 @@ export function TeacherDashboardPanel({
     <section className="motion-panel mt-2">
         {isLoading && (
           <p className="mt-4 text-sm text-text-muted">Loading students...</p>
+        )}
+
+        {!isLoading && error && (
+          <LoadFailure
+            description="Student balances or the current class could not be retrieved."
+            onRetry={() => setReloadKey((current) => current + 1)}
+            title="Could not load the teacher dashboard"
+          />
         )}
 
         {!isLoading && !error && (

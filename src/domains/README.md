@@ -9,11 +9,12 @@ Rules:
 - `ledger` owns accounts, ledger entries, balances, presets, and transaction workflows.
 - `groups` owns student groups and group membership imports.
 - `timetable` owns teacher/group scheduling.
-- `rewards` owns reward items, reward requests, and reward fulfilment.
+- `rewards` owns reward items, reward requests, and approval decisions.
 - `analytics` owns dashboards, reporting, goals, and exports.
 - `organisation` owns school/profile/settings data.
 - `audit` owns audit and error log records.
 - `integrations` owns external API clients, API finance endpoints, idempotency, and email.
+- `operations` owns system monitoring and the backup-run reporting contract.
 
 Dependency direction should stay one-way where possible:
 

@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { MoreVerticalIcon } from "@/components/ui/icons";
+import { useMenuKeyboard } from "@/components/ui/use-menu-keyboard";
 
 export type TableActionMenuItem = {
   disabled?: boolean;
@@ -31,7 +32,16 @@ export function TableActionMenu({
   label = "Open row actions",
 }: TableActionMenuProps) {
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const popupRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const menuId = useId();
+  const handleMenuKeyDown = useMenuKeyboard({
+    isOpen,
+    menuRef: popupRef,
+    onClose: () => setIsOpen(false),
+    triggerRef,
+  });
   const visibleItems = items.filter(Boolean);
 
   useEffect(() => {
@@ -71,16 +81,26 @@ export function TableActionMenu({
     >
       <button
         aria-expanded={isOpen}
+        aria-controls={isOpen ? menuId : undefined}
+        aria-haspopup="menu"
         aria-label={label}
         className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-muted transition hover:bg-panel-soft hover:text-text-control"
         onClick={() => setIsOpen((currentValue) => !currentValue)}
+        ref={triggerRef}
         type="button"
       >
         <MoreVerticalIcon className="h-4 w-4" />
       </button>
 
       {isOpen && (
-        <div className="motion-pop absolute right-0 top-9 z-[170] min-w-40 rounded-md border border-border bg-surface p-1.5 text-sm shadow-lg">
+        <div
+          aria-label={label}
+          className="motion-pop absolute right-0 top-9 z-[170] min-w-40 rounded-md border border-border bg-surface p-1.5 text-sm shadow-lg"
+          id={menuId}
+          onKeyDown={handleMenuKeyDown}
+          ref={popupRef}
+          role="menu"
+        >
           {visibleItems.map((item) => (
             <button
               className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${
@@ -92,6 +112,7 @@ export function TableActionMenu({
                 item.onSelect();
                 setIsOpen(false);
               }}
+              role="menuitem"
               type="button"
             >
               {item.icon && (

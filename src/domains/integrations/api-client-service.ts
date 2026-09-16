@@ -16,14 +16,28 @@ type ApiClientRow = {
 const bearerPrefix = "Bearer ";
 const apiKeyHashSecretEnv = "API_KEY_HASH_SECRET";
 const apiKeyBytes = 32;
-const apiKeyPrefixLength = 12;
+const apiKeyPrefixLength = 20;
 const allowedApiScopes: ApiScope[] = [
-  "balances:read",
+  "accounts:read",
+  "ledger:read",
   "ledger:credit",
   "ledger:debit",
-  "ledger:hold",
-  "ledger:void",
+  "holds:read",
+  "holds:write",
+  "rewards:read",
+  "purchases:read",
+  "purchases:write",
 ];
+
+export class ApiAuthenticationError extends Error {
+  constructor(
+    public readonly code: "invalid_api_key" | "insufficient_scope",
+    message: string,
+    public readonly status: 401 | 403,
+  ) {
+    super(message);
+  }
+}
 
 export type ApiClientSummary = {
   createdAt: string;
@@ -124,6 +138,7 @@ export class ApiClientService {
       `
         update api_clients
         set is_active = $2,
+            revoked_at = case when $2 then null else now() end,
             updated_at = now()
         where id = $1
         returning
@@ -153,11 +168,15 @@ export class ApiClientService {
   async authenticate(
     authorizationHeader: string | null,
     requiredScope: ApiScope,
-  ): Promise<ApiClient | null> {
+  ): Promise<ApiClient> {
     const apiKey = getBearerToken(authorizationHeader);
 
     if (!apiKey) {
-      return null;
+      throw new ApiAuthenticationError(
+        "invalid_api_key",
+        "Provide a valid API key as a Bearer token.",
+        401,
+      );
     }
 
     const result = await db.query<ApiClientRow>(
@@ -170,6 +189,7 @@ export class ApiClientService {
         join api_client_scopes on api_client_scopes.client_id = api_clients.id
         where api_clients.key_hash = $1
           and api_clients.is_active = true
+          and (api_clients.expires_at is null or api_clients.expires_at > now())
         group by api_clients.id, api_clients.name
         limit 1
       `,
@@ -177,9 +197,26 @@ export class ApiClientService {
     );
     const client = result.rows[0];
 
-    if (!client || !client.scopes.includes(requiredScope)) {
-      return null;
+    if (!client) {
+      throw new ApiAuthenticationError(
+        "invalid_api_key",
+        "The API key is invalid, expired, or revoked.",
+        401,
+      );
     }
+
+    if (!client.scopes.includes(requiredScope)) {
+      throw new ApiAuthenticationError(
+        "insufficient_scope",
+        `This API key requires the ${requiredScope} scope.`,
+        403,
+      );
+    }
+
+    await db.query(
+      `update api_clients set last_used_at = now() where id = $1`,
+      [client.id],
+    );
 
     return {
       id: client.id,
@@ -194,7 +231,7 @@ export function getAllowedApiScopes() {
 }
 
 export function generateApiKey() {
-  return `sbk_${randomBytes(apiKeyBytes).toString("base64url")}`;
+  return `myntix_live_${randomBytes(apiKeyBytes).toString("base64url")}`;
 }
 
 export function getApiKeyPrefix(apiKey: string) {

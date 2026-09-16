@@ -19,6 +19,7 @@ import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FixedNotification } from "@/components/ui/fixed-notification";
 import { IconButton } from "@/components/ui/icon-button";
+import { LoadFailure } from "@/components/ui/load-failure";
 import {
   FileDownIcon,
   FileUpIcon,
@@ -339,7 +340,14 @@ export function AdminTimetablePanel() {
         {isLoading && (
           <p className="text-sm text-text-muted">Loading timetable...</p>
         )}
-        {!isLoading && entries.length === 0 && (
+        {!isLoading && error && entries.length === 0 && (
+          <LoadFailure
+            description="Timetable entries and their supporting lists could not be retrieved."
+            onRetry={refreshTimetable}
+            title="Could not load the timetable"
+          />
+        )}
+        {!isLoading && !error && entries.length === 0 && (
           <EmptyState
             action={
               <div className="flex flex-wrap justify-center gap-2">

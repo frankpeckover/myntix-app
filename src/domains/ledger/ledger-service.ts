@@ -101,15 +101,30 @@ export class LedgerService {
   async getAvailableBalance(client: PoolClient, userId: string) {
     const result = await client.query<{ balance: number }>(
       `
-        select coalesce(sum(ledger_entries.amount), 0) as balance
+        select
+          coalesce((
+            select sum(ledger_entries.amount)
+            from ledger_entries
+            where ledger_entries.account_id = accounts.id
+              and ledger_entries.status in ('pending', 'posted')
+              and not (
+                ledger_entries.status = 'pending'
+                and ledger_entries.is_voided = true
+              )
+          ), 0)
+          -
+          coalesce((
+            select sum(account_holds.amount)
+            from account_holds
+            where account_holds.account_id = accounts.id
+              and account_holds.status = 'active'
+              and (
+                account_holds.expires_at is null
+                or account_holds.expires_at > now()
+              )
+          ), 0) as balance
         from accounts
-        join ledger_entries on ledger_entries.account_id = accounts.id
         where accounts.user_id = $1
-          and ledger_entries.status in ('pending', 'posted')
-          and not (
-            ledger_entries.status = 'pending'
-            and ledger_entries.is_voided = true
-          )
       `,
       [userId],
     );

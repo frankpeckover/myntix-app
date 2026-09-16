@@ -10,8 +10,15 @@ const unauthenticatedErrorText = "Not authenticated.";
 export function SessionChecker() {
   useEffect(() => {
     let isMounted = true;
+    let isChecking = false;
 
     async function checkSession() {
+      if (isChecking || !navigator.onLine) {
+        return;
+      }
+
+      isChecking = true;
+
       try {
         const currentUser = await getCurrentSessionUser();
 
@@ -22,10 +29,18 @@ export function SessionChecker() {
         if (isUnauthenticatedError(error)) {
           notifySessionExpired();
         }
+      } finally {
+        isChecking = false;
       }
     }
 
     const intervalId = window.setInterval(checkSession, sessionCheckIntervalMs);
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        void checkSession();
+      }
+    }
 
     function handleUnhandledRejection(event: PromiseRejectionEvent) {
       if (!isUnauthenticatedError(event.reason)) {
@@ -47,12 +62,16 @@ export function SessionChecker() {
 
     window.addEventListener("unhandledrejection", handleUnhandledRejection);
     window.addEventListener("error", handleWindowError);
+    window.addEventListener("online", checkSession);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       isMounted = false;
       window.clearInterval(intervalId);
       window.removeEventListener("unhandledrejection", handleUnhandledRejection);
       window.removeEventListener("error", handleWindowError);
+      window.removeEventListener("online", checkSession);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
 

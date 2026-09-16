@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { ClockIcon } from "@/components/ui/icons";
+import { LoadFailure } from "@/components/ui/load-failure";
 import { listMyTimetableEntries } from "@/lib/actions";
 import type { TimetableEntry } from "@/domains/timetable/timetable-service";
 
@@ -40,6 +41,7 @@ export function TeacherTimetablePanel({
   const [currentMoment, setCurrentMoment] = useState<CurrentMoment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     window.queueMicrotask(() => {
@@ -49,7 +51,7 @@ export function TeacherTimetablePanel({
         minuteOfDay: now.getHours() * minutesPerHour + now.getMinutes(),
       });
     });
-  }, []);
+  }, [reloadKey]);
 
   useEffect(() => {
     let isMounted = true;
@@ -90,9 +92,11 @@ export function TeacherTimetablePanel({
 
       {isLoading && <p className="text-sm text-text-muted">Loading timetable...</p>}
       {error && (
-        <p className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger-strong" role="alert">
-          {error}
-        </p>
+        <LoadFailure
+          description="Your classes could not be retrieved."
+          onRetry={() => setReloadKey((current) => current + 1)}
+          title="Could not load your timetable"
+        />
       )}
 
       {!isLoading && !error && (

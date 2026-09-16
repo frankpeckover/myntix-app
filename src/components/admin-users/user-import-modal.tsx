@@ -289,7 +289,7 @@ function GeneratedPasswords({ users }: { users: ImportedUserCredential[] }) {
           ))}
         </div>
 
-        <table className="hidden w-full text-left text-sm md:table">
+        <table aria-label="User import preview" className="hidden w-full text-left text-sm md:table">
           <thead className="text-text-muted">
             <tr>
               <th scope="col" className="py-2 pr-4 font-semibold">Username</th>

@@ -7,6 +7,7 @@ import { formatCurrencyAmount, formatDateTime } from "@/lib/formatters";
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
 import { FixedNotification } from "@/components/ui/fixed-notification";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
+import { LoadFailure } from "@/components/ui/load-failure";
 import { ClockIcon, PackageIcon, ShoppingBagIcon } from "@/components/ui/icons";
 
 type StudentShopRequestsPanelProps = {
@@ -21,6 +22,7 @@ export function StudentShopRequestsPanel({
   const [requests, setRequests] = useState<StudentShopRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let isMounted = true;
@@ -49,7 +51,7 @@ export function StudentShopRequestsPanel({
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [reloadKey]);
 
   return (
     <section
@@ -72,12 +74,19 @@ export function StudentShopRequestsPanel({
         {isLoading && (
           <p className="text-sm text-text-muted">Loading requests...</p>
         )}
+        {!isLoading && error && requests.length === 0 && (
+          <LoadFailure
+            description="Your reward request history could not be retrieved."
+            onRetry={() => setReloadKey((current) => current + 1)}
+            title="Could not load your cart"
+          />
+        )}
         {!isLoading && !error && requests.length === 0 && (
           <p className="theme-subpanel px-3 py-4 text-sm text-text-muted">
             No reward requests yet.
           </p>
         )}
-        {!isLoading && !error && requests.length > 0 && (
+        {!isLoading && requests.length > 0 && (
           <StudentRequestList currencyName={currencyName} requests={requests} />
         )}
       </div>

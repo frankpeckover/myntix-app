@@ -90,7 +90,7 @@ export function InfoTooltip({
       <button
         aria-expanded={isOpen}
         aria-label={label}
-        className="inline-flex h-4 w-4 items-center justify-center rounded-full text-text-muted transition hover:text-text-control focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        className="inline-flex h-6 w-6 items-center justify-center rounded-full text-text-muted transition hover:text-text-control focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
         onClick={() => setIsOpen((current) => !current)}
         onMouseEnter={() => setIsOpen(true)}
         onMouseLeave={() => setIsOpen(false)}

@@ -1,13 +1,17 @@
 import { AppEntry } from "@/components/app-entry";
 import { getCurrentSessionUser } from "@/lib/actions";
-import { assertCurrentTenantExists } from "@/lib/db";
+import { assertCurrentTenantExists, TenantNotFoundError } from "@/lib/db";
 import { notFound } from "next/navigation";
 
 export default async function Home({searchParams}:{searchParams:Promise<{returnTo?:string}>}) {
   try {
     await assertCurrentTenantExists();
-  } catch {
-    notFound();
+  } catch (error) {
+    if (error instanceof TenantNotFoundError) {
+      notFound();
+    }
+
+    throw error;
   }
 
   const currentUser = await getCurrentSessionUser();

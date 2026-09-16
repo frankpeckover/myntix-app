@@ -10,6 +10,7 @@ import { AdminPageSection } from "@/components/ui/admin-page-section";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FixedNotification } from "@/components/ui/fixed-notification";
 import { IconButton } from "@/components/ui/icon-button";
+import { LoadFailure } from "@/components/ui/load-failure";
 import { EyeIcon, FileDownIcon, XIcon } from "@/components/ui/icons";
 import {
   ListPagination,
@@ -43,6 +44,7 @@ export function AdminAuditLogPanel() {
   const [filters, setFilters] = useState<AuditFilters>(emptyAuditFilters);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
   const [viewingEntry, setViewingEntry] = useState<AuditLogItem | null>(null);
 
   useEffect(() => {
@@ -72,7 +74,7 @@ export function AdminAuditLogPanel() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [reloadKey]);
 
   const filteredEntries = useMemo(
     () => entries.filter((entry) => matchesAuditFilters(entry, filters)),
@@ -96,10 +98,17 @@ export function AdminAuditLogPanel() {
         {isLoading && (
           <p className="text-sm text-text-muted">Loading audit log...</p>
         )}
+        {!isLoading && error && entries.length === 0 && (
+          <LoadFailure
+            description="Audit records could not be retrieved."
+            onRetry={() => setReloadKey((current) => current + 1)}
+            title="Could not load the audit log"
+          />
+        )}
         {!isLoading && !error && entries.length === 0 && (
           <p className="text-sm text-text-muted">No audit events recorded yet.</p>
         )}
-        {!isLoading && !error && entries.length > 0 && (
+        {!isLoading && entries.length > 0 && (
           <>
             <AuditLogList
               entries={visibleEntries}
@@ -197,7 +206,7 @@ function AuditLogList({
 
       <div className="hidden w-full min-w-0 max-w-full overflow-x-auto md:block">
         {toolbar}
-        <table className="w-full min-w-[760px] table-fixed border-collapse text-left text-sm">
+        <table aria-label="Audit log" className="w-full min-w-[760px] table-fixed border-collapse text-left text-sm">
           <colgroup>
             <col className="w-[17%]" />
             <col className="w-[15%]" />

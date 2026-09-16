@@ -15,6 +15,8 @@ Each school/app schema is split by service area under:
 - `school/04-rewards.sql`
 - `school/05-sso.sql`
 - `school/06-api-clients.sql`
+- `school/07-notifications.sql`
+- `school/08-operations.sql`
 - `school/99-grants.sql`
 
 All files are plain SQL. They do not use `psql` backslash commands, so they can be run from DBeaver.
@@ -107,6 +109,8 @@ database/school/03-groups-timetable.sql
 database/school/04-rewards.sql
 database/school/05-sso.sql
 database/school/06-api-clients.sql
+database/school/07-notifications.sql
+database/school/08-operations.sql
 ```
 
 Current full app setup:
@@ -119,6 +123,8 @@ database/school/03-groups-timetable.sql
 database/school/04-rewards.sql
 database/school/05-sso.sql
 database/school/06-api-clients.sql
+database/school/07-notifications.sql
+database/school/08-operations.sql
 database/school/99-grants.sql
 ```
 
@@ -249,6 +255,8 @@ For example:
 - If groups or timetables are visible in the app, run `03-groups-timetable.sql`.
 - If SSO is enabled, run `05-sso.sql`.
 - If external API clients are enabled, run `06-api-clients.sql`.
+- If in-app notifications or email digests are enabled, run `07-notifications.sql`.
+- Run `08-operations.sql` to enable backup and operational status reporting.
 
 ## Useful Checks
 
@@ -286,7 +294,7 @@ order by name;
 External apps use API keys stored in the school database as hashed values. Generate a key and insert SQL from the app folder:
 
 ```txt
-npm run create-api-client -- --name "Rewards app" --scopes balances:read,ledger:hold,ledger:void
+npm run create-api-client -- --name "Rewards app" --scopes accounts:read,ledger:read,holds:read,holds:write,rewards:read,purchases:read,purchases:write
 ```
 
 The command prints the raw key once, then prints SQL you can run against the school database in DBeaver. Store the raw key in the external app, not in this app.
@@ -294,12 +302,43 @@ The command prints the raw key once, then prints SQL you can run against the sch
 Available scopes:
 
 ```txt
-balances:read
+accounts:read
+ledger:read
 ledger:credit
 ledger:debit
-ledger:hold
-ledger:void
+holds:read
+holds:write
+rewards:read
+purchases:read
+purchases:write
 ```
+
+API routes are tenant-scoped by hostname and start at `/api/v1`:
+
+```txt
+GET  /students/resolve?email={email}
+GET  /accounts/{accountId}
+GET  /accounts/{accountId}/balance
+GET  /accounts/{accountId}/ledger?limit=50&before={ISO date}
+POST /accounts/{accountId}/credits
+POST /accounts/{accountId}/debits
+POST /accounts/{accountId}/holds
+GET  /holds/{holdId}
+POST /holds/{holdId}/capture
+POST /holds/{holdId}/release
+POST /ledger/entries/{entryId}/reverse
+GET  /rewards
+POST /purchases
+GET  /purchases/{purchaseId}
+POST /purchases/{purchaseId}/approve
+POST /purchases/{purchaseId}/deny
+```
+
+Pass the raw key as `Authorization: Bearer {key}`. Every `POST` also requires
+a unique `Idempotency-Key` header. Money mutations accept positive whole-number
+amounts in JSON; the route determines whether the amount is a credit or debit.
+Purchase creation accepts `accountId` and `rewardId`. Ledger reversals append
+a compensating entry and never edit or delete the original entry.
 
 ## Notes
 

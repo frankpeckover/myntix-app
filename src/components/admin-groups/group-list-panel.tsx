@@ -215,7 +215,7 @@ function GroupList({
       </div>
 
       {toolbar && <div className="hidden md:block">{toolbar}</div>}
-      <table className="hidden w-full table-fixed border-collapse text-left text-sm md:table">
+      <table aria-label="Groups" className="hidden w-full table-fixed border-collapse text-left text-sm md:table">
         <colgroup>
           <col className="w-10" />
           <col className="w-[28%]" />

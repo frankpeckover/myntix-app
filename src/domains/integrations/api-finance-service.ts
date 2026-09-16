@@ -1,66 +1,62 @@
+import type { PoolClient } from "pg";
 import { db } from "@/lib/db";
 import type { ApiClient } from "@/lib/api/api-types";
 import { AuditService } from "@/domains/audit/audit-service";
-import { LedgerService, type LedgerEntryType } from "@/domains/ledger/ledger-service";
-import type { PoolClient } from "pg";
+import { LedgerService } from "@/domains/ledger/ledger-service";
 
-type ApiLedgerInput = {
-  amount: unknown;
-  description: unknown;
-  email?: unknown;
-  studentUserId?: unknown;
-};
-
-type ApiHoldActionInput = {
-  description?: unknown;
-};
-
-type StudentBalanceData = {
-  balance: number;
-  email: string;
-  firstName: string;
-  lastName: string;
-  studentUserId: string;
-  username: string;
-};
-
-type StudentRow = {
+type AccountRow = {
+  account_id: string;
+  account_name: string;
   email: string;
   first_name: string;
-  id: string;
   last_name: string;
+  user_id: string;
   username: string;
 };
 
-type BalanceRow = StudentRow & {
-  balance: number;
+type Balances = {
+  availableBalance: number;
+  heldAmount: number;
+  ledgerBalance: number;
 };
 
-type StudentLookup =
-  | {
-      field: "email";
-      value: string;
-    }
-  | {
-      field: "id";
-      value: string;
-    };
+type BalanceRow = {
+  available_balance: number;
+  held_amount: number;
+  ledger_balance: number;
+};
 
-type LedgerEntryRow = {
+type HoldRow = {
+  account_id: string;
   amount: number;
+  captured_ledger_entry_id: string | null;
+  created_at: Date;
   description: string;
-  entry_type: LedgerEntryType;
+  expires_at: Date | null;
   id: string;
-  is_voided: boolean;
+  status: "active" | "captured" | "released";
+  updated_at: Date;
+};
+
+type LedgerRow = {
+  amount: number;
+  created_at: Date;
+  description: string;
+  entry_type: string;
+  id: string;
+  reversal_of_ledger_entry_id: string | null;
   status: string;
-  student_user_id: string;
 };
 
 const auditService = new AuditService();
 const ledgerService = new LedgerService();
 const maxApiAmount = 1_000_000;
-const apiControlledEntryTypes = new Set<LedgerEntryType>(["credit", "debit", "hold"]);
+const maxDescriptionLength = 500;
+const defaultLedgerPageSize = 50;
+const maxLedgerPageSize = 100;
 const apiRelatedEntityType = "api_client";
+const uuidPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export class ApiFinanceError extends Error {
@@ -74,356 +70,270 @@ export class ApiFinanceError extends Error {
 }
 
 export class ApiFinanceService {
-  async getStudentBalance(studentUserId: string) {
+  async resolveStudent(emailValue: unknown) {
+    const email = parseEmail(emailValue);
+    const result = await db.query<AccountRow>(
+      accountSelect("lower(users.email) = $1"),
+      [email],
+    );
+
+    return mapAccount(requireAccount(result.rows[0]));
+  }
+
+  async getAccount(accountId: string) {
+    assertUuid(accountId, "accountId");
     const client = await db.connect();
 
     try {
-      return this.getStudentBalanceData(
-        client,
-        parseStudentLookup({ studentUserId }),
+      const account = await getAccount(client, accountId);
+      return {
+        ...mapAccount(account),
+        ...(await getBalances(client, account.account_id)),
+      };
+    } finally {
+      client.release();
+    }
+  }
+
+  async getBalance(accountId: string) {
+    assertUuid(accountId, "accountId");
+    const client = await db.connect();
+
+    try {
+      await getAccount(client, accountId);
+      return { accountId, ...(await getBalances(client, accountId)) };
+    } finally {
+      client.release();
+    }
+  }
+
+  async listLedger(accountId: string, requestUrl: string) {
+    assertUuid(accountId, "accountId");
+    const url = new URL(requestUrl);
+    const limit = parseLimit(url.searchParams.get("limit"));
+    const before = parseBefore(url.searchParams.get("before"));
+    const client = await db.connect();
+
+    try {
+      await getAccount(client, accountId);
+      const result = await client.query<LedgerRow>(
+        `
+          select id, amount, entry_type, status, description, created_at,
+                 reversal_of_ledger_entry_id
+          from ledger_entries
+          where account_id = $1
+            and status = 'posted'
+            and ($2::timestamptz is null or created_at < $2)
+          order by created_at desc, id desc
+          limit $3
+        `,
+        [accountId, before, limit + 1],
       );
+      const hasMore = result.rows.length > limit;
+      const entries = result.rows.slice(0, limit);
+
+      return {
+        accountId,
+        entries: entries.map(mapLedgerEntry),
+        nextBefore: hasMore
+          ? entries.at(-1)?.created_at.toISOString() ?? null
+          : null,
+      };
     } finally {
       client.release();
     }
   }
 
-  async getStudentBalanceByEmail(email: string) {
-    const client = await db.connect();
-
-    try {
-      return this.getStudentBalanceData(client, parseStudentLookup({ email }));
-    } finally {
-      client.release();
-    }
+  async createCredit(
+    apiClient: ApiClient,
+    accountId: string,
+    body: Record<string, unknown>,
+  ) {
+    return this.createMovement(apiClient, accountId, body, 1, "credit");
   }
 
-  async createCredit(apiClient: ApiClient, input: ApiLedgerInput) {
-    return this.createLedgerMovement(apiClient, input, {
-      amountDirection: 1,
-      auditAction: "finance_api.credit_created",
-      entryType: "credit",
-    });
+  async createDebit(
+    apiClient: ApiClient,
+    accountId: string,
+    body: Record<string, unknown>,
+  ) {
+    return this.createMovement(apiClient, accountId, body, -1, "debit");
   }
 
-  async createDebit(apiClient: ApiClient, input: ApiLedgerInput) {
-    return this.createLedgerMovement(apiClient, input, {
-      amountDirection: -1,
-      auditAction: "finance_api.debit_created",
-      entryType: "debit",
-    });
-  }
-
-  async createHold(apiClient: ApiClient, input: ApiLedgerInput) {
-    const ledgerInput = parseLedgerInput(input);
+  async createHold(
+    apiClient: ApiClient,
+    accountId: string,
+    body: Record<string, unknown>,
+  ) {
+    assertUuid(accountId, "accountId");
+    const amount = parsePositiveInteger(body.amount, "amount");
+    const description = parseDescription(body.description);
+    const expiresAt = parseFutureDate(body.expiresAt);
     const client = await db.connect();
 
     try {
       await client.query("begin");
-      const student = await this.getActiveStudentForUpdate(
-        client,
-        ledgerInput.studentLookup,
-      );
-      const currentBalance = await ledgerService.getAvailableBalance(
-        client,
-        student.id,
-      );
+      const account = await getAccount(client, accountId, true);
+      const balances = await getBalances(client, accountId);
 
-      if (currentBalance < ledgerInput.amount) {
+      if (balances.availableBalance < amount) {
         throw new ApiFinanceError(
-          "insufficient_balance",
-          "Student does not have enough available balance.",
+          "insufficient_funds",
+          "The account does not have enough available balance.",
           409,
         );
       }
 
-      const ledgerEntryId = await ledgerService.createEntry(client, {
-        amount: -ledgerInput.amount,
-        description: ledgerInput.description,
-        entryType: "hold",
-        relatedEntityId: apiClient.id,
-        relatedEntityType: apiRelatedEntityType,
-        status: "pending",
-        userId: student.id,
-      });
-      const balance = await ledgerService.getAvailableBalance(client, student.id);
-
-      await this.logApiLedgerAction(client, apiClient, {
-        action: "finance_api.hold_created",
-        amount: -ledgerInput.amount,
-        description: ledgerInput.description,
-        ledgerEntryId,
-        studentUserId: student.id,
-      });
-
+      const result = await client.query<HoldRow>(
+        `
+          insert into account_holds (
+            account_id, amount, description, status, expires_at,
+            created_by_api_client_id
+          )
+          values ($1, $2, $3, 'active', $4, $5)
+          returning id, account_id, amount, description, status, expires_at,
+                    captured_ledger_entry_id, created_at, updated_at
+        `,
+        [accountId, amount, description, expiresAt, apiClient.id],
+      );
+      const hold = result.rows[0];
+      await logAction(
+        client,
+        apiClient,
+        "finance_api.hold_created",
+        hold.id,
+        "account_hold",
+        { accountId, amount, studentUserId: account.user_id },
+      );
       await client.query("commit");
 
-      return buildLedgerResponse({
-        amount: -ledgerInput.amount,
-        balance,
-        description: ledgerInput.description,
-        ledgerEntryId,
-        student,
-      });
+      return {
+        ...mapHold(hold),
+        availableBalance: balances.availableBalance - amount,
+      };
     } catch (error) {
       await rollback(client);
       throw error;
     } finally {
       client.release();
     }
+  }
+
+  async getHold(apiClient: ApiClient, holdId: string) {
+    assertUuid(holdId, "holdId");
+    const result = await db.query<HoldRow>(
+      `
+        select id, account_id, amount, description, status, expires_at,
+               captured_ledger_entry_id, created_at, updated_at
+        from account_holds
+        where id = $1 and created_by_api_client_id = $2
+      `,
+      [holdId, apiClient.id],
+    );
+    return mapHold(requireHold(result.rows[0]));
   }
 
   async captureHold(
     apiClient: ApiClient,
     holdId: string,
-    input: ApiHoldActionInput,
+    body: Record<string, unknown>,
   ) {
-    const description = getOptionalDescription(input.description);
-    const client = await db.connect();
-
-    try {
-      await client.query("begin");
-      const hold = await this.getApiHoldForUpdate(client, apiClient.id, holdId);
-      const finalDescription = description || hold.description;
-
-      await client.query(
-        `
-          update ledger_entries
-          set status = 'posted',
-              entry_type = 'debit',
-              description = $2
-          where id = $1
-        `,
-        [hold.id, finalDescription],
-      );
-
-      const student = await this.getActiveStudentForUpdate(
-        client,
-        { field: "id", value: hold.student_user_id },
-      );
-      const balance = await ledgerService.getAvailableBalance(client, student.id);
-
-      await this.logApiLedgerAction(client, apiClient, {
-        action: "finance_api.hold_captured",
-        amount: hold.amount,
-        description: finalDescription,
-        ledgerEntryId: hold.id,
-        studentUserId: student.id,
-      });
-
-      await client.query("commit");
-
-      return buildLedgerResponse({
-        amount: hold.amount,
-        balance,
-        description: finalDescription,
-        ledgerEntryId: hold.id,
-        student,
-      });
-    } catch (error) {
-      await rollback(client);
-      throw error;
-    } finally {
-      client.release();
-    }
+    return this.completeHold(apiClient, holdId, body, "captured");
   }
 
   async releaseHold(
     apiClient: ApiClient,
     holdId: string,
-    input: ApiHoldActionInput,
+    body: Record<string, unknown>,
   ) {
-    const description = getOptionalDescription(input.description) || "Hold released";
-    const client = await db.connect();
-
-    try {
-      await client.query("begin");
-      const hold = await this.getApiHoldForUpdate(client, apiClient.id, holdId);
-      const voidedEntry = await ledgerService.voidEntry(
-        client,
-        hold.id,
-        null,
-        description,
-      );
-
-      if (!voidedEntry) {
-        throw new ApiFinanceError(
-          "hold_not_found",
-          "Hold could not be released.",
-          404,
-        );
-      }
-
-      const student = await this.getActiveStudentForUpdate(
-        client,
-        { field: "id", value: hold.student_user_id },
-      );
-      const balance = await ledgerService.getAvailableBalance(client, student.id);
-
-      await this.logApiLedgerAction(client, apiClient, {
-        action: "finance_api.hold_released",
-        amount: -hold.amount,
-        description,
-        ledgerEntryId: hold.id,
-        studentUserId: student.id,
-      });
-
-      await client.query("commit");
-
-      return buildLedgerResponse({
-        amount: -hold.amount,
-        balance,
-        description,
-        ledgerEntryId: hold.id,
-        student,
-      });
-    } catch (error) {
-      await rollback(client);
-      throw error;
-    } finally {
-      client.release();
-    }
+    return this.completeHold(apiClient, holdId, body, "released");
   }
 
-  async voidApiEntry(
+  async reverseEntry(
     apiClient: ApiClient,
-    ledgerEntryId: string,
-    input: ApiHoldActionInput,
+    entryId: string,
+    body: Record<string, unknown>,
   ) {
-    const description = getOptionalDescription(input.description) || "API entry voided";
+    assertUuid(entryId, "entryId");
+    const reason = parseDescription(body.reason);
     const client = await db.connect();
 
     try {
       await client.query("begin");
-      const entry = await this.getApiEntryForUpdate(
-        client,
-        apiClient.id,
-        ledgerEntryId,
+      const result = await client.query<
+        LedgerRow & { account_id: string; user_id: string }
+      >(
+        `
+          select le.id, le.account_id, le.amount, le.entry_type, le.status,
+                 le.description, le.created_at, le.reversal_of_ledger_entry_id,
+                 accounts.user_id
+          from ledger_entries le
+          join accounts on accounts.id = le.account_id
+          where le.id = $1
+            and le.related_entity_type = $2
+            and le.related_entity_id = $3
+            and le.status = 'posted'
+            and le.entry_type in ('credit', 'debit')
+          for update of le, accounts
+        `,
+        [entryId, apiRelatedEntityType, apiClient.id],
       );
-      const voidedEntry = await ledgerService.voidEntry(
-        client,
-        entry.id,
-        null,
-        description,
-      );
+      const entry = result.rows[0];
 
-      if (!voidedEntry) {
+      if (!entry) {
         throw new ApiFinanceError(
           "entry_not_found",
-          "Ledger entry could not be voided.",
+          "Reversible ledger entry was not found.",
           404,
         );
       }
 
-      const student = await this.getActiveStudentForUpdate(
-        client,
-        { field: "id", value: entry.student_user_id },
+      const duplicate = await client.query(
+        `select 1 from ledger_entries where reversal_of_ledger_entry_id = $1 limit 1`,
+        [entryId],
       );
-      const balance = await ledgerService.getAvailableBalance(client, student.id);
-
-      await this.logApiLedgerAction(client, apiClient, {
-        action: "finance_api.entry_voided",
-        amount: -entry.amount,
-        description,
-        ledgerEntryId: entry.id,
-        studentUserId: student.id,
-      });
-
-      await client.query("commit");
-
-      return buildLedgerResponse({
-        amount: -entry.amount,
-        balance,
-        description,
-        ledgerEntryId: entry.id,
-        student,
-      });
-    } catch (error) {
-      await rollback(client);
-      throw error;
-    } finally {
-      client.release();
-    }
-  }
-
-  private async createLedgerMovement(
-    apiClient: ApiClient,
-    input: ApiLedgerInput,
-    options: {
-      amountDirection: 1 | -1;
-      auditAction: string;
-      entryType: Extract<LedgerEntryType, "credit" | "debit">;
-    },
-  ) {
-    const ledgerInput = parseLedgerInput(input);
-    const requestedSignedAmount = ledgerInput.amount * options.amountDirection;
-    const client = await db.connect();
-
-    try {
-      await client.query("begin");
-      const student = await this.getActiveStudentForUpdate(
-        client,
-        ledgerInput.studentLookup,
-      );
-
-      const currentBalance = await ledgerService.getAvailableBalance(
-        client,
-        student.id,
-      );
-      const signedAmount =
-        requestedSignedAmount > 0
-          ? await getCappedApiCreditAmount(
-              client,
-              requestedSignedAmount,
-              currentBalance,
-            )
-          : requestedSignedAmount;
-
-      if (signedAmount < 0) {
-        if (currentBalance + signedAmount < 0) {
-          throw new ApiFinanceError(
-            "insufficient_balance",
-            "Student does not have enough available balance.",
-            409,
-          );
-        }
-      }
-
-      if (signedAmount === 0) {
+      if (duplicate.rowCount) {
         throw new ApiFinanceError(
-          "balance_cap_reached",
-          "Student balance is already at the configured cap.",
+          "already_reversed",
+          "This ledger entry has already been reversed.",
           409,
         );
       }
 
-      const ledgerEntryId = await ledgerService.createEntry(client, {
-        amount: signedAmount,
-        description: ledgerInput.description,
-        entryType: options.entryType,
+      const balances = await getBalances(client, entry.account_id);
+      const reversalAmount = -Number(entry.amount);
+      await validateMovement(client, balances, reversalAmount);
+      const reversalId = await ledgerService.createEntry(client, {
+        amount: reversalAmount,
+        description: `Reversal: ${entry.description} (${reason})`,
+        entryType: "void_reversal",
         relatedEntityId: apiClient.id,
         relatedEntityType: apiRelatedEntityType,
         status: "posted",
-        userId: student.id,
+        userId: entry.user_id,
       });
-      const balance = await ledgerService.getAvailableBalance(client, student.id);
-
-      await this.logApiLedgerAction(client, apiClient, {
-        action: options.auditAction,
-        amount: signedAmount,
-        description: ledgerInput.description,
-        ledgerEntryId,
-        studentUserId: student.id,
-      });
-
+      await client.query(
+        `update ledger_entries set reversal_of_ledger_entry_id = $2 where id = $1`,
+        [reversalId, entryId],
+      );
+      const updatedBalances = await getBalances(client, entry.account_id);
+      await logAction(
+        client,
+        apiClient,
+        "finance_api.entry_reversed",
+        reversalId,
+        "ledger_entry",
+        { accountId: entry.account_id, originalEntryId: entryId, reason },
+      );
       await client.query("commit");
 
-      return buildLedgerResponse({
-        amount: signedAmount,
-        balance,
-        description: ledgerInput.description,
-        ledgerEntryId,
-        student,
-      });
+      return {
+        accountId: entry.account_id,
+        entryId: reversalId,
+        reversedEntryId: entryId,
+        amount: reversalAmount,
+        ...updatedBalances,
+      };
     } catch (error) {
       await rollback(client);
       throw error;
@@ -432,346 +342,404 @@ export class ApiFinanceService {
     }
   }
 
-  private async getStudentBalanceData(
-    client: PoolClient,
-    studentLookup: StudentLookup,
-  ): Promise<StudentBalanceData> {
-    const result = await client.query<BalanceRow>(
-      `
-        select
-          users.id,
-          users.email,
-          users.first_name,
-          users.last_name,
-          users.username,
-          coalesce(sum(ledger_entries.amount), 0) as balance
-        from users
-        join roles on roles.id = users.role_id
-        left join accounts on accounts.user_id = users.id
-        left join ledger_entries
-          on ledger_entries.account_id = accounts.id
-          and ledger_entries.status in ('pending', 'posted')
-          and not (
-            ledger_entries.status = 'pending'
-            and ledger_entries.is_voided = true
-          )
-        where ${getStudentLookupWhereClause(studentLookup)}
-          and users.is_active = true
-          and roles.role_key = 'student'
-          and roles.is_active = true
-        group by users.id, users.email, users.first_name, users.last_name, users.username
-      `,
-      [studentLookup.value],
-    );
-    const student = result.rows[0];
-
-    if (!student) {
-      throw new ApiFinanceError(
-        "student_not_found",
-        "Active student was not found.",
-        404,
-      );
-    }
-
-    return {
-      balance: Number(student.balance),
-      email: student.email,
-      firstName: student.first_name,
-      lastName: student.last_name,
-      studentUserId: student.id,
-      username: student.username,
-    };
-  }
-
-  private async getActiveStudentForUpdate(
-    client: PoolClient,
-    studentLookup: StudentLookup,
-  ) {
-    const result = await client.query<StudentRow>(
-      `
-        select users.id, users.email, users.first_name, users.last_name, users.username
-        from users
-        join roles on roles.id = users.role_id
-        where ${getStudentLookupWhereClause(studentLookup)}
-          and users.is_active = true
-          and roles.role_key = 'student'
-          and roles.is_active = true
-        for update of users
-      `,
-      [studentLookup.value],
-    );
-    const student = result.rows[0];
-
-    if (!student) {
-      throw new ApiFinanceError(
-        "student_not_found",
-        "Active student was not found.",
-        404,
-      );
-    }
-
-    return student;
-  }
-
-  private async getApiHoldForUpdate(
-    client: PoolClient,
-    apiClientId: string,
-    holdId: string,
-  ) {
-    const entry = await this.getApiEntryForUpdate(client, apiClientId, holdId);
-
-    if (entry.entry_type !== "hold" || entry.status !== "pending") {
-      throw new ApiFinanceError(
-        "hold_not_found",
-        "Active API hold was not found.",
-        404,
-      );
-    }
-
-    return entry;
-  }
-
-  private async getApiEntryForUpdate(
-    client: PoolClient,
-    apiClientId: string,
-    ledgerEntryId: string,
-  ) {
-    assertUuid(ledgerEntryId, "ledgerEntryId");
-
-    const result = await client.query<LedgerEntryRow>(
-      `
-        select
-          ledger_entries.id,
-          ledger_entries.amount,
-          ledger_entries.description,
-          ledger_entries.entry_type,
-          ledger_entries.status,
-          ledger_entries.is_voided,
-          accounts.user_id as student_user_id
-        from ledger_entries
-        join accounts on accounts.id = ledger_entries.account_id
-        where ledger_entries.id = $1
-          and ledger_entries.related_entity_type = $2
-          and ledger_entries.related_entity_id = $3
-        for update of ledger_entries
-      `,
-      [ledgerEntryId, apiRelatedEntityType, apiClientId],
-    );
-    const entry = result.rows[0];
-
-    if (
-      !entry ||
-      entry.is_voided ||
-      entry.status === "voided" ||
-      !apiControlledEntryTypes.has(entry.entry_type)
-    ) {
-      throw new ApiFinanceError(
-        "entry_not_found",
-        "Active API ledger entry was not found.",
-        404,
-      );
-    }
-
-    return entry;
-  }
-
-  private async logApiLedgerAction(
-    client: PoolClient,
+  private async createMovement(
     apiClient: ApiClient,
-    input: {
-      action: string;
-      amount: number;
-      description: string;
-      ledgerEntryId: string;
-      studentUserId: string;
-    },
+    accountId: string,
+    body: Record<string, unknown>,
+    direction: 1 | -1,
+    entryType: "credit" | "debit",
   ) {
-    await auditService.logWithClient(client, {
-      action: input.action,
-      actorUserId: null,
-      details: {
-        amount: input.amount,
-        apiClientId: apiClient.id,
-        apiClientName: apiClient.name,
-        description: input.description,
-        studentUserId: input.studentUserId,
-      },
-      entityId: input.ledgerEntryId,
-      entityType: "ledger_entry",
-    });
+    assertUuid(accountId, "accountId");
+    const amount = parsePositiveInteger(body.amount, "amount") * direction;
+    const description = parseDescription(body.description);
+    const client = await db.connect();
+
+    try {
+      await client.query("begin");
+      const account = await getAccount(client, accountId, true);
+      const balances = await getBalances(client, accountId);
+      await validateMovement(client, balances, amount);
+      const entryId = await ledgerService.createEntry(client, {
+        amount,
+        description,
+        entryType,
+        relatedEntityId: apiClient.id,
+        relatedEntityType: apiRelatedEntityType,
+        status: "posted",
+        userId: account.user_id,
+      });
+      const updatedBalances = await getBalances(client, accountId);
+      await logAction(
+        client,
+        apiClient,
+        `finance_api.${entryType}_created`,
+        entryId,
+        "ledger_entry",
+        { accountId, amount, studentUserId: account.user_id },
+      );
+      await client.query("commit");
+
+      return {
+        accountId,
+        entryId,
+        amount,
+        description,
+        ...updatedBalances,
+      };
+    } catch (error) {
+      await rollback(client);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  private async completeHold(
+    apiClient: ApiClient,
+    holdId: string,
+    body: Record<string, unknown>,
+    status: "captured" | "released",
+  ) {
+    assertUuid(holdId, "holdId");
+    const description = parseOptionalDescription(body.description);
+    const client = await db.connect();
+
+    try {
+      await client.query("begin");
+      const result = await client.query<HoldRow & { user_id: string }>(
+        `
+          select h.id, h.account_id, h.amount, h.description, h.status,
+                 h.expires_at, h.captured_ledger_entry_id, h.created_at,
+                 h.updated_at, accounts.user_id
+          from account_holds h
+          join accounts on accounts.id = h.account_id
+          where h.id = $1 and h.created_by_api_client_id = $2
+          for update of h, accounts
+        `,
+        [holdId, apiClient.id],
+      );
+      const hold = requireHold(result.rows[0]);
+
+      if (
+        hold.status !== "active" ||
+        (hold.expires_at && hold.expires_at <= new Date())
+      ) {
+        throw new ApiFinanceError(
+          "hold_not_active",
+          "The hold is no longer active.",
+          409,
+        );
+      }
+
+      let ledgerEntryId: string | null = null;
+      if (status === "captured") {
+        ledgerEntryId = await ledgerService.createEntry(client, {
+          amount: -Number(hold.amount),
+          description: description || hold.description,
+          entryType: "debit",
+          relatedEntityId: apiClient.id,
+          relatedEntityType: apiRelatedEntityType,
+          status: "posted",
+          userId: result.rows[0].user_id,
+        });
+      }
+
+      const updated = await client.query<HoldRow>(
+        `
+          update account_holds
+          set status = $2,
+              captured_ledger_entry_id = $3,
+              updated_at = now()
+          where id = $1
+          returning id, account_id, amount, description, status, expires_at,
+                    captured_ledger_entry_id, created_at, updated_at
+        `,
+        [holdId, status, ledgerEntryId],
+      );
+      const balances = await getBalances(client, hold.account_id);
+      await logAction(
+        client,
+        apiClient,
+        `finance_api.hold_${status}`,
+        holdId,
+        "account_hold",
+        { accountId: hold.account_id, ledgerEntryId },
+      );
+      await client.query("commit");
+
+      return { ...mapHold(updated.rows[0]), ...balances };
+    } catch (error) {
+      await rollback(client);
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 }
 
-function parseLedgerInput(input: ApiLedgerInput) {
-  const amount = parsePositiveInteger(input.amount, "amount");
-  const description = parseRequiredString(input.description, "description");
-  const studentLookup = parseStudentLookup({
-    email: input.email,
-    studentUserId: input.studentUserId,
-  });
-
-  return {
-    amount,
-    description,
-    studentLookup,
-  };
+function accountSelect(whereClause: string, forUpdate = false) {
+  return `
+    select accounts.id as account_id, accounts.account_name, users.id as user_id,
+           users.email, users.first_name, users.last_name, users.username
+    from accounts
+    join users on users.id = accounts.user_id
+    join roles on roles.id = users.role_id
+    where ${whereClause}
+      and accounts.is_active = true
+      and users.is_active = true
+      and roles.is_active = true
+      and roles.role_key = 'student'
+    ${forUpdate ? "for update of accounts, users" : ""}
+  `;
 }
 
-function buildLedgerResponse(input: {
-  amount: number;
-  balance: number;
-  description: string;
-  ledgerEntryId: string;
-  student: StudentRow;
-}) {
-  return {
-    amount: input.amount,
-    balance: input.balance,
-    description: input.description,
-    ledgerEntryId: input.ledgerEntryId,
-    student: {
-      email: input.student.email,
-      firstName: input.student.first_name,
-      lastName: input.student.last_name,
-      studentUserId: input.student.id,
-      username: input.student.username,
-    },
-  };
-}
-
-async function getCappedApiCreditAmount(
+async function getAccount(
   client: PoolClient,
-  requestedAmount: number,
-  currentBalance: number,
+  accountId: string,
+  forUpdate = false,
 ) {
-  const balanceCap = await ledgerService.getBalanceCap(client);
-
-  if (balanceCap === null) {
-    return requestedAmount;
-  }
-
-  const remainingCapacity = Math.max(balanceCap - currentBalance, 0);
-
-  return Math.min(requestedAmount, remainingCapacity);
+  const result = await client.query<AccountRow>(
+    accountSelect("accounts.id = $1", forUpdate),
+    [accountId],
+  );
+  return requireAccount(result.rows[0]);
 }
 
-function parsePositiveInteger(value: unknown, fieldName: string) {
-  const amount = typeof value === "number" ? value : Number(value);
+function requireAccount(account: AccountRow | undefined) {
+  if (!account) {
+    throw new ApiFinanceError(
+      "account_not_found",
+      "Active student account was not found.",
+      404,
+    );
+  }
+  return account;
+}
 
-  if (
-    !Number.isInteger(amount) ||
-    amount <= 0 ||
-    amount > maxApiAmount
-  ) {
+function requireHold<T extends HoldRow>(hold: T | undefined): T {
+  if (!hold) {
+    throw new ApiFinanceError("hold_not_found", "Hold was not found.", 404);
+  }
+  return hold;
+}
+
+async function getBalances(
+  client: PoolClient,
+  accountId: string,
+): Promise<Balances> {
+  const result = await client.query<BalanceRow>(
+    `
+      with ledger as (
+        select
+          coalesce(sum(amount) filter (where status = 'posted'), 0) as ledger_balance,
+          coalesce(sum(amount) filter (
+            where status in ('pending', 'posted')
+              and not (status = 'pending' and is_voided = true)
+          ), 0) as spendable_before_api_holds
+        from ledger_entries
+        where account_id = $1
+      ), holds as (
+        select coalesce(sum(amount), 0) as held_amount
+        from account_holds
+        where account_id = $1
+          and status = 'active'
+          and (expires_at is null or expires_at > now())
+      )
+      select ledger.ledger_balance,
+             holds.held_amount,
+             ledger.spendable_before_api_holds - holds.held_amount as available_balance
+      from ledger cross join holds
+    `,
+    [accountId],
+  );
+  const row = result.rows[0];
+  return {
+    availableBalance: Number(row?.available_balance ?? 0),
+    heldAmount: Number(row?.held_amount ?? 0),
+    ledgerBalance: Number(row?.ledger_balance ?? 0),
+  };
+}
+
+async function validateMovement(
+  client: PoolClient,
+  balances: Balances,
+  amount: number,
+) {
+  if (amount < 0 && balances.availableBalance + amount < 0) {
+    throw new ApiFinanceError(
+      "insufficient_funds",
+      "The account does not have enough available balance.",
+      409,
+    );
+  }
+  if (amount > 0) {
+    const cap = await ledgerService.getBalanceCap(client);
+    if (cap !== null && balances.ledgerBalance + amount > cap) {
+      throw new ApiFinanceError(
+        "balance_cap_exceeded",
+        "The credit would exceed the organisation balance cap.",
+        409,
+      );
+    }
+  }
+}
+
+function mapAccount(row: AccountRow) {
+  return {
+    accountId: row.account_id,
+    accountName: row.account_name,
+    student: {
+      userId: row.user_id,
+      email: row.email,
+      firstName: row.first_name,
+      lastName: row.last_name,
+      username: row.username,
+    },
+  };
+}
+
+function mapHold(row: HoldRow) {
+  return {
+    holdId: row.id,
+    accountId: row.account_id,
+    amount: Number(row.amount),
+    description: row.description,
+    status: row.status,
+    expiresAt: row.expires_at?.toISOString() ?? null,
+    capturedLedgerEntryId: row.captured_ledger_entry_id,
+    createdAt: row.created_at.toISOString(),
+    updatedAt: row.updated_at.toISOString(),
+  };
+}
+
+function mapLedgerEntry(row: LedgerRow) {
+  return {
+    entryId: row.id,
+    amount: Number(row.amount),
+    type: row.entry_type,
+    status: row.status,
+    description: row.description,
+    reversalOfEntryId: row.reversal_of_ledger_entry_id,
+    createdAt: row.created_at.toISOString(),
+  };
+}
+
+function parsePositiveInteger(value: unknown, field: string) {
+  const amount = typeof value === "number" ? value : Number(value);
+  if (!Number.isInteger(amount) || amount <= 0 || amount > maxApiAmount) {
     throw new ApiFinanceError(
       "invalid_amount",
-      `${fieldName} must be a positive whole number no greater than ${maxApiAmount}.`,
-      400,
+      `${field} must be a positive whole number no greater than ${maxApiAmount}.`,
     );
   }
-
   return amount;
 }
 
-function parseRequiredString(value: unknown, fieldName: string) {
+function parseDescription(value: unknown) {
   if (typeof value !== "string" || !value.trim()) {
     throw new ApiFinanceError(
-      "invalid_field",
-      `${fieldName} is required.`,
-      400,
+      "invalid_description",
+      "description is required.",
     );
   }
-
-  return value.trim();
-}
-
-function getOptionalDescription(value: unknown) {
-  if (value === undefined || value === null) {
-    return "";
-  }
-
-  return parseRequiredString(value, "description");
-}
-
-function parseStudentLookup(input: {
-  email?: unknown;
-  studentUserId?: unknown;
-}): StudentLookup {
-  const studentUserId = parseOptionalString(input.studentUserId, "studentUserId");
-  const email = parseOptionalString(input.email, "email")?.toLowerCase();
-
-  if ((studentUserId && email) || (!studentUserId && !email)) {
+  const description = value.trim();
+  if (description.length > maxDescriptionLength) {
     throw new ApiFinanceError(
-      "invalid_student_lookup",
-      "Provide exactly one of studentUserId or email.",
-      400,
+      "invalid_description",
+      `description cannot exceed ${maxDescriptionLength} characters.`,
     );
   }
+  return description;
+}
 
-  if (studentUserId) {
-    assertUuid(studentUserId, "studentUserId");
+function parseOptionalDescription(value: unknown) {
+  return value === undefined || value === null || value === ""
+    ? ""
+    : parseDescription(value);
+}
 
-    return {
-      field: "id",
-      value: studentUserId,
-    };
-  }
-
-  if (!emailPattern.test(email ?? "")) {
+function parseEmail(value: unknown) {
+  if (typeof value !== "string" || !emailPattern.test(value.trim())) {
     throw new ApiFinanceError(
       "invalid_email",
       "email must be a valid email address.",
-      400,
     );
   }
-
-  return {
-    field: "email",
-    value: email ?? "",
-  };
+  return value.trim().toLowerCase();
 }
 
-function parseOptionalString(value: unknown, fieldName: string) {
-  if (value === undefined || value === null || value === "") {
-    return "";
-  }
-
+function parseFutureDate(value: unknown) {
+  if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string") {
     throw new ApiFinanceError(
-      "invalid_field",
-      `${fieldName} must be a string.`,
-      400,
+      "invalid_expiry",
+      "expiresAt must be an ISO date string.",
     );
   }
-
-  return value.trim();
-}
-
-function getStudentLookupWhereClause(studentLookup: StudentLookup) {
-  if (studentLookup.field === "email") {
-    return "lower(users.email) = $1";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime()) || date <= new Date()) {
+    throw new ApiFinanceError(
+      "invalid_expiry",
+      "expiresAt must be a valid future date.",
+    );
   }
-
-  return "users.id = $1";
+  return date;
 }
 
-function assertUuid(value: string, fieldName: string) {
-  const uuidPattern =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+function parseLimit(value: string | null) {
+  if (!value) return defaultLedgerPageSize;
+  const limit = Number(value);
+  if (!Number.isInteger(limit) || limit < 1 || limit > maxLedgerPageSize) {
+    throw new ApiFinanceError(
+      "invalid_limit",
+      `limit must be between 1 and ${maxLedgerPageSize}.`,
+    );
+  }
+  return limit;
+}
 
+function parseBefore(value: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new ApiFinanceError(
+      "invalid_cursor",
+      "before must be a valid ISO date string.",
+    );
+  }
+  return date;
+}
+
+function assertUuid(value: string, field: string) {
   if (!uuidPattern.test(value)) {
     throw new ApiFinanceError(
       "invalid_uuid",
-      `${fieldName} must be a valid UUID.`,
-      400,
+      `${field} must be a valid UUID.`,
     );
   }
 }
 
+async function logAction(
+  client: PoolClient,
+  apiClient: ApiClient,
+  action: string,
+  entityId: string,
+  entityType: string,
+  details: Record<string, unknown>,
+) {
+  await auditService.logWithClient(client, {
+    action,
+    actorUserId: null,
+    details: {
+      ...details,
+      apiClientId: apiClient.id,
+      apiClientName: apiClient.name,
+    },
+    entityId,
+    entityType,
+  });
+}
+
 async function rollback(client: PoolClient) {
-  try {
-    await client.query("rollback");
-  } catch (error) {
-    console.error("API finance rollback failed", error);
-  }
+  await client.query("rollback").catch(() => undefined);
 }

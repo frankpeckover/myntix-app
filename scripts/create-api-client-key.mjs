@@ -1,14 +1,18 @@
 import { createHmac, randomBytes } from "node:crypto";
 
 const allowedScopes = new Set([
-  "balances:read",
+  "accounts:read",
+  "ledger:read",
   "ledger:credit",
   "ledger:debit",
-  "ledger:hold",
-  "ledger:void",
+  "holds:read",
+  "holds:write",
+  "rewards:read",
+  "purchases:read",
+  "purchases:write",
 ]);
-const apiKeyPrefixLength = 12;
-const apiKey = `sbk_${randomBytes(32).toString("base64url")}`;
+const apiKeyPrefixLength = 20;
+const apiKey = `myntix_live_${randomBytes(32).toString("base64url")}`;
 const apiKeyHashSecret = process.env.API_KEY_HASH_SECRET?.trim();
 const parsedArgs = parseArgs(process.argv.slice(2));
 
@@ -100,7 +104,7 @@ function printUsageAndExit() {
   console.error(
     [
       "Usage:",
-      "  npm run create-api-client -- --name \"Rewards app\" --scopes balances:read,ledger:hold,ledger:void",
+      "  npm run create-api-client -- --name \"Rewards app\" --scopes accounts:read,holds:read,holds:write,rewards:read,purchases:read,purchases:write",
       "",
       "Allowed scopes:",
       `  ${Array.from(allowedScopes).join(", ")}`,

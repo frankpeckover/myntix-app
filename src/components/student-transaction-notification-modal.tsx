@@ -3,10 +3,15 @@
 import type { UnseenTransaction } from "@/domains/ledger/transaction-notification-service";
 import { getSignedAmountTextClassName } from "@/lib/amount-style";
 import {
+  formatCurrencyAmount,
   formatDateTime,
   formatSignedCurrencyAmount,
 } from "@/lib/formatters";
-import { ArrowDownIcon, ArrowUpIcon } from "@/components/ui/icons";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  SparkleIcon,
+} from "@/components/ui/icons";
 import { ModalShell } from "@/components/ui/modal-shell";
 
 type StudentTransactionNotificationModalProps = {
@@ -24,6 +29,12 @@ export function StudentTransactionNotificationModal({
   onDismiss,
   transactions,
 }: StudentTransactionNotificationModalProps) {
+  const positiveTotal = transactions.reduce(
+    (total, transaction) =>
+      transaction.amount > 0 ? total + transaction.amount : total,
+    0,
+  );
+
   return (
     <ModalShell
       description={`${transactions.length} new account ${transactions.length === 1 ? "entry" : "entries"}`}
@@ -41,6 +52,21 @@ export function StudentTransactionNotificationModal({
       onClose={isDismissing ? undefined : onDismiss}
       title="Since you were away"
     >
+      {positiveTotal > 0 && (
+        <div className="positive-surprise-banner mb-4 flex items-center gap-3 overflow-hidden rounded-md border border-success-border bg-success-soft px-4 py-3">
+          <span className="positive-surprise-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface text-success">
+            <SparkleIcon className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-[0.1em] text-success">
+              New credits landed
+            </p>
+            <p className="font-number mt-1 text-2xl font-semibold leading-none text-success">
+              +{formatCurrencyAmount(positiveTotal, currencyName)}
+            </p>
+          </div>
+        </div>
+      )}
       <div className="divide-y divide-border-subtle">
         {transactions.map((transaction) => (
           <TransactionNotificationRow

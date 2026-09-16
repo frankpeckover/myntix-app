@@ -25,6 +25,7 @@ type TenantSchemaConfig = {
 type TenantTarget = TenantDatabaseConfig | TenantSchemaConfig;
 
 type OrganisationTenantRow = {
+  primary_domain: string;
   slug: string;
   tenancy_mode: string | null;
   schema_name: string | null;
@@ -87,12 +88,52 @@ export const db = {
   },
 };
 
+export class TenantNotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TenantNotFoundError";
+  }
+}
+
 export async function assertCurrentTenantExists() {
   await resolveTenantTarget();
 }
 
 export async function getCurrentTenantSlug() {
   return (await resolveTenantTarget()).slug;
+}
+
+export type ActiveTenantReference = {
+  primaryDomain: string;
+  slug: string;
+};
+
+export async function listActiveTenantReferences(): Promise<ActiveTenantReference[]> {
+  const result = await getPlatformPool().query<{
+    primary_domain: string;
+    slug: string;
+  }>(
+    `
+      select slug, primary_domain
+      from organisations
+      where is_active = true
+      order by slug
+    `,
+  );
+
+  return result.rows.map((row) => ({
+    primaryDomain: row.primary_domain,
+    slug: row.slug,
+  }));
+}
+
+export async function connectTenantBySlug(slug: string): Promise<PoolClient> {
+  const tenantTarget = await getOrganisationTenantTarget({
+    host: "",
+    slug: normaliseSlug(slug),
+  });
+
+  return connectTenantClient(tenantTarget);
 }
 
 async function connectTenantClient(tenantTarget: TenantTarget) {
@@ -197,6 +238,7 @@ async function getOrganisationTenantTarget(
   const result = await getPlatformPool().query<OrganisationTenantRow>(
     `
       select slug,
+             primary_domain,
              tenancy_mode,
              schema_name,
              database_host,
@@ -215,7 +257,7 @@ async function getOrganisationTenantTarget(
   const organisation = result.rows[0];
 
   if (!organisation || !organisation.is_active) {
-    throw new Error(
+    throw new TenantNotFoundError(
       `No active organisation found for "${lookup.slug}" or "${lookup.host}".`,
     );
   }

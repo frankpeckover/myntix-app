@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { FixedNotification } from "@/components/ui/fixed-notification";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { IconButton } from "@/components/ui/icon-button";
+import { LoadFailure } from "@/components/ui/load-failure";
 import { CheckIcon, ShoppingBagIcon, XIcon } from "@/components/ui/icons";
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
 import { TableActionMenu } from "@/components/ui/table-action-menu";
@@ -202,7 +203,14 @@ export function ShopRequestsPanel({
         {isLoading && (
           <p className="text-sm text-text-muted">Loading requests...</p>
         )}
-        {!isLoading && visibleRequests.length === 0 && (
+        {!isLoading && error && requests.length === 0 && (
+          <LoadFailure
+            description="Reward requests could not be retrieved."
+            onRetry={refreshRequests}
+            title="Could not load reward requests"
+          />
+        )}
+        {!isLoading && !error && visibleRequests.length === 0 && (
           <p className="text-sm text-text-muted">
             {activeView === "pending"
               ? "No pending requests."
@@ -309,7 +317,7 @@ function CompactShopRequestList({
       </div>
 
       <div className="hidden md:block">
-        <table className="w-full table-fixed border-collapse text-left text-sm">
+        <table aria-label="Reward requests" className="w-full table-fixed border-collapse text-left text-sm">
           <colgroup>
             <col className="w-[38%]" />
             <col className="w-[30%]" />

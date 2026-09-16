@@ -593,7 +593,7 @@ function ShopManagementList({
         </div>
       </TableToolbar>
 
-      <table className="hidden w-full table-fixed border-collapse text-left text-sm md:table">
+      <table aria-label="Rewards" className="hidden w-full table-fixed border-collapse text-left text-sm md:table">
         <colgroup>
           <col className="w-10" />
           <col className="w-[26%]" />

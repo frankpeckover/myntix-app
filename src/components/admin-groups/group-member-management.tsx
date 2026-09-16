@@ -262,7 +262,7 @@ function GroupMembersTable({
             ))}
           </div>
 
-          <table className="hidden w-full table-fixed text-left text-sm md:table">
+          <table aria-label="Students available to add" className="hidden w-full table-fixed text-left text-sm md:table">
             <colgroup>
               <col className="w-[12%]" />
               <col className="w-[42%]" />

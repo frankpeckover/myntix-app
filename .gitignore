@@ -27,6 +27,8 @@ pnpm-debug.log*
 coverage/
 test-results/
 playwright-report/
+blob-report/
+playwright/.auth/
 
 # Local import/export test data
 sample-*.csv
@@ -36,6 +38,7 @@ test-*.png
 *-test.csv
 *-sample.csv
 exports/
+backups/
 
 # Hosting and tooling
 .vercel/

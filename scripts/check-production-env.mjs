@@ -36,6 +36,7 @@ const recommendedVariables = [
   "NEXT_PUBLIC_APP_VERSION",
   "NEXT_PUBLIC_APP_WORDMARK_URL",
   "RESEND_API_KEY",
+  "NOTIFICATION_JOB_SECRET",
 ];
 
 const env = loadEnvironment();

@@ -163,7 +163,8 @@ export class TransactionService {
         users.username,
         users.email,
         users.is_active,
-        coalesce(sum(ledger_entries.amount), 0) as balance,
+        coalesce(sum(ledger_entries.amount), 0)
+          - coalesce(active_holds.held_amount, 0) as balance,
         coalesce(
           sum(ledger_entries.amount) filter (
             where ledger_entries.created_at >= now() - interval '7 days'
@@ -181,6 +182,16 @@ export class TransactionService {
           ledger_entries.status = 'pending'
           and ledger_entries.is_voided = true
         )
+      left join lateral (
+        select coalesce(sum(account_holds.amount), 0) as held_amount
+        from account_holds
+        where account_holds.account_id = accounts.id
+          and account_holds.status = 'active'
+          and (
+            account_holds.expires_at is null
+            or account_holds.expires_at > now()
+          )
+      ) active_holds on true
       where roles.role_key = 'student'
       group by
         users.id,
@@ -189,7 +200,8 @@ export class TransactionService {
         users.profile_image_url,
         users.username,
         users.email,
-        users.is_active
+        users.is_active,
+        active_holds.held_amount
       order by users.last_name, users.first_name
     `);
 

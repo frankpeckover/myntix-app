@@ -106,7 +106,7 @@ export class SessionService {
       return mapSessionUserRow(user);
     } catch (error) {
       console.error("Get current session failed", error);
-      return null;
+      throw new Error("Could not verify the current session.", { cause: error });
     }
   }
 

@@ -78,12 +78,13 @@
   --accent: var(--accent-secondary);
   --accent-soft: color-mix(in srgb, var(--accent-secondary) 12%, white);
   --success: rgb(89, 188, 146);
+  --success-text: #247456;
   --success-hover: rgb(76, 171, 131);
   --success-soft: #e9fbf6;
   --success-soft-hover: #d8f6ee;
   --success-border: #a7eadb;
   --danger: rgb(246, 155, 99);
-  --danger-strong: rgb(224, 127, 68);
+  --danger-strong: #98451b;
   --danger-border: #ffd5bd;
   --danger-button-border: rgb(246, 155, 99);
   --danger-soft: #fff3ec;
@@ -111,7 +112,6 @@
   --student-card-background:
     radial-gradient(circle at 88% 18%, rgba(122, 228, 183, 0.2) 0%, transparent 28%),
     radial-gradient(circle at 8% 108%, rgba(112, 184, 149, 0.16) 0%, transparent 34%),
-    repeating-linear-gradient(118deg, transparent 0 18px, rgba(255, 255, 255, 0.025) 18px 19px),
     linear-gradient(
       112deg,
       var(--balance-bg) 0%,
@@ -165,6 +165,7 @@ html[data-theme="dark"] {
   --accent: color-mix(in srgb, var(--accent-secondary) 72%, white);
   --accent-soft: color-mix(in srgb, var(--accent-secondary) 20%, #101216);
   --success: rgb(89, 188, 146);
+  --success-text: #75d7ad;
   --success-hover: rgb(113, 207, 168);
   --success-soft: #183a34;
   --success-soft-hover: #204d44;
@@ -198,7 +199,6 @@ html[data-theme="dark"] {
   --student-card-background:
     radial-gradient(circle at 88% 18%, rgba(122, 228, 183, 0.16) 0%, transparent 28%),
     radial-gradient(circle at 8% 108%, rgba(112, 184, 149, 0.12) 0%, transparent 34%),
-    repeating-linear-gradient(118deg, transparent 0 18px, rgba(255, 255, 255, 0.018) 18px 19px),
     linear-gradient(
       112deg,
       #102a2d 0%,
@@ -264,7 +264,8 @@ html[data-accent="custom"] {
   --color-section-highlight: var(--section-highlight);
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
-  --color-success: var(--success);
+  --color-success: var(--success-text);
+  --color-success-fill: var(--success);
   --color-success-hover: var(--success-hover);
   --color-success-soft: var(--success-soft);
   --color-success-soft-hover: var(--success-soft-hover);
@@ -297,17 +298,22 @@ html {
   min-height: 100%;
 }
 
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+
 html[data-wallet-style="mint"] {
   --student-card-background:
     radial-gradient(circle at 86% 16%, rgba(122, 228, 183, 0.28) 0%, transparent 30%),
-    repeating-linear-gradient(118deg, transparent 0 18px, rgba(255, 255, 255, 0.025) 18px 19px),
     linear-gradient(135deg, #123a36 0%, #205f51 58%, #478b70 100%);
 }
 
 html[data-wallet-style="graphite"] {
   --student-card-background:
     radial-gradient(circle at 88% 12%, rgba(122, 228, 183, 0.12) 0%, transparent 28%),
-    repeating-linear-gradient(118deg, transparent 0 18px, rgba(255, 255, 255, 0.022) 18px 19px),
     linear-gradient(135deg, #1b2226 0%, #293238 58%, #414d52 100%);
 }
 
@@ -403,6 +409,33 @@ input:disabled,
 select:disabled,
 textarea:disabled {
   cursor: not-allowed;
+}
+
+:where(
+  a[href],
+  button,
+  input,
+  select,
+  textarea,
+  summary,
+  [tabindex]:not([tabindex="-1"])
+):focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+@media (forced-colors: active) {
+  :where(
+    a[href],
+    button,
+    input,
+    select,
+    textarea,
+    summary,
+    [tabindex]:not([tabindex="-1"])
+  ):focus-visible {
+    outline: 2px solid CanvasText;
+  }
 }
 
 button:not(:disabled):active {
@@ -508,7 +541,26 @@ html[data-theme="dark"] .professional-shell {
 }
 
 .wallet-card.reward-requests-card {
+  background:
+    radial-gradient(
+      circle at 97% 6%,
+      color-mix(in srgb, var(--accent-highlight) 20%, transparent) 0 4.5rem,
+      color-mix(in srgb, var(--accent-primary) 34%, transparent) 4.5rem 4.65rem,
+      transparent 4.75rem
+    ),
+    radial-gradient(
+      circle at 2% 108%,
+      color-mix(in srgb, var(--accent-secondary) 15%, transparent) 0 5.5rem,
+      color-mix(in srgb, var(--accent-secondary) 28%, transparent) 5.5rem 5.65rem,
+      transparent 5.75rem
+    ),
+    var(--wallet-card-background);
   overflow: visible;
+}
+
+.wallet-card.reward-requests-card::before,
+.wallet-card.reward-requests-card::after {
+  display: none;
 }
 
 .student-wallet-card {
@@ -537,6 +589,28 @@ html[data-theme="dark"] .professional-shell {
 
 .student-dashboard-section > .student-dashboard-card:nth-child(3) {
   animation-delay: 160ms;
+}
+
+.student-activity-recap {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--brand) 7%, transparent), transparent 42%),
+    var(--surface);
+}
+
+.student-recap-item {
+  animation: student-recap-enter 420ms var(--motion-ease) both;
+}
+
+.student-recap-item:nth-child(2) {
+  animation-delay: 55ms;
+}
+
+.student-recap-item:nth-child(3) {
+  animation-delay: 110ms;
+}
+
+.student-recap-item:nth-child(4) {
+  animation-delay: 165ms;
 }
 
 .student-balance-trend-card,
@@ -653,6 +727,34 @@ html[data-theme="dark"] .professional-shell {
 
 .student-wallet-card::after {
   display: none;
+}
+
+.student-wallet-celebrate {
+  animation: student-dashboard-enter 460ms var(--motion-ease) both,
+    wallet-positive-arrival 1100ms cubic-bezier(0.16, 1, 0.3, 1) 260ms;
+}
+
+.wallet-credit-spark {
+  animation: credit-spark-arrival 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.positive-surprise-banner {
+  animation: positive-surprise-enter 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  position: relative;
+}
+
+.positive-surprise-banner::after {
+  animation: positive-surprise-sheen 1000ms ease-out 180ms both;
+  background: linear-gradient(105deg, transparent 15%, rgba(255, 255, 255, 0.5) 48%, transparent 80%);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  transform: translateX(-120%);
+}
+
+.positive-surprise-icon {
+  animation: credit-spark-arrival 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .login-panel {
@@ -1273,6 +1375,58 @@ html[data-theme="dark"] .professional-shell .app-modal.theme-panel {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes student-recap-enter {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes wallet-positive-arrival {
+  0%, 100% {
+    box-shadow: var(--wallet-card-shadow);
+  }
+  45% {
+    box-shadow: 0 10px 30px color-mix(in srgb, var(--student-card-accent) 34%, transparent);
+  }
+}
+
+@keyframes credit-spark-arrival {
+  0% {
+    opacity: 0;
+    transform: rotate(-18deg) scale(0.45);
+  }
+  55% {
+    opacity: 1;
+    transform: rotate(8deg) scale(1.18);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(0) scale(1);
+  }
+}
+
+@keyframes positive-surprise-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes positive-surprise-sheen {
+  to {
+    transform: translateX(120%);
   }
 }
 

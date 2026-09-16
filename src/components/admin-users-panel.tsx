@@ -17,6 +17,7 @@ import { AdminPageSection } from "@/components/ui/admin-page-section";
 import { BulkSelectionControls } from "@/components/ui/bulk-selection-controls";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { IconButton } from "@/components/ui/icon-button";
+import { LoadFailure } from "@/components/ui/load-failure";
 import {
   CheckIcon,
   FileDownIcon,
@@ -239,7 +240,14 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
       <FixedNotification error={error} message={message} />
       <div>
         {isLoading && <p className="text-sm text-text-muted">Loading users...</p>}
-        {!isLoading && !error && users.length > 0 && (
+        {!isLoading && error && users.length === 0 && (
+          <LoadFailure
+            description="The user directory is temporarily unavailable."
+            onRetry={refreshUsers}
+            title="Could not load users"
+          />
+        )}
+        {!isLoading && users.length > 0 && (
           <>
             <UsersTable
               filters={filters}

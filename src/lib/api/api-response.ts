@@ -12,7 +12,7 @@ export function apiSuccess<T>(data: T, status = 200) {
 }
 
 export function apiError(code: string, message: string, status = 400) {
-  return NextResponse.json<ApiFailure>(
+  const response = NextResponse.json<ApiFailure>(
     {
       error: {
         code,
@@ -22,4 +22,10 @@ export function apiError(code: string, message: string, status = 400) {
     },
     { status },
   );
+
+  if (status === 401) {
+    response.headers.set("WWW-Authenticate", "Bearer");
+  }
+
+  return response;
 }

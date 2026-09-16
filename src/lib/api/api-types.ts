@@ -1,9 +1,13 @@
 export type ApiScope =
-  | "balances:read"
+  | "accounts:read"
+  | "ledger:read"
   | "ledger:credit"
   | "ledger:debit"
-  | "ledger:hold"
-  | "ledger:void";
+  | "holds:read"
+  | "holds:write"
+  | "rewards:read"
+  | "purchases:read"
+  | "purchases:write";
 
 export type ApiClient = {
   id: string;

@@ -64,7 +64,7 @@ function CreditActionButton({
 }) {
   const toneClassName =
     tone === "positive"
-      ? "text-success hover:bg-success hover:text-white"
+      ? "text-success hover:bg-success-fill hover:text-white"
       : "text-danger hover:bg-danger hover:text-white";
   const displayLabel = isAmountLabel
     ? `${tone === "positive" ? "+" : "-"}${label}`

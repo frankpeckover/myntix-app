@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { FilterIcon } from "@/components/ui/icons";
 
@@ -18,7 +18,10 @@ export function TableHeaderFilter({
   onClear,
 }: TableHeaderFilterProps) {
   const filterRef = useRef<HTMLDivElement | null>(null);
+  const filterPanelRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const panelId = useId();
 
   useEffect(() => {
     if (!isOpen) {
@@ -34,6 +37,7 @@ export function TableHeaderFilter({
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setIsOpen(false);
+        triggerRef.current?.focus();
       }
     }
 
@@ -46,11 +50,27 @@ export function TableHeaderFilter({
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const animationFrame = window.requestAnimationFrame(() => {
+      filterPanelRef.current
+        ?.querySelector<HTMLElement>("input, select, button")
+        ?.focus();
+    });
+
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [isOpen]);
+
   return (
     <div className="relative inline-flex items-center gap-1.5" ref={filterRef}>
       <span>{label}</span>
       <button
         aria-expanded={isOpen}
+        aria-controls={isOpen ? panelId : undefined}
+        aria-haspopup="dialog"
         aria-label={`Filter ${label}`}
         className={`inline-flex h-6 w-6 items-center justify-center rounded-md transition ${
           isActive
@@ -58,13 +78,20 @@ export function TableHeaderFilter({
             : "text-text-muted hover:bg-panel-soft hover:text-text-control"
         }`}
         onClick={() => setIsOpen((currentValue) => !currentValue)}
+        ref={triggerRef}
         type="button"
       >
         <FilterIcon className="h-3.5 w-3.5" />
       </button>
 
       {isOpen && (
-        <div className="motion-pop absolute left-0 top-8 z-[130] min-w-56 rounded-md border border-border bg-surface p-3 text-sm normal-case tracking-normal shadow-lg">
+        <div
+          aria-label={`Filter ${label}`}
+          className="motion-pop absolute left-0 top-8 z-[130] min-w-56 rounded-md border border-border bg-surface p-3 text-sm normal-case tracking-normal shadow-lg"
+          id={panelId}
+          ref={filterPanelRef}
+          role="dialog"
+        >
           {children}
           {onClear && (
             <button

@@ -423,7 +423,10 @@ export class TimetableService {
           users.last_name,
           users.profile_image_url,
           users.username,
-          coalesce(sum(ledger_entries.amount), 0)::integer as balance
+          (
+            coalesce(sum(ledger_entries.amount), 0)
+            - coalesce(active_holds.held_amount, 0)
+          )::integer as balance
         from student_group_memberships
         join users on users.id = student_group_memberships.user_id
         join roles on roles.id = users.role_id
@@ -435,10 +438,22 @@ export class TimetableService {
             ledger_entries.status = 'pending'
             and ledger_entries.is_voided = true
           )
+        left join lateral (
+          select coalesce(sum(account_holds.amount), 0) as held_amount
+          from account_holds
+          where account_holds.account_id = accounts.id
+            and account_holds.status = 'active'
+            and (
+              account_holds.expires_at is null
+              or account_holds.expires_at > now()
+            )
+        ) active_holds on true
         where student_group_memberships.group_id = $1
           and roles.role_key = 'student'
           and users.is_active = true
-        group by users.id, users.first_name, users.last_name, users.profile_image_url, users.username
+        group by users.id, users.first_name, users.last_name,
+                 users.profile_image_url, users.username,
+                 active_holds.held_amount
         order by users.last_name, users.first_name
       `,
       [currentClass.group_id],

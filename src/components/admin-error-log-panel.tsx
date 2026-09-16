@@ -9,6 +9,7 @@ import { AdminPageSection } from "@/components/ui/admin-page-section";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FixedNotification } from "@/components/ui/fixed-notification";
 import { IconButton } from "@/components/ui/icon-button";
+import { LoadFailure } from "@/components/ui/load-failure";
 import { EyeIcon, XIcon } from "@/components/ui/icons";
 import {
   ListPagination,
@@ -37,6 +38,7 @@ export function AdminErrorLogPanel() {
   const [filters, setFilters] = useState<ErrorFilters>(emptyErrorFilters);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
   const [viewingEntry, setViewingEntry] = useState<ErrorLogItem | null>(null);
   const filteredEntries = useMemo(
     () => entries.filter((entry) => matchesErrorFilters(entry, filters)),
@@ -80,7 +82,7 @@ export function AdminErrorLogPanel() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [reloadKey]);
 
   return (
     <AdminPageSection isFlush>
@@ -89,10 +91,17 @@ export function AdminErrorLogPanel() {
         {isLoading && (
           <p className="text-sm text-text-muted">Loading error log...</p>
         )}
+        {!isLoading && error && entries.length === 0 && (
+          <LoadFailure
+            description="Recorded server errors could not be retrieved."
+            onRetry={() => setReloadKey((current) => current + 1)}
+            title="Could not load the error log"
+          />
+        )}
         {!isLoading && !error && entries.length === 0 && (
           <p className="text-sm text-text-muted">No server errors recorded.</p>
         )}
-        {!isLoading && !error && entries.length > 0 && (
+        {!isLoading && entries.length > 0 && (
           <>
             <ErrorLogList
               entries={visibleEntries}
@@ -176,7 +185,7 @@ function ErrorLogList({
 
       <div className="hidden w-full min-w-0 max-w-full overflow-x-auto md:block">
         {toolbar}
-        <table className="w-full min-w-[760px] table-fixed border-collapse text-left text-sm">
+        <table aria-label="Error log" className="w-full min-w-[760px] table-fixed border-collapse text-left text-sm">
           <colgroup>
             <col className="w-[18%]" />
             <col className="w-[28%]" />

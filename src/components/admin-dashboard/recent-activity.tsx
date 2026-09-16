@@ -64,7 +64,7 @@ function RecentAuditList({ entries }: { entries: AuditLogItem[] }) {
       </div>
 
       <div className="hidden w-full min-w-0 max-w-full overflow-x-auto md:block">
-        <table className="admin-recent-activity-table w-full min-w-[460px] table-fixed border-collapse text-left text-sm">
+        <table aria-label="Recent audit activity" className="admin-recent-activity-table w-full min-w-[460px] table-fixed border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-border-subtle text-text-muted">
               <th scope="col" className="py-2 pr-4 font-semibold">Time</th>
@@ -129,7 +129,7 @@ function RecentLedgerList({
       </div>
 
       <div className="hidden w-full min-w-0 max-w-full overflow-x-auto md:block">
-        <table className="admin-recent-activity-table w-full min-w-full table-fixed border-collapse text-left text-sm">
+        <table aria-label="Recent ledger entries" className="admin-recent-activity-table w-full min-w-full table-fixed border-collapse text-left text-sm">
           <colgroup>
             <col className="w-[24%]" />
             <col className="w-[46%]" />

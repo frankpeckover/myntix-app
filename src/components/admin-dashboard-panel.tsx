@@ -27,6 +27,7 @@ import { formatCurrencyAmount } from "@/lib/formatters";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FixedNotification } from "@/components/ui/fixed-notification";
 import { InlineSelectMenu } from "@/components/ui/inline-select-menu";
+import { LoadFailure } from "@/components/ui/load-failure";
 import {
   RecentAuditActivity,
   RecentLedgerActivity,
@@ -36,10 +37,18 @@ import type {
   AdminDashboardSummary,
   TeacherIssuerSummary,
 } from "@/domains/analytics/admin-dashboard-service";
+import type {
+  OperationsDashboardSnapshot,
+  SecurityActivityItem,
+} from "@/domains/operations/operations-dashboard-service";
 import {
+  AlertTriangleIcon,
   ArrowDownIcon,
   ArrowUpIcon,
+  CheckIcon,
   ClockIcon,
+  FileDownIcon,
+  KeyIcon,
   ListIcon,
   UserCircleIcon,
   WalletIcon,
@@ -71,11 +80,14 @@ export function AdminDashboardPanel({
   const [summary, setSummary] = useState<AdminDashboardSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let isMounted = true;
 
     async function loadSummary() {
+      setIsLoading(true);
+
       try {
         const loadedSummary = await getAdminDashboardSummary();
 
@@ -99,7 +111,7 @@ export function AdminDashboardPanel({
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [reloadKey]);
 
   return (
     <>
@@ -108,6 +120,16 @@ export function AdminDashboardPanel({
         {isLoading && (
           <section className="dashboard-unit-4 theme-panel min-w-0 p-4">
             <p className="text-sm text-text-muted">Loading overview...</p>
+          </section>
+        )}
+
+        {!isLoading && error && !summary && (
+          <section className="dashboard-unit-4 min-w-0">
+            <LoadFailure
+              description="The overview is temporarily unavailable. Try loading it again."
+              onRetry={() => setReloadKey((current) => current + 1)}
+              title="Could not load the admin dashboard"
+            />
           </section>
         )}
 
@@ -128,10 +150,7 @@ export function AdminDashboardPanel({
               studentAccounts={summary.studentAccounts}
               totalAccounts={summary.totalUsers}
             />
-            <SystemSummaryCard
-              pendingItems={summary.pendingHolds + summary.pendingShopRequests}
-              recentAuditCount={summary.recentAuditEntries.length}
-            />
+            <SystemHealthCard system={summary.operations.system} />
           </>
         )}
 
@@ -156,6 +175,9 @@ export function AdminDashboardPanel({
               title="Top Demerit Issuers"
               tone="negative"
             />
+            <SecurityActivityCard security={summary.operations.security} />
+            <BackupStatusCard backup={summary.operations.backup} />
+            <ApiActivityCard api={summary.operations.api} />
           </>
         )}
       </div>
@@ -198,23 +220,121 @@ function LedgerBalanceCard({
   );
 }
 
-function SystemSummaryCard({
-  pendingItems,
-  recentAuditCount,
+function SystemHealthCard({
+  system,
 }: {
-  pendingItems: number;
-  recentAuditCount: number;
+  system: OperationsDashboardSnapshot["system"];
 }) {
+  const isHealthy = system.status === "operational";
+
   return (
     <section className="dashboard-unit-1 theme-panel flex min-h-36 flex-col p-4">
       <MetricCardHeader
-        icon={<ListIcon />}
-        label="System Snapshot"
-        tone="neutral"
+        icon={isHealthy ? <CheckIcon /> : <AlertTriangleIcon />}
+        label="System Health"
+        tone={isHealthy ? "positive" : "warning"}
       />
-      <div className="mt-2 grid flex-1 gap-1">
-        <CompactMetricRow label="Admin changes" value={recentAuditCount} />
-        <CompactMetricRow label="Pending items" value={pendingItems} />
+      <div className="flex flex-1 flex-col justify-end">
+        <p className={`text-xl font-semibold ${isHealthy ? "text-success" : "text-danger-strong"}`}>
+          {isHealthy ? "Operational" : "Needs attention"}
+        </p>
+        <p className="mt-2 text-xs text-text-muted">
+          {system.errorCountLast24Hours === 0
+            ? "No server errors in the last 24 hours"
+            : `${formatWholeNumber(system.errorCountLast24Hours)} server errors in the last 24 hours`}
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function SecurityActivityCard({
+  security,
+}: {
+  security: OperationsDashboardSnapshot["security"];
+}) {
+  return (
+    <section className="dashboard-unit-2 theme-panel min-w-0 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <MetricCardHeader icon={<KeyIcon />} label="Recent Security Activity" tone="neutral" />
+        <span className="shrink-0 text-xs text-text-muted">
+          {security.failedLoginsLast24Hours} failed logins · 24h
+        </span>
+      </div>
+      {security.events.length === 0 ? (
+        <p className="mt-5 text-sm text-text-muted">No recent authentication or API key events.</p>
+      ) : (
+        <ol className="mt-3 grid grid-cols-1 gap-x-6 md:grid-cols-2">
+          {security.events.slice(0, 4).map((event) => (
+            <SecurityActivityRow event={event} key={`${event.createdAt}-${event.action}`} />
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
+
+function SecurityActivityRow({ event }: { event: SecurityActivityItem }) {
+  return (
+    <li className="flex min-w-0 items-center gap-2 border-b border-border-muted py-2 last:border-b-0">
+      <span
+        aria-label={event.successful ? "Successful event" : "Attention event"}
+        className={`h-2 w-2 shrink-0 rounded-full ${event.successful ? "bg-success-fill" : "bg-danger"}`}
+        role="img"
+      />
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium text-foreground">{event.action}</p>
+        <p className="truncate text-xs text-text-muted">
+          {event.actor} · {formatDashboardDate(event.createdAt)}
+        </p>
+      </div>
+    </li>
+  );
+}
+
+function BackupStatusCard({
+  backup,
+}: {
+  backup: OperationsDashboardSnapshot["backup"];
+}) {
+  const statusLabel = {
+    failed: "Last run failed",
+    healthy: "Protected",
+    not_configured: "Not configured",
+    running: "Backup running",
+  }[backup.status];
+
+  return (
+    <section className="dashboard-unit-1 theme-panel flex min-h-40 min-w-0 flex-col p-4">
+      <MetricCardHeader icon={<FileDownIcon />} label="Backup Status" tone="neutral" />
+      <div className="flex flex-1 flex-col justify-end">
+        <p className={`text-lg font-semibold ${backup.status === "healthy" ? "text-success" : backup.status === "failed" ? "text-danger-strong" : "text-foreground"}`}>
+          {statusLabel}
+        </p>
+        <p className="mt-2 text-xs text-text-muted">
+          {backup.lastSuccessfulAt
+            ? `Last success ${formatDashboardDate(backup.lastSuccessfulAt)}`
+            : "No successful backups recorded"}
+        </p>
+        {backup.destinationLabel && (
+          <p className="mt-1 truncate text-xs text-text-muted">{backup.destinationLabel}</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function ApiActivityCard({ api }: { api: OperationsDashboardSnapshot["api"] }) {
+  return (
+    <section className="dashboard-unit-1 theme-panel flex min-h-40 min-w-0 flex-col p-4">
+      <MetricCardHeader icon={<ListIcon />} label="API Activity" tone="brand" />
+      <div className="mt-3 grid flex-1 gap-1">
+        <CompactMetricRow label="Requests · 24h" value={api.requestsLast24Hours} />
+        <CompactMetricRow label="Failed · 24h" value={api.failedRequestsLast24Hours} />
+        <p className="mt-1 truncate text-xs text-text-muted">
+          {api.activeClients} active client{api.activeClients === 1 ? "" : "s"}
+          {api.lastRequestAt ? ` · Last used ${formatDashboardDate(api.lastRequestAt)}` : ""}
+        </p>
       </div>
     </section>
   );
@@ -483,6 +603,15 @@ function formatWholeNumber(amount: number) {
   return new Intl.NumberFormat("en-AU").format(amount);
 }
 
+function formatDashboardDate(value: string) {
+  return new Intl.DateTimeFormat("en-AU", {
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    month: "short",
+  }).format(new Date(value));
+}
+
 function AccountSummaryCard({
   adminAccounts,
   disabledAccounts,
@@ -642,7 +771,7 @@ function CompactMetricRow({
   );
 }
 
-type MetricTone = "accent" | "brand" | "neutral";
+type MetricTone = "accent" | "brand" | "neutral" | "positive" | "warning";
 
 function MetricCardHeader({
   icon,
@@ -674,6 +803,14 @@ function getMetricToneClassName(tone: MetricTone) {
 
   if (tone === "neutral") {
     return "bg-panel-soft text-text-muted";
+  }
+
+  if (tone === "positive") {
+    return "bg-success-soft text-success";
+  }
+
+  if (tone === "warning") {
+    return "bg-danger-soft text-danger-strong";
   }
 
   return "bg-brand-soft text-brand";
