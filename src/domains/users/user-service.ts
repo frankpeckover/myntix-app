@@ -18,6 +18,7 @@ export type UserListItem = {
   id: string;
   username: string;
   firstName: string;
+  preferredName: string;
   lastName: string;
   displayName: string;
   email: string;
@@ -31,6 +32,7 @@ export type UserListItem = {
 export type CreateUserInput = {
   username: string;
   firstName: string;
+  preferredName: string;
   lastName: string;
   email: string;
   profileImageUrl: string;
@@ -78,6 +80,7 @@ export type UpdateUserInput = {
   id: string;
   username: string;
   firstName: string;
+  preferredName: string;
   lastName: string;
   email: string;
   profileImageUrl: string;
@@ -129,6 +132,7 @@ type UserListRow = {
   id: string;
   username: string;
   first_name: string;
+  preferred_name: string;
   last_name: string;
   email: string;
   profile_image_url: string;
@@ -141,6 +145,7 @@ type UserListRow = {
 type StudentListRow = {
   id: string;
   first_name: string;
+  preferred_name: string;
   last_name: string;
   profile_image_url: string;
   username: string;
@@ -150,6 +155,7 @@ type ImportableUser = {
   cardNumber: string;
   email: string;
   firstName: string;
+  preferredName: string;
   lastName: string;
   passwordHash: string;
   role: Role;
@@ -162,6 +168,7 @@ type ImportedUserRow = {
   card_number: string;
   email: string;
   first_name: string;
+  preferred_name: string;
   id: string;
   last_name: string;
   profile_image_url: string;
@@ -209,6 +216,7 @@ export class UserService {
         users.id,
         users.username,
         users.first_name,
+        users.preferred_name,
         users.last_name,
         users.email,
         users.profile_image_url,
@@ -240,6 +248,7 @@ export class UserService {
       select
         users.id,
         users.first_name,
+        users.preferred_name,
         users.last_name,
         users.profile_image_url,
         users.username
@@ -251,6 +260,7 @@ export class UserService {
         and (
           $1 = '%%'
           or lower(first_name) like $1
+          or lower(preferred_name) like $1
           or lower(last_name) like $1
           or lower(username) like $1
           or lower(first_name || ' ' || last_name) like $1
@@ -262,8 +272,13 @@ export class UserService {
     return result.rows.map((student) => ({
       id: student.id,
       firstName: student.first_name,
+      preferredName: student.preferred_name,
       lastName: student.last_name,
-      displayName: formatDisplayName(student.first_name, student.last_name),
+      displayName: formatDisplayName(
+        student.first_name,
+        student.last_name,
+        student.preferred_name,
+      ),
       profileImageUrl: student.profile_image_url,
       username: student.username,
     }));
@@ -275,13 +290,14 @@ export class UserService {
   ): Promise<CreateUserResult> {
     const username = input.username.trim().toLowerCase();
     const firstName = capitaliseName(input.firstName);
+    const preferredName = capitaliseName(input.preferredName);
     const lastName = capitaliseName(input.lastName);
     const email = input.email.trim().toLowerCase();
     const profileImageUrl = input.profileImageUrl.trim();
     const cardNumber = input.cardNumber.trim();
     const password = input.password;
 
-    if (!username || !firstName || !lastName || !email || !password) {
+    if (!username || !firstName || !lastName || !password) {
       return {
         ok: false,
         message: "Complete all user fields.",
@@ -307,6 +323,7 @@ export class UserService {
             role_id,
             username,
             first_name,
+            preferred_name,
             last_name,
             email,
             profile_image_url,
@@ -321,12 +338,14 @@ export class UserService {
             $5,
             $6,
             $7,
-            $8
+            $8,
+            $9
           )
           returning
             id,
             username,
             first_name,
+            preferred_name,
             last_name,
             profile_image_url,
             card_number,
@@ -339,6 +358,7 @@ export class UserService {
           input.role,
           username,
           firstName,
+          preferredName,
           lastName,
           email,
           profileImageUrl,
@@ -457,11 +477,11 @@ export class UserService {
           select username, email
           from users
           where username = any($1::text[])
-             or email = any($2::text[])
+             or (trim(email) <> '' and email = any($2::text[]))
         `,
         [
           preparedUsers.map((user) => user.username),
-          preparedUsers.map((user) => user.email),
+          preparedUsers.map((user) => user.email).filter(Boolean),
         ],
       );
       const existingUsernames = new Set(
@@ -471,7 +491,10 @@ export class UserService {
         existingUsers.rows.map((user) => user.email),
       );
       const usersToCreate = preparedUsers.filter((user) => {
-        if (existingUsernames.has(user.username) || existingEmails.has(user.email)) {
+        if (
+          existingUsernames.has(user.username) ||
+          (Boolean(user.email) && existingEmails.has(user.email))
+        ) {
           errors.push({
             message: "Username or email is already in use.",
             rowNumber: user.rowNumber,
@@ -499,6 +522,7 @@ export class UserService {
             role_id,
             username,
             first_name,
+            preferred_name,
             last_name,
             email,
             profile_image_url,
@@ -509,6 +533,7 @@ export class UserService {
             roles.id,
             imported.username,
             imported.first_name,
+            imported.preferred_name,
             imported.last_name,
             imported.email,
             '',
@@ -518,6 +543,7 @@ export class UserService {
             card_number text,
             email text,
             first_name text,
+            preferred_name text,
             last_name text,
             password_hash text,
             role text,
@@ -529,6 +555,7 @@ export class UserService {
             id,
             username,
             first_name,
+            preferred_name,
             last_name,
             profile_image_url,
             card_number,
@@ -541,6 +568,7 @@ export class UserService {
               card_number: user.cardNumber,
               email: user.email,
               first_name: user.firstName,
+              preferred_name: user.preferredName,
               last_name: user.lastName,
               password_hash: user.passwordHash,
               role: user.role,
@@ -637,11 +665,11 @@ export class UserService {
         select username, email
         from users
         where username = any($1::text[])
-           or email = any($2::text[])
+           or (trim(email) <> '' and email = any($2::text[]))
       `,
       [
         validRows.map((row) => row.username),
-        validRows.map((row) => row.email),
+        validRows.map((row) => row.email).filter(Boolean),
       ],
     );
     const existingUsernames = new Set(
@@ -652,7 +680,8 @@ export class UserService {
     );
     const existingCount = validRows.filter(
       (row) =>
-        existingUsernames.has(row.username) || existingEmails.has(row.email),
+        existingUsernames.has(row.username) ||
+        (Boolean(row.email) && existingEmails.has(row.email)),
     ).length;
     const duplicateCount = previewRows.filter((row) => row.isDuplicate).length;
     const invalidCount = previewRows.filter(
@@ -674,12 +703,13 @@ export class UserService {
   ): Promise<UserActionResult> {
     const username = input.username.trim().toLowerCase();
     const firstName = capitaliseName(input.firstName);
+    const preferredName = capitaliseName(input.preferredName);
     const lastName = capitaliseName(input.lastName);
     const email = input.email.trim().toLowerCase();
     const profileImageUrl = input.profileImageUrl.trim();
     const cardNumber = input.cardNumber.trim();
 
-    if (!input.id || !username || !firstName || !lastName || !email) {
+    if (!input.id || !username || !firstName || !lastName) {
       return {
         ok: false,
         message: "Complete all user fields.",
@@ -696,18 +726,20 @@ export class UserService {
           update users
           set username = $1,
               first_name = $2,
-              last_name = $3,
-              email = $4,
-              profile_image_url = $5,
-              card_number = $6,
-              role_id = (select id from roles where role_key = $7 and is_active = true),
-              is_active = $8,
+              preferred_name = $3,
+              last_name = $4,
+              email = $5,
+              profile_image_url = $6,
+              card_number = $7,
+              role_id = (select id from roles where role_key = $8 and is_active = true),
+              is_active = $9,
               updated_at = now()
-          where id = $9
+          where id = $10
           returning
             id,
             username,
             first_name,
+            preferred_name,
             last_name,
             profile_image_url,
             card_number,
@@ -724,6 +756,7 @@ export class UserService {
         [
           username,
           firstName,
+          preferredName,
           lastName,
           email,
           profileImageUrl,
@@ -1005,8 +1038,13 @@ export class UserService {
       id: user.id,
       username: user.username,
       firstName: user.first_name,
+      preferredName: user.preferred_name,
       lastName: user.last_name,
-      displayName: formatDisplayName(user.first_name, user.last_name),
+      displayName: formatDisplayName(
+        user.first_name,
+        user.last_name,
+        user.preferred_name,
+      ),
       email: user.email,
       profileImageUrl: user.profile_image_url,
       cardNumber: user.card_number,
@@ -1026,8 +1064,12 @@ function capitaliseName(value: string) {
     .join(" ");
 }
 
-function formatDisplayName(firstName: string, lastName: string) {
-  return `${firstName} ${lastName}`.trim();
+function formatDisplayName(
+  firstName: string,
+  lastName: string,
+  preferredName = "",
+) {
+  return `${preferredName || firstName} ${lastName}`.trim();
 }
 
 async function removeUserFromGroups(
@@ -1070,11 +1112,12 @@ async function prepareImportUsers(
       const email = user.email.trim().toLowerCase();
       const cardNumber = user.cardNumber.trim();
       const firstName = capitaliseName(user.firstName);
+      const preferredName = capitaliseName(user.preferredName);
       const lastName = capitaliseName(user.lastName);
       const temporaryPassword = generateTemporaryPassword();
       const username = user.username.trim().toLowerCase();
 
-      if (!username || !firstName || !lastName || !email) {
+      if (!username || !firstName || !lastName) {
         errors.push({
           message: "Missing a required value.",
           rowNumber,
@@ -1083,7 +1126,10 @@ async function prepareImportUsers(
         return null;
       }
 
-      if (seenUsernames.has(username) || seenEmails.has(email)) {
+      if (
+        seenUsernames.has(username) ||
+        (Boolean(email) && seenEmails.has(email))
+      ) {
         errors.push({
           message: "Duplicate username or email in this CSV.",
           rowNumber,
@@ -1093,12 +1139,15 @@ async function prepareImportUsers(
       }
 
       seenUsernames.add(username);
-      seenEmails.add(email);
+      if (email) {
+        seenEmails.add(email);
+      }
 
       return {
         email,
         cardNumber,
         firstName,
+        preferredName,
         lastName,
         passwordHash: await hashPassword(temporaryPassword),
         role: user.role,
@@ -1119,14 +1168,16 @@ function normaliseImportRows(users: ImportUserInput[]) {
   return users.map((user, index) => {
     const email = user.email.trim().toLowerCase();
     const firstName = capitaliseName(user.firstName);
+    const preferredName = capitaliseName(user.preferredName);
     const lastName = capitaliseName(user.lastName);
     const username = user.username.trim().toLowerCase();
-    const isDuplicate = seenUsernames.has(username) || seenEmails.has(email);
+    const isDuplicate =
+      seenUsernames.has(username) ||
+      (Boolean(email) && seenEmails.has(email));
     const isValid =
       Boolean(username) &&
       Boolean(firstName) &&
       Boolean(lastName) &&
-      Boolean(email) &&
       !isDuplicate;
 
     if (username) {
@@ -1139,6 +1190,7 @@ function normaliseImportRows(users: ImportUserInput[]) {
 
     return {
       email,
+      preferredName,
       isDuplicate,
       isValid,
       rowNumber: index + 2,

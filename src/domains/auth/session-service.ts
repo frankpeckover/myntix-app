@@ -7,6 +7,7 @@ import type { Role, SessionUser } from "@/lib/session";
 type SessionUserRow = {
   email: string;
   first_name: string;
+  preferred_name: string;
   id: string;
   last_name: string;
   profile_image_url: string;
@@ -72,6 +73,7 @@ export class SessionService {
             users.email,
             users.username,
             users.first_name,
+            users.preferred_name,
             users.last_name,
             users.profile_image_url,
             roles.role_key as role
@@ -156,7 +158,11 @@ function hashSessionToken(token: string) {
 
 function mapSessionUserRow(user: SessionUserRow): SessionUser {
   return {
-    displayName: formatDisplayName(user.first_name, user.last_name),
+    displayName: formatDisplayName(
+      user.first_name,
+      user.last_name,
+      user.preferred_name,
+    ),
     email: user.email,
     firstName: user.first_name,
     id: user.id,
@@ -167,6 +173,6 @@ function mapSessionUserRow(user: SessionUserRow): SessionUser {
   };
 }
 
-function formatDisplayName(firstName: string, lastName: string) {
-  return `${firstName} ${lastName}`.trim();
+function formatDisplayName(firstName: string, lastName: string, preferredName = "") {
+  return `${preferredName || firstName} ${lastName}`.trim();
 }

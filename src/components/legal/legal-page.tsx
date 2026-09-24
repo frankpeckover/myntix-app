@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { AppFooter } from "@/components/ui/app-footer";
 import { GlobalMaintenanceBanner } from "@/components/ui/global-maintenance-banner";
 import { appConfig } from "@/lib/app-config";
+import { getActiveMaintenanceMessage } from "@/domains/operations/platform-announcement-service";
 
 type LegalPageProps = {
   children: ReactNode;
@@ -10,8 +11,8 @@ type LegalPageProps = {
   title: string;
 };
 
-export function LegalPage({ children, description, title }: LegalPageProps) {
-  const maintenanceMessage = process.env.MAINTENANCE_MESSAGE?.trim() ?? "";
+export async function LegalPage({ children, description, title }: LegalPageProps) {
+  const maintenanceMessage = await getActiveMaintenanceMessage();
 
   return (
     <main

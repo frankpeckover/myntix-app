@@ -88,6 +88,15 @@ export const db = {
   },
 };
 
+export const platformDb = {
+  async query<Row extends QueryResultRow = QueryResultRow>(
+    text: string,
+    values?: unknown[],
+  ): Promise<QueryResult<Row>> {
+    return getPlatformPool().query<Row>(text, values);
+  },
+};
+
 export class TenantNotFoundError extends Error {
   constructor(message: string) {
     super(message);

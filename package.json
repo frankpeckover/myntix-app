@@ -8,8 +8,11 @@
     "prebuild": "npm run check:env",
     "build": "next build",
     "create-api-client": "node scripts/create-api-client-key.mjs",
+    "maintenance": "node scripts/manage-platform-announcement.mjs",
+    "sync:tass": "node scripts/run-directory-sync-job.mjs",
     "start": "node scripts/start-production.mjs",
     "lint": "eslint",
+    "test:api": "node --test --test-concurrency=1 tests/api/authentication.test.mjs tests/api/accounts.test.mjs tests/api/ledger.test.mjs tests/api/holds.test.mjs tests/api/rewards-purchases.test.mjs tests/api/scopes.test.mjs tests/api/rate-limits.test.mjs",
     "test:a11y": "playwright test --project=desktop-chromium",
     "test:browsers": "playwright test",
     "test:e2e:install": "playwright install chromium firefox webkit"

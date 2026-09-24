@@ -17,6 +17,7 @@ Each school/app schema is split by service area under:
 - `school/06-api-clients.sql`
 - `school/07-notifications.sql`
 - `school/08-operations.sql`
+- `school/09-directory-sync.sql`
 - `school/99-grants.sql`
 
 All files are plain SQL. They do not use `psql` backslash commands, so they can be run from DBeaver.
@@ -61,9 +62,22 @@ In DBeaver:
 The script creates:
 
 - `organisations`
+- `platform_announcements`
 - one seeded development organisation
 - the platform app PostgreSQL login
 - grants for that login
+
+Platform maintenance notices are managed from the project root with:
+
+```txt
+npm run maintenance -- set --message "Scheduled maintenance..." --ends-at "2026-09-20T15:00:00+10:00"
+npm run maintenance -- status
+npm run maintenance -- clear
+```
+
+Use `--starts-at` to schedule a notice for later and `--severity` with `info`,
+`warning`, or `critical` when needed. The command writes only to the platform
+database; no application restart is required.
 
 The app expects these environment variables for the platform database:
 
@@ -111,6 +125,7 @@ database/school/05-sso.sql
 database/school/06-api-clients.sql
 database/school/07-notifications.sql
 database/school/08-operations.sql
+database/school/09-directory-sync.sql
 ```
 
 Current full app setup:
@@ -125,6 +140,7 @@ database/school/05-sso.sql
 database/school/06-api-clients.sql
 database/school/07-notifications.sql
 database/school/08-operations.sql
+database/school/09-directory-sync.sql
 database/school/99-grants.sql
 ```
 
@@ -257,6 +273,7 @@ For example:
 - If external API clients are enabled, run `06-api-clients.sql`.
 - If in-app notifications or email digests are enabled, run `07-notifications.sql`.
 - Run `08-operations.sql` to enable backup and operational status reporting.
+- Run `09-directory-sync.sql` to enable TASS and future external data synchronization.
 
 ## Useful Checks
 
@@ -339,6 +356,13 @@ a unique `Idempotency-Key` header. Money mutations accept positive whole-number
 amounts in JSON; the route determines whether the amount is a credit or debit.
 Purchase creation accepts `accountId` and `rewardId`. Ledger reversals append
 a compensating entry and never edit or delete the original entry.
+
+## Demo data
+
+For a populated fictional school suitable for sales and product demonstrations,
+run `demo/seed-demo-data.sql` after the school setup scripts. See
+`demo/README.md` for credentials and usage notes. Never run the demo seed for a
+production organisation.
 
 ## Notes
 

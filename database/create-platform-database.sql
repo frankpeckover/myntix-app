@@ -84,6 +84,26 @@ alter table organisations
 create index if not exists organisations_primary_domain_idx
   on organisations(primary_domain);
 
+create table if not exists platform_announcements (
+  id uuid primary key default gen_random_uuid(),
+  message text not null,
+  severity text not null default 'warning',
+  starts_at timestamptz not null default now(),
+  ends_at timestamptz,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint platform_announcements_message_check
+    check (length(trim(message)) between 1 and 1000),
+  constraint platform_announcements_severity_check
+    check (severity in ('info', 'warning', 'critical')),
+  constraint platform_announcements_time_range_check
+    check (ends_at is null or ends_at > starts_at)
+);
+
+create index if not exists platform_announcements_active_idx
+  on platform_announcements(is_active, starts_at desc);
+
 insert into organisations (
   slug,
   name,

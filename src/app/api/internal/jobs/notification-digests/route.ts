@@ -1,36 +1,44 @@
-import { createHash, timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
 import { NotificationDigestService } from "@/domains/notifications/notification-digest-service";
+import { authenticateInternalJob } from "@/lib/security/internal-job-auth";
+import { consumeRateLimit } from "@/lib/security/rate-limit";
 
 const notificationDigestService = new NotificationDigestService();
+const jobRateLimitWindowMilliseconds = 60_000;
+const jobRequestsPerMinute = 10;
 
 export async function POST(request: Request) {
-  const configuredSecret = process.env.NOTIFICATION_JOB_SECRET?.trim();
+  const rateLimit = await consumeRateLimit({
+    key: "internal-api:notification-digests",
+    maxAttempts: jobRequestsPerMinute,
+    windowMilliseconds: jobRateLimitWindowMilliseconds,
+  });
 
-  if (!configuredSecret) {
-    return NextResponse.json(
-      { error: "Notification digest job is not configured." },
-      { status: 503 },
+  if (!rateLimit.ok) {
+    const response = NextResponse.json(
+      { error: "Too many requests." },
+      { status: 429 },
     );
+    response.headers.set("Retry-After", String(rateLimit.retryAfterSeconds));
+    return response;
   }
 
-  const suppliedSecret = getBearerToken(request.headers.get("authorization"));
+  const authentication = authenticateInternalJob(
+    request,
+    "NOTIFICATION_JOB_SECRET",
+  );
 
-  if (!suppliedSecret || !secretsMatch(suppliedSecret, configuredSecret)) {
-    return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
+  if (!authentication.ok) {
+    const response = NextResponse.json(
+      { error: authentication.error },
+      { status: authentication.status },
+    );
+    if (authentication.status === 401) {
+      response.headers.set("WWW-Authenticate", "Bearer");
+    }
+    return response;
   }
 
-  const summary = await notificationDigestService.sendDailyDigests();
+  const summary = await notificationDigestService.sendDueDigests();
   return NextResponse.json(summary);
-}
-
-function getBearerToken(value: string | null) {
-  const prefix = "Bearer ";
-  return value?.startsWith(prefix) ? value.slice(prefix.length).trim() : "";
-}
-
-function secretsMatch(left: string, right: string) {
-  const leftHash = createHash("sha256").update(left).digest();
-  const rightHash = createHash("sha256").update(right).digest();
-  return timingSafeEqual(leftHash, rightHash);
 }

@@ -500,7 +500,7 @@ Developer/platform-controlled settings include:
 - Maintenance banner message.
 - Cryptographic secrets and email provider credentials.
 
-The global maintenance banner is platform-managed and visible on login and authenticated screens when `MAINTENANCE_MESSAGE` is non-empty. Organisation admins do not edit it.
+The global maintenance banner is developer-managed through the platform database and visible on login and authenticated screens while an active `platform_announcements` record is within its scheduled time range. Organisation admins do not edit it, and changing it does not require an application restart.
 
 ## Accessibility and usability baseline
 

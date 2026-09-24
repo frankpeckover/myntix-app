@@ -48,7 +48,7 @@ export class ShopPurchaseService {
           shop_purchases.decision_note,
           shop_purchases.is_voided,
           shop_purchases.status,
-          trim(users.first_name || ' ' || users.last_name) as student_name,
+          trim(coalesce(nullif(users.preferred_name, ''), users.first_name) || ' ' || users.last_name) as student_name,
           users.username as student_username
         from shop_purchases
         join shop_items on shop_items.id = shop_purchases.shop_item_id
@@ -99,6 +99,7 @@ export class ShopPurchaseService {
   async requestPurchase(
     currentUser: SessionUser,
     itemId: string,
+    requestId: string,
   ): Promise<ActionResult> {
     if (!canRequestShopItems(currentUser)) {
       return {
@@ -107,10 +108,33 @@ export class ShopPurchaseService {
       };
     }
 
+    if (!isUuid(requestId)) {
+      return { ok: false, message: "Invalid reward request." };
+    }
+
     const client = await db.connect();
 
     try {
       await client.query("begin");
+
+      await client.query(
+        "select pg_advisory_xact_lock(hashtextextended($1, 0))",
+        [requestId],
+      );
+      const existingRequest = await client.query(
+        `
+          select id
+          from shop_purchases
+          where purchased_by_user_id = $1
+            and request_id = $2
+        `,
+        [currentUser.id, requestId],
+      );
+
+      if (existingRequest.rowCount === 1) {
+        await client.query("commit");
+        return { ok: true };
+      }
 
       const item = await getShopItemForUpdate(client, itemId);
 
@@ -158,6 +182,7 @@ export class ShopPurchaseService {
         currentUser.id,
         item.price,
         !item.is_quantity_unlimited,
+        requestId,
       );
 
       const ledgerEntryId = await ledgerService.createEntry(client, {
@@ -188,11 +213,7 @@ export class ShopPurchaseService {
         entityType: "shop_purchase",
       });
 
-      await notificationService.notifyRewardRequested(client, {
-        itemName: item.name,
-        purchaseId,
-        studentName: currentUser.displayName || currentUser.username,
-      });
+      await notificationService.notifyRewardRequested(client);
 
       await client.query("commit");
       return { ok: true };
@@ -216,7 +237,7 @@ export class ShopPurchaseService {
     if (!canManagePurchases(currentUser)) {
       return {
         ok: false,
-        message: "Only teachers can approve reward requests.",
+        message: "Only staff can approve reward requests.",
       };
     }
 
@@ -231,7 +252,7 @@ export class ShopPurchaseService {
     if (!canManagePurchases(currentUser)) {
       return {
         ok: false,
-        message: "Only teachers can deny reward requests.",
+        message: "Only staff can deny reward requests.",
       };
     }
 
@@ -286,6 +307,7 @@ async function createPendingPurchase(
   userId: string,
   price: number,
   stockReserved: boolean,
+  requestId: string,
 ) {
   const purchaseResult = await client.query<{ id: string }>(
     `
@@ -294,15 +316,22 @@ async function createPendingPurchase(
         purchased_by_user_id,
         price_at_purchase,
         status,
-        stock_reserved
+        stock_reserved,
+        request_id
       )
-      values ($1, $2, $3, 'pending', $4)
+      values ($1, $2, $3, 'pending', $4, $5)
       returning id
     `,
-    [itemId, userId, price, stockReserved],
+    [itemId, userId, price, stockReserved, requestId],
   );
 
   return purchaseResult.rows[0].id;
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value,
+  );
 }
 
 async function reserveStock(client: PoolClient, itemId: string) {

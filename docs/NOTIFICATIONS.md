@@ -21,25 +21,30 @@ Set these production environment variables:
 ```txt
 EMAIL_FROM=Myntix <notifications@myntix.com>
 RESEND_API_KEY=
-NOTIFICATION_JOB_SECRET=
+INTERNAL_JOB_SECRET=
 ```
 
-Use a long random value for `NOTIFICATION_JOB_SECRET`. The digest endpoint is:
+Verify the sending domain in Resend and set `EMAIL_FROM` to an address on that
+domain. The same Resend transport sends branded password-reset messages and
+staff notification digests. Password-reset links use the organisation hostname
+from the request, so each tenant returns to its own sign-in domain.
+
+Use a long random value for `INTERNAL_JOB_SECRET`. The digest endpoint is:
 
 ```txt
 POST /api/internal/jobs/notification-digests
-Authorization: Bearer {NOTIFICATION_JOB_SECRET}
+Authorization: Bearer {INTERNAL_JOB_SECRET}
 ```
 
-Invoke it once each morning with cron, a systemd timer, or another trusted scheduler. It processes all active platform tenants. Delivery records make same-day retries safe, and email is only sent when reward requests are awaiting approval.
+Invoke it once each morning with cron, a systemd timer, or another trusted scheduler. It processes all active platform tenants. Delivery records make retries safe, and each opted-in teacher receives at most one email every seven days while reward requests are awaiting approval.
 
 Example manual test:
 
 ```bash
 curl -X POST https://school.example.com/api/internal/jobs/notification-digests \
-  -H "Authorization: Bearer $NOTIFICATION_JOB_SECRET"
+  -H "Authorization: Bearer $INTERNAL_JOB_SECRET"
 ```
 
-Students receive in-app reward updates only. Staff can disable their daily email digest from their Settings page.
+Students receive in-app reward updates only. Staff can choose `Off`, `In-app`, or `In-app + weekly digest` from Preferences. Reward request alerts are grouped into one work-queue notification and default to off.
 
 Teachers also receive an in-app reminder after each timetabled class ends to record any promised credit changes. These reminders are created per class and day, expire after 24 hours, and are never included in email digests.

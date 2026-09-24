@@ -117,6 +117,13 @@ export class SchoolService {
       };
     }
 
+    if (timezone && !isValidIanaTimezone(timezone)) {
+      return {
+        ok: false,
+        message: "Enter a valid IANA timezone, such as Australia/Brisbane.",
+      };
+    }
+
     if (
       balanceCap !== null &&
       (!Number.isInteger(balanceCap) || balanceCap <= 0)
@@ -261,5 +268,14 @@ export class SchoolService {
       website: row.website,
       timezone: row.timezone,
     };
+  }
+}
+
+function isValidIanaTimezone(timezone: string) {
+  try {
+    new Intl.DateTimeFormat("en-AU", { timeZone: timezone }).format();
+    return true;
+  } catch {
+    return false;
   }
 }

@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
 type GlobalMaintenanceBannerProps = {
   message: string;
 };
@@ -5,7 +9,38 @@ type GlobalMaintenanceBannerProps = {
 export function GlobalMaintenanceBanner({
   message,
 }: GlobalMaintenanceBannerProps) {
-  const maintenanceMessage = message.trim();
+  const [maintenanceMessage, setMaintenanceMessage] = useState(message.trim());
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function refreshAnnouncement() {
+      try {
+        const response = await fetch("/api/platform-announcement", {
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const payload = (await response.json()) as { message?: unknown };
+
+        if (isMounted && typeof payload.message === "string") {
+          setMaintenanceMessage(payload.message.trim());
+        }
+      } catch {
+        // Keep the last known notice when the refresh cannot reach the server.
+      }
+    }
+
+    const interval = window.setInterval(refreshAnnouncement, 60_000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(interval);
+    };
+  }, []);
 
   if (!maintenanceMessage) {
     return null;

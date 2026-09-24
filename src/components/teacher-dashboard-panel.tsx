@@ -52,6 +52,7 @@ type TeacherDashboardPanelProps = {
   } | null;
   onGroupNavigationConsumed?: () => void;
   schoolName: string;
+  showAllStudentsByDefault?: boolean;
 };
 
 type AdjustmentTargetSelection =
@@ -84,6 +85,7 @@ export function TeacherDashboardPanel({
   currencyName,
   groupNavigation,
   onGroupNavigationConsumed,
+  showAllStudentsByDefault = false,
 }: TeacherDashboardPanelProps) {
   const [currentClass, setCurrentClass] = useState<CurrentClass | null>(null);
   const [studentBalances, setStudentBalances] = useState<StudentBalanceItem[]>(
@@ -94,7 +96,9 @@ export function TeacherDashboardPanel({
   const [selectedGroupView, setSelectedGroupView] =
     useState<SelectedGroupView | null>(null);
   const [studentDisplayScope, setStudentDisplayScope] =
-    useState<StudentDisplayScope>("current-class");
+    useState<StudentDisplayScope>(
+      showAllStudentsByDefault ? "all-students" : "current-class",
+    );
   const [isLoading, setIsLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -282,6 +286,11 @@ export function TeacherDashboardPanel({
       return;
     }
 
+    if (!navigator.onLine) {
+      setError("You are offline. Reconnect before creating a transaction.");
+      return;
+    }
+
     const preset =
       direction === "add"
         ? personalPresets.quickAdd
@@ -295,6 +304,7 @@ export function TeacherDashboardPanel({
     try {
       const result = await createLedgerAdjustment({
         amount: direction === "add" ? preset.amount : -preset.amount,
+        requestId: crypto.randomUUID(),
         reason: preset.reason,
         studentUserId: student.id,
       });

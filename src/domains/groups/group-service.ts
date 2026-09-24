@@ -53,6 +53,7 @@ type GroupRow = {
 type GroupMemberRow = {
   id: string;
   first_name: string;
+  preferred_name: string;
   last_name: string;
   username: string;
   joined_at: Date;
@@ -98,6 +99,7 @@ export class GroupService {
         select
           users.id,
           users.first_name,
+          users.preferred_name,
           users.last_name,
           users.username,
           student_group_memberships.created_at as joined_at
@@ -113,7 +115,11 @@ export class GroupService {
       id: member.id,
       firstName: member.first_name,
       lastName: member.last_name,
-      displayName: formatDisplayName(member.first_name, member.last_name),
+      displayName: formatDisplayName(
+        member.first_name,
+        member.last_name,
+        member.preferred_name,
+      ),
       username: member.username,
       joinedAt: member.joined_at.toISOString(),
     }));
@@ -429,8 +435,8 @@ function mapGroupRow(row: GroupRow): GroupListItem {
   };
 }
 
-function formatDisplayName(firstName: string, lastName: string) {
-  return `${firstName} ${lastName}`.trim();
+function formatDisplayName(firstName: string, lastName: string, preferredName = "") {
+  return `${preferredName || firstName} ${lastName}`.trim();
 }
 
 function getGroupErrorMessage(error: unknown) {

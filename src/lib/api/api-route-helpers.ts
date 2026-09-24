@@ -16,6 +16,11 @@ import {
 import { ApiClientService } from "@/domains/integrations/api-client-service";
 import { ApiAuthenticationError } from "@/domains/integrations/api-client-service";
 import { ApiFinanceError } from "@/domains/integrations/api-finance-service";
+import {
+  consumeRateLimit,
+  type RateLimitResult,
+} from "@/lib/security/rate-limit";
+import { getServerEnvNumber } from "@/lib/server-env";
 
 export type ApiJsonBody = Record<string, unknown>;
 
@@ -35,6 +40,19 @@ type ApiWriteHandler<T> = (
 
 const apiClientService = new ApiClientService();
 const apiIdempotencyService = new ApiIdempotencyService();
+const rateLimitWindowMilliseconds = 60_000;
+const globalApiRequestsPerMinute = getServerEnvNumber(
+  "API_GLOBAL_RATE_LIMIT_PER_MINUTE",
+  600,
+);
+const apiReadRequestsPerMinute = getServerEnvNumber(
+  "API_READ_RATE_LIMIT_PER_MINUTE",
+  300,
+);
+const apiWriteRequestsPerMinute = getServerEnvNumber(
+  "API_WRITE_RATE_LIMIT_PER_MINUTE",
+  60,
+);
 
 export function apiSuccessResult<T>(
   data: T,
@@ -72,10 +90,24 @@ export async function handleApiRead<T>(
   handler: ApiReadHandler<T>,
 ) {
   const requestContext = createRequestContext();
+  const globalLimitResponse = await enforceGlobalApiRateLimit(requestContext);
+
+  if (globalLimitResponse) {
+    return finishRequest(request, requestContext, globalLimitResponse);
+  }
 
   try {
     const apiClient = await authenticateApiClient(request, requiredScope);
     requestContext.apiClient = apiClient;
+    const clientLimitResponse = await enforceClientApiRateLimit(
+      requestContext,
+      apiClient,
+      "read",
+    );
+
+    if (clientLimitResponse) {
+      return finishRequest(request, requestContext, clientLimitResponse);
+    }
 
     const result = await handler(apiClient);
 
@@ -105,10 +137,24 @@ export async function handleApiWrite<T>(
   handler: ApiWriteHandler<T>,
 ) {
   const requestContext = createRequestContext();
+  const globalLimitResponse = await enforceGlobalApiRateLimit(requestContext);
+
+  if (globalLimitResponse) {
+    return finishRequest(request, requestContext, globalLimitResponse);
+  }
 
   try {
     const apiClient = await authenticateApiClient(request, requiredScope);
     requestContext.apiClient = apiClient;
+    const clientLimitResponse = await enforceClientApiRateLimit(
+      requestContext,
+      apiClient,
+      "write",
+    );
+
+    if (clientLimitResponse) {
+      return finishRequest(request, requestContext, clientLimitResponse);
+    }
 
     const bodyText = await request.text();
     const bodyResult = parseJsonBody(bodyText);
@@ -257,6 +303,7 @@ function parseJsonBody(
 type RequestContext = {
   apiClient: ApiClient | null;
   idempotencyKey: string | null;
+  rateLimit: RateLimitResult | null;
   requestId: string;
   startedAt: number;
 };
@@ -265,9 +312,48 @@ function createRequestContext(): RequestContext {
   return {
     apiClient: null,
     idempotencyKey: null,
+    rateLimit: null,
     requestId: randomUUID(),
     startedAt: Date.now(),
   };
+}
+
+async function enforceGlobalApiRateLimit(context: RequestContext) {
+  const result = await consumeRateLimit({
+    key: "external-api:global",
+    maxAttempts: globalApiRequestsPerMinute,
+    windowMilliseconds: rateLimitWindowMilliseconds,
+  });
+  context.rateLimit = result;
+
+  return result.ok ? null : createRateLimitResponse();
+}
+
+async function enforceClientApiRateLimit(
+  context: RequestContext,
+  apiClient: ApiClient,
+  requestType: "read" | "write",
+) {
+  const result = await consumeRateLimit({
+    includeIpAddress: false,
+    key: `external-api:${requestType}:${apiClient.id}`,
+    maxAttempts:
+      requestType === "read"
+        ? apiReadRequestsPerMinute
+        : apiWriteRequestsPerMinute,
+    windowMilliseconds: rateLimitWindowMilliseconds,
+  });
+  context.rateLimit = result;
+
+  return result.ok ? null : createRateLimitResponse();
+}
+
+function createRateLimitResponse() {
+  return apiError(
+    "rate_limit_exceeded",
+    "Too many API requests. Retry after the indicated delay.",
+    429,
+  );
 }
 
 async function finishRequest(
@@ -276,6 +362,7 @@ async function finishRequest(
   response: NextResponse,
 ) {
   response.headers.set("X-Request-Id", context.requestId);
+  applyRateLimitHeaders(response, context.rateLimit);
 
   try {
     await db.query(
@@ -301,4 +388,24 @@ async function finishRequest(
   }
 
   return response;
+}
+
+function applyRateLimitHeaders(
+  response: NextResponse,
+  rateLimit: RateLimitResult | null,
+) {
+  if (!rateLimit) {
+    return;
+  }
+
+  response.headers.set("X-RateLimit-Limit", String(rateLimit.limit));
+  response.headers.set("X-RateLimit-Remaining", String(rateLimit.remaining));
+  response.headers.set(
+    "X-RateLimit-Reset",
+    String(Math.ceil(rateLimit.resetAt / 1000)),
+  );
+
+  if (!rateLimit.ok) {
+    response.headers.set("Retry-After", String(rateLimit.retryAfterSeconds));
+  }
 }

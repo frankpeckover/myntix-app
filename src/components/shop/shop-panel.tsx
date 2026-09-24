@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
   getStudentBalance,
@@ -88,6 +88,10 @@ export function ShopPanel({ currencyName, currentUser }: ShopPanelProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const purchasePendingRef = useRef(false);
+  const purchaseRequestRef = useRef<{ itemId: string; requestId: string } | null>(
+    null,
+  );
 
   async function refreshItems() {
     setIsLoading(true);
@@ -269,13 +273,41 @@ export function ShopPanel({ currencyName, currentUser }: ShopPanelProps) {
   }
 
   async function handlePurchase(itemId: string) {
-    const result = await requestShopItem(itemId);
-
-    if (!result.ok) {
-      setError(result.message);
+    if (purchasePendingRef.current) {
       return;
     }
 
+    if (!navigator.onLine) {
+      setError("You are offline. Reconnect before adding a reward to your cart.");
+      return;
+    }
+
+    purchasePendingRef.current = true;
+    const request =
+      purchaseRequestRef.current?.itemId === itemId
+        ? purchaseRequestRef.current
+        : { itemId, requestId: crypto.randomUUID() };
+    purchaseRequestRef.current = request;
+
+    let result;
+
+    try {
+      result = await requestShopItem(itemId, request.requestId);
+    } catch {
+      setError("Could not confirm the request. Reconnect and try again safely.");
+      purchasePendingRef.current = false;
+      return;
+    }
+
+    if (!result.ok) {
+      setError(result.message);
+      purchaseRequestRef.current = null;
+      purchasePendingRef.current = false;
+      return;
+    }
+
+    purchaseRequestRef.current = null;
+    purchasePendingRef.current = false;
     setMessage("Added to cart.");
     setViewingItem((currentItem) =>
       currentItem?.id === itemId

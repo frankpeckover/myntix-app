@@ -6,6 +6,7 @@ import type {
   AppNotification,
   NotificationActionTarget,
   NotificationPreferences,
+  RewardRequestNotificationMode,
 } from "@/domains/notifications/notification-types";
 
 type NotificationRow = {
@@ -82,9 +83,11 @@ export class NotificationService {
   async getPreferences(
     currentUser: SessionUser,
   ): Promise<NotificationPreferences> {
-    const result = await db.query<{ email_digest_enabled: boolean }>(
+    const result = await db.query<{
+      reward_request_notification_mode: RewardRequestNotificationMode;
+    }>(
       `
-        select email_digest_enabled
+        select reward_request_notification_mode
         from notification_preferences
         where user_id = $1
       `,
@@ -92,7 +95,8 @@ export class NotificationService {
     );
 
     return {
-      emailDigestEnabled: result.rows[0]?.email_digest_enabled ?? true,
+      rewardRequestMode:
+        result.rows[0]?.reward_request_notification_mode ?? "off",
     };
   }
 
@@ -100,54 +104,76 @@ export class NotificationService {
     currentUser: SessionUser,
     preferences: NotificationPreferences,
   ) {
+    const rewardRequestMode = normalizeRewardRequestMode(
+      preferences.rewardRequestMode,
+    );
+
     await db.query(
       `
-        insert into notification_preferences (user_id, email_digest_enabled)
-        values ($1, $2)
+        insert into notification_preferences (
+          user_id, email_digest_enabled, reward_request_notification_mode
+        )
+        values ($1, $2, $3)
         on conflict (user_id) do update
         set email_digest_enabled = excluded.email_digest_enabled,
+            reward_request_notification_mode = excluded.reward_request_notification_mode,
             updated_at = now()
       `,
-      [currentUser.id, preferences.emailDigestEnabled],
+      [currentUser.id, rewardRequestMode === "in_app_digest", rewardRequestMode],
     );
+
+    if (rewardRequestMode === "off") {
+      await db.query(
+        `
+          delete from notifications
+          where recipient_user_id = $1
+            and type in ('reward.requested', 'reward.work_queue')
+        `,
+        [currentUser.id],
+      );
+    } else {
+      await this.syncRewardWorkReminder(currentUser.id);
+    }
   }
 
-  async notifyRewardRequested(
-    client: PoolClient,
-    input: {
-      itemName: string;
-      purchaseId: string;
-      studentName: string;
-    },
-  ) {
+  async notifyRewardRequested(client: PoolClient) {
     await client.query(
       `
+        with pending_rewards as (
+          select count(*)::int as pending_count
+          from shop_purchases
+          where status = 'pending'
+            and is_voided = false
+            and requested_by_api_client_id is null
+        )
         insert into notifications (
-          recipient_user_id, type, title, message, action_target,
-          entity_type, entity_id, dedupe_key
+          recipient_user_id, type, title, message, action_target, dedupe_key
         )
         select users.id,
-               'reward.requested',
-               'Reward request waiting',
-               $1,
+               'reward.work_queue',
+               'Rewards need attention',
+               pending_rewards.pending_count || ' reward request' ||
+                 case when pending_rewards.pending_count = 1 then '' else 's' end ||
+                 ' awaiting approval.',
                'Rewards',
-               'shop_purchase',
-               $2,
-               $3
+               'reward-work-queue'
         from users
         join roles on roles.id = users.role_id
+        join notification_preferences on notification_preferences.user_id = users.id
+        cross join pending_rewards
         where users.is_active = true
           and roles.is_active = true
           and roles.role_key = 'teacher'
+          and notification_preferences.reward_request_notification_mode in (
+            'in_app', 'in_app_digest'
+          )
         on conflict (recipient_user_id, dedupe_key)
           where dedupe_key is not null
-        do nothing
+        do update
+        set message = excluded.message,
+            read_at = null,
+            created_at = now()
       `,
-      [
-        `${input.studentName} requested ${input.itemName}.`,
-        input.purchaseId,
-        `reward-request:${input.purchaseId}`,
-      ],
     );
   }
 
@@ -177,6 +203,31 @@ export class NotificationService {
   }
 
   private async syncRewardWorkReminder(userId: string) {
+    const preferenceResult = await db.query<{
+      reward_request_notification_mode: RewardRequestNotificationMode;
+    }>(
+      `
+        select reward_request_notification_mode
+        from notification_preferences
+        where user_id = $1
+      `,
+      [userId],
+    );
+    const mode =
+      preferenceResult.rows[0]?.reward_request_notification_mode ?? "off";
+
+    if (mode === "off") {
+      await db.query(
+        `
+          delete from notifications
+          where recipient_user_id = $1
+            and type in ('reward.requested', 'reward.work_queue')
+        `,
+        [userId],
+      );
+      return;
+    }
+
     const result = await db.query<RewardWorkCounts>(`
       select
         count(*) filter (where status = 'pending')::int as pending_count
@@ -319,4 +370,10 @@ function mapNotificationRow(row: NotificationRow): AppNotification {
     title: row.title,
     type: row.type,
   };
+}
+
+function normalizeRewardRequestMode(
+  value: RewardRequestNotificationMode,
+): RewardRequestNotificationMode {
+  return value === "in_app" || value === "in_app_digest" ? value : "off";
 }

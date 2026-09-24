@@ -1,5 +1,32 @@
 # Myntix API v1
 
+## Public organisation discovery
+
+Landing pages can retrieve the active organisation directory from the fixed
+platform API hostname without knowing an organisation hostname or using an API
+key:
+
+```http
+GET https://api.myntix.com/api/public/organisations
+```
+
+```json
+{
+  "organisations": [
+    {
+      "name": "Example School",
+      "slug": "example",
+      "loginUrl": "https://example.myntix.com/"
+    }
+  ]
+}
+```
+
+The endpoint supports public cross-origin GET requests and returns only the
+organisation name, slug, and sign-in URL. Inactive organisations are excluded.
+`api.myntix.com` must route to the same Myntix app service; this route reads the
+platform database directly and does not perform tenant resolution.
+
 The API is tenant-scoped by hostname at:
 
 ```text
@@ -15,6 +42,18 @@ by scopes. Invalid credentials return `401`; insufficient scope returns `403`.
 Every `POST` also requires a unique `Idempotency-Key`. Repeating the same
 request returns its original response. Reusing a key for different input returns
 `409 idempotency_conflict`.
+
+## Rate limits
+
+The application applies a broad per-IP ceiling plus separate per-client limits
+for reads and writes. Defaults are 600 total requests, 300 reads, and 60 writes
+per minute. Configure them with `API_GLOBAL_RATE_LIMIT_PER_MINUTE`,
+`API_READ_RATE_LIMIT_PER_MINUTE`, and `API_WRITE_RATE_LIMIT_PER_MINUTE`.
+
+Responses include `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and
+`X-RateLimit-Reset`. A limited request returns `429 rate_limit_exceeded` with a
+`Retry-After` header. These application limits complement, rather than replace,
+edge throttling at Cloudflare or the reverse proxy.
 
 ## Routes
 

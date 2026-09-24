@@ -32,13 +32,15 @@ type ParseResult =
       message: string;
     };
 
-const csvHeaders = "username,first_name,last_name,email,role,card_number";
+const csvHeaders =
+  "username,first_name,preferred_name,last_name,email,role,card_number";
 const csvHeaderColumns = csvHeaders.split(",");
 const csvColumns = [
   { name: "username" },
   { name: "first_name" },
+  { name: "preferred_name", optional: true },
   { name: "last_name" },
-  { name: "email" },
+  { name: "email", optional: true },
   { name: "role" },
   { name: "card_number", optional: true },
 ];
@@ -46,6 +48,7 @@ const userTemplateRows = [
   [
     "student.0001",
     "Avery",
+    "Avi",
     "Nguyen",
     "avery.nguyen@example.edu",
     "student",
@@ -54,6 +57,7 @@ const userTemplateRows = [
   [
     "teacher.demo",
     "Jordan",
+    "",
     "Taylor",
     "jordan.taylor@example.edu",
     "teacher",
@@ -148,7 +152,7 @@ export function UserImportModal({
 
   return (
     <ImportModalLayout
-      description="Existing usernames or emails are skipped and reported below."
+      description="Existing usernames or nonblank emails are skipped and reported below."
       footer={
         <>
           <button
@@ -173,7 +177,7 @@ export function UserImportModal({
     >
         <CsvColumnGuide
           columns={csvColumns}
-          note="Role must be admin, teacher, or student. Optional columns can be left blank but the header should stay in the file."
+          note="Role must be admin, teacher, or student. Preferred name, email and card number are optional; their headers should stay in the file."
         />
 
         <CsvFileInput
@@ -365,6 +369,7 @@ function parseUsersCsv(text: string): ParseResult {
       cardNumber: values.cardnumber?.trim() ?? "",
       email: values.email?.trim() ?? "",
       firstName: values.firstname?.trim() ?? "",
+      preferredName: values.preferredname?.trim() ?? "",
       lastName: values.lastname?.trim() ?? "",
       role,
       username: values.username?.trim() ?? "",
@@ -373,8 +378,7 @@ function parseUsersCsv(text: string): ParseResult {
     if (
       !user.username ||
       !user.firstName ||
-      !user.lastName ||
-      !user.email
+      !user.lastName
     ) {
       return {
         ok: false,

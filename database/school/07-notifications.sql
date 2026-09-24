@@ -30,9 +30,23 @@ create table if not exists notifications (
 create table if not exists notification_preferences (
   user_id uuid primary key references users(id) on delete cascade,
   email_digest_enabled boolean not null default true,
+  reward_request_notification_mode text not null default 'off',
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  constraint notification_preferences_reward_request_mode_check check (
+    reward_request_notification_mode in ('off', 'in_app', 'in_app_digest')
+  )
 );
+
+alter table notification_preferences
+  add column if not exists reward_request_notification_mode text not null default 'off';
+
+alter table notification_preferences
+  drop constraint if exists notification_preferences_reward_request_mode_check;
+alter table notification_preferences
+  add constraint notification_preferences_reward_request_mode_check check (
+    reward_request_notification_mode in ('off', 'in_app', 'in_app_digest')
+  );
 
 create table if not exists notification_digest_deliveries (
   id uuid primary key default gen_random_uuid(),

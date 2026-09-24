@@ -160,7 +160,7 @@ export class AdminDashboardService {
           ledger_entries.created_at,
           ledger_entries.description,
           ledger_entries.status as entry_status,
-          trim(users.first_name || ' ' || users.last_name) as student_name,
+          trim(coalesce(nullif(users.preferred_name, ''), users.first_name) || ' ' || users.last_name) as student_name,
           ledger_entries.entry_type as type
         from ledger_entries
         join accounts on accounts.id = ledger_entries.account_id
@@ -174,7 +174,7 @@ export class AdminDashboardService {
           ledger_entries.created_at,
           ledger_entries.description,
           ledger_entries.status as entry_status,
-          trim(users.first_name || ' ' || users.last_name) as student_name,
+          trim(coalesce(nullif(users.preferred_name, ''), users.first_name) || ' ' || users.last_name) as student_name,
           ledger_entries.entry_type as type
         from ledger_entries
         join accounts on accounts.id = ledger_entries.account_id
@@ -198,7 +198,7 @@ export class AdminDashboardService {
             audit_log.entity_id,
             audit_log.details,
             audit_log.created_at,
-            trim(users.first_name || ' ' || users.last_name) as actor_name,
+            trim(coalesce(nullif(users.preferred_name, ''), users.first_name) || ' ' || users.last_name) as actor_name,
             users.username as actor_username
           from audit_log
           left join users on users.id = audit_log.actor_user_id
@@ -238,7 +238,7 @@ export class AdminDashboardService {
     const result = await db.query<TeacherIssuerRow>(
       `
         select
-          trim(created_by.first_name || ' ' || created_by.last_name) as teacher_name,
+          trim(coalesce(nullif(created_by.preferred_name, ''), created_by.first_name) || ' ' || created_by.last_name) as teacher_name,
           created_by.username,
           count(*) as entry_count,
           sum(${isCredit ? "ledger_entries.amount" : "abs(ledger_entries.amount)"}) as amount

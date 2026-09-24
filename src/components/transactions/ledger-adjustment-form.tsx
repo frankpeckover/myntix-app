@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   createGroupLedgerAdjustment,
   createLedgerAdjustments,
@@ -81,6 +81,8 @@ export function LedgerAdjustmentForm({
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const submissionPendingRef = useRef(false);
+  const requestIdRef = useRef("");
 
   const selectedGroup =
     selectedGroupId && preferredGroup?.id === selectedGroupId
@@ -255,29 +257,53 @@ export function LedgerAdjustmentForm({
   }, [studentQuery, onError]);
 
   async function handleSubmit() {
+    if (submissionPendingRef.current) {
+      return;
+    }
+
+    if (!navigator.onLine) {
+      onError("You are offline. Reconnect before creating a transaction.");
+      return;
+    }
+
     if (!canSubmit) {
       onError("Select a recipient, amount, and reason.");
       return;
     }
 
+    submissionPendingRef.current = true;
     setIsSaving(true);
+    requestIdRef.current ||= crypto.randomUUID();
 
     const signedAmount = direction === "add" ? selectedAmount : -selectedAmount;
-    const result =
-      target === "student"
-        ? await createLedgerAdjustments({
-            amount: signedAmount,
-            reason,
-            studentUserIds: selectedStudents.map((student) => student.id),
-          })
-        : await createGroupLedgerAdjustment({
-            amount: signedAmount,
-            groupId: selectedGroupId,
-            reason,
-          });
+    let result;
+
+    try {
+      result =
+        target === "student"
+          ? await createLedgerAdjustments({
+              amount: signedAmount,
+              requestId: requestIdRef.current,
+              reason,
+              studentUserIds: selectedStudents.map((student) => student.id),
+            })
+          : await createGroupLedgerAdjustment({
+              amount: signedAmount,
+              groupId: selectedGroupId,
+              requestId: requestIdRef.current,
+              reason,
+            });
+    } catch {
+      onError("Could not confirm the transaction. Reconnect and try again safely.");
+      submissionPendingRef.current = false;
+      setIsSaving(false);
+      return;
+    }
 
     if (!result.ok) {
       onError(result.message);
+      requestIdRef.current = "";
+      submissionPendingRef.current = false;
       setIsSaving(false);
       return;
     }
@@ -299,6 +325,8 @@ export function LedgerAdjustmentForm({
     setSelectedGroupId("");
     setStudentQuery("");
     setStep("recipient");
+    requestIdRef.current = "";
+    submissionPendingRef.current = false;
     setIsSaving(false);
   }
 

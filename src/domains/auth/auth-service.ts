@@ -10,6 +10,7 @@ type UserRow = {
   id: string;
   username: string;
   first_name: string;
+  preferred_name: string;
   last_name: string;
   profile_image_url: string;
   role: Role;
@@ -47,6 +48,7 @@ export class AuthService {
             users.email,
             users.username,
             users.first_name,
+            users.preferred_name,
             users.last_name,
             users.profile_image_url,
             roles.role_key as role,
@@ -90,7 +92,11 @@ export class AuthService {
           firstName: user.first_name,
           lastName: user.last_name,
           username: user.username,
-          displayName: formatDisplayName(user.first_name, user.last_name),
+          displayName: formatDisplayName(
+            user.first_name,
+            user.last_name,
+            user.preferred_name,
+          ),
           profileImageUrl: user.profile_image_url,
           role: user.role,
         },
@@ -128,6 +134,6 @@ async function logAuthEvent(input: {
   }
 }
 
-function formatDisplayName(firstName: string, lastName: string) {
-  return `${firstName} ${lastName}`.trim();
+function formatDisplayName(firstName: string, lastName: string, preferredName = "") {
+  return `${preferredName || firstName} ${lastName}`.trim();
 }

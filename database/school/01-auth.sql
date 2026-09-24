@@ -43,8 +43,9 @@ create table if not exists users (
   role_id uuid not null references roles(id) on delete restrict,
   username text not null unique,
   first_name text not null,
+  preferred_name text not null default '',
   last_name text not null,
-  email text not null unique,
+  email text not null default '',
   profile_image_url text not null default '',
   card_number text not null default '',
   password_hash text not null,
@@ -52,6 +53,19 @@ create table if not exists users (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table users
+  add column if not exists preferred_name text not null default '';
+
+alter table users
+  alter column email set default '';
+
+alter table users
+  drop constraint if exists users_email_key;
+
+create unique index if not exists users_email_unique_idx
+  on users (lower(email))
+  where trim(email) <> '';
 
 create table if not exists password_reset_tokens (
   id uuid primary key default gen_random_uuid(),
@@ -71,6 +85,14 @@ create table if not exists user_sessions (
   last_seen_at timestamptz not null default now()
 );
 
+create table if not exists admin_setup_checklist_preferences (
+  user_id uuid primary key references users(id) on delete cascade,
+  completed_step_keys text[] not null default '{}',
+  dismissed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 alter table audit_log
   drop constraint if exists audit_log_actor_user_id_fkey;
 
@@ -79,6 +101,8 @@ alter table audit_log
   foreign key (actor_user_id) references users(id) on delete set null;
 
 create index if not exists users_role_id_idx on users(role_id);
+create index if not exists users_active_role_name_idx
+  on users(role_id, is_active, last_name, first_name);
 create index if not exists roles_active_idx on roles(is_active);
 create index if not exists permissions_category_idx on permissions(category);
 create index if not exists role_permissions_permission_idx on role_permissions(permission_key);

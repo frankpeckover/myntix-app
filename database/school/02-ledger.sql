@@ -82,6 +82,16 @@ create table if not exists ledger_entry_receipts (
   primary key (ledger_entry_id, user_id)
 );
 
+create table if not exists ledger_adjustment_requests (
+  id uuid primary key,
+  actor_user_id uuid not null references users(id) on delete restrict,
+  result_message text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists ledger_adjustment_requests_created_at_idx
+  on ledger_adjustment_requests(created_at);
+
 create table if not exists student_goals (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null unique references users(id) on delete cascade,

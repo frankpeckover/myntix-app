@@ -20,6 +20,17 @@ export async function assertSameOriginRequest() {
   }
 }
 
+export async function getRequestOrigin() {
+  const requestHeaders = await headers();
+  const origin = requestHeaders.get("origin");
+
+  if (origin && getOriginHost(origin)) {
+    return new URL(origin).origin;
+  }
+
+  return process.env.APP_BASE_URL?.trim() || "http://localhost:3000";
+}
+
 function getAllowedHosts(requestHeaders: Headers) {
   const allowedHosts = new Set<string>();
   const host = requestHeaders.get("host");

@@ -47,12 +47,18 @@ function NameFields({
   onChange: UserFormFieldChange;
 }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
+    <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
       <TextField
         id="firstName"
         label="First Name"
         onChange={(value) => onChange("firstName", value)}
         value={form.firstName}
+      />
+      <TextField
+        id="preferredName"
+        label="Preferred Name (optional)"
+        onChange={(value) => onChange("preferredName", value)}
+        value={form.preferredName}
       />
       <TextField
         id="lastName"
@@ -107,7 +113,7 @@ function AccountFields({
 
       <TextField
         id="email"
-        label="Email"
+        label="Email (optional)"
         onChange={(value) => onChange("email", value)}
         type="email"
         value={form.email}
@@ -120,7 +126,7 @@ function AccountFields({
       />
       <ProfileImageUploadField
         currentImageUrl={form.profileImageUrl}
-        displayName={`${form.firstName} ${form.lastName}`.trim() || form.username}
+        displayName={`${form.preferredName || form.firstName} ${form.lastName}`.trim() || form.username}
         fileName={imageFileName}
         onChange={onProfileImageChange}
       />

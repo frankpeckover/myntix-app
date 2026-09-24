@@ -16,7 +16,7 @@ import {
 } from "@/components/app-nav";
 import { ChangePasswordModal } from "@/components/change-password-modal";
 import { ShopPanel } from "@/components/shop/shop-panel";
-import { StaffSettingsPanel } from "@/components/staff-settings-panel";
+import { PreferencesPanel } from "@/components/preferences-panel";
 import { StudentDashboardPanel } from "@/components/student-dashboard-panel";
 import { TeacherDashboardPanel } from "@/components/teacher-dashboard-panel";
 import { TeacherTimetablePanel } from "@/components/teacher-timetable-panel";
@@ -26,6 +26,7 @@ import { AppBrand } from "@/components/ui/app-brand";
 import { AppFooter } from "@/components/ui/app-footer";
 import { GlobalMaintenanceBanner } from "@/components/ui/global-maintenance-banner";
 import { SchoolLogo } from "@/components/ui/school-logo";
+import { OfflineBanner } from "@/components/ui/offline-banner";
 import { getSchoolInfo } from "@/lib/actions";
 import { appConfig } from "@/lib/app-config";
 import {
@@ -133,6 +134,7 @@ export function DashboardShell({
 
   return (
     <div className={`app-shell-surface min-h-screen overflow-x-hidden bg-background text-foreground ${shellRoleClassName}`}>
+      <OfflineBanner />
       <GlobalMaintenanceBanner message={maintenanceMessage} />
       <div className="flex min-h-screen w-full min-w-0 overflow-x-hidden">
         <DesktopSideNav
@@ -146,7 +148,7 @@ export function DashboardShell({
         />
 
         <main
-          className="mx-auto flex min-w-0 flex-1 flex-col px-4 py-2 sm:px-6 lg:max-w-[calc(96rem-15rem)] lg:px-8"
+          className="mx-auto flex min-w-0 flex-1 flex-col px-4 py-2 sm:px-6 lg:max-w-[calc(96rem-17rem)] lg:px-8"
           id="main-content"
           tabIndex={-1}
         >
@@ -187,7 +189,9 @@ export function DashboardShell({
         {isAdmin(user) && activeNavItem === "Dashboard" && (
           <AdminDashboardPanel
             currencyName={schoolInfo.currencyName}
+            onNavigate={setActiveNavItem}
             schoolName={schoolName}
+            userId={user.id}
           />
         )}
 
@@ -224,6 +228,16 @@ export function DashboardShell({
             currentUser={user}
             schoolLogoUrl={schoolInfo.logoUrl}
             schoolName={schoolName}
+          />
+        )}
+
+        {isAdmin(user) && activeNavItem === "Credit Management" && (
+          <TeacherDashboardPanel
+            currencyName={schoolInfo.currencyName}
+            groupNavigation={teacherGroupNavigation}
+            onGroupNavigationConsumed={clearTeacherGroupNavigation}
+            schoolName={schoolName}
+            showAllStudentsByDefault
           />
         )}
 
@@ -268,8 +282,8 @@ export function DashboardShell({
           />
         )}
 
-        {isTeacher(user) && activeNavItem === "Settings" && (
-          <StaffSettingsPanel />
+        {activeNavItem === "Preferences" && (
+          <PreferencesPanel user={user} />
         )}
 
         {isPasswordModalOpen && (

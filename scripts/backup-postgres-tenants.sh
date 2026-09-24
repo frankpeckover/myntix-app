@@ -8,9 +8,27 @@ PLATFORM_DATABASE="${PLATFORM_DATABASE:?Set PLATFORM_DATABASE to the platform da
 SHARED_DATABASE="${SHARED_DATABASE:-}"
 BACKUP_DIR="${BACKUP_DIR:-./backups}"
 RCLONE_REMOTE="${RCLONE_REMOTE:-}"
+BACKUP_LOG_FILE="${BACKUP_LOG_FILE:-}"
 PGHOST="${PGHOST:-localhost}"
 PGPORT="${PGPORT:-5432}"
-export PGHOST PGPORT
+export PGHOST PGPORT PGUSER PGPASSWORD RCLONE_CONFIG
+
+if [[ -n "$BACKUP_LOG_FILE" ]]; then
+  mkdir -p "$(dirname "$BACKUP_LOG_FILE")"
+  exec > >(tee -a "$BACKUP_LOG_FILE") 2>&1
+fi
+
+log() {
+  printf '[%s] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"
+}
+
+log_failure() {
+  local exit_code=$?
+  log "Backup failed with exit code $exit_code at line ${BASH_LINENO[0]}."
+  exit "$exit_code"
+}
+
+trap log_failure ERR
 
 for command in psql pg_dump pg_dumpall sha256sum; do
   command -v "$command" >/dev/null 2>&1 || { echo "Missing command: $command" >&2; exit 1; }
@@ -21,6 +39,8 @@ fi
 
 run_id="$(date -u +%Y-%m-%dT%H%M%SZ)"
 run_dir="${BACKUP_DIR%/}/$run_id"
+log "Starting PostgreSQL backup $run_id."
+log "Local destination: $run_dir"
 if [[ -e "$run_dir" ]]; then
   echo "Backup directory already exists: $run_dir" >&2
   exit 1
@@ -68,7 +88,19 @@ pg_dumpall --globals-only -f "$run_dir/postgres-roles.sql"
 
 if [[ -n "$RCLONE_REMOTE" ]]; then
   # RCLONE_REMOTE should be an rclone crypt remote backed by a private R2 bucket.
-  rclone copy "$run_dir" "${RCLONE_REMOTE%/}/$run_id" --immutable
+  remote_run_dir="${RCLONE_REMOTE%/}/$run_id"
+  log "Uploading backup to $remote_run_dir"
+  rclone copy "$run_dir" "$remote_run_dir" \
+    --immutable \
+    --stats 30s \
+    --stats-one-line \
+    --log-level INFO
+  log "Verifying uploaded backup."
+  rclone check "$run_dir" "$remote_run_dir" --one-way --log-level INFO
+  log "Upload verified: $remote_run_dir"
+else
+  log "Remote upload skipped because RCLONE_REMOTE is empty."
 fi
 
-echo "Backup complete: $run_dir"
+trap - ERR
+log "Backup complete: $run_dir"

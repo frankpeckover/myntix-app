@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useId,
   useState,
   type ChangeEvent,
   type FormEvent,
@@ -10,12 +11,14 @@ import {
 import {
   exportSchoolData,
   getSchoolInfo,
+  getSetupChecklist,
   listSsoProviderSettings,
   getTransactionPresets,
   updateSchoolInfo,
   updateSsoProvider,
   updateTransactionPresets,
   uploadSchoolLogo,
+  setSetupChecklistDismissed,
 } from "@/lib/actions";
 import { appConfig } from "@/lib/app-config";
 import { defaultCurrencyName } from "@/lib/school-defaults";
@@ -26,13 +29,17 @@ import {
 } from "@/lib/transaction-presets";
 import {
   CogIcon,
+  CheckIcon,
+  ChevronDownIcon,
   FileDownIcon,
   FileUpIcon,
   KeyIcon,
+  SlidersHorizontalIcon,
   UsersIcon,
   WalletIcon,
 } from "@/components/ui/icons";
 import { ApiKeySettings } from "@/components/admin-settings/api-key-settings";
+import { TassSyncSettingsPanel } from "@/components/admin-settings/tass-sync-settings";
 import { FixedNotification } from "@/components/ui/fixed-notification";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { SchoolLogo } from "@/components/ui/school-logo";
@@ -87,6 +94,14 @@ export function AdminSettingsPanel({
   const [ssoMessage, setSsoMessage] = useState<string | null>(null);
   const [savingSsoProvider, setSavingSsoProvider] =
     useState<SsoProviderType | null>(null);
+  const [isSetupChecklistDismissed, setIsSetupChecklistDismissed] =
+    useState(false);
+  const [isRestoringSetupChecklist, setIsRestoringSetupChecklist] =
+    useState(false);
+  const [setupChecklistMessage, setSetupChecklistMessage] =
+    useState<string | null>(null);
+  const [setupChecklistError, setSetupChecklistError] =
+    useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -112,6 +127,40 @@ export function AdminSettingsPanel({
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getSetupChecklist()
+      .then((summary) => {
+        if (isMounted) setIsSetupChecklistDismissed(summary.isDismissed);
+      })
+      .catch(() => {
+        if (isMounted) {
+          setSetupChecklistError("Could not load setup checklist settings.");
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  async function restoreSetupChecklist() {
+    setIsRestoringSetupChecklist(true);
+    setSetupChecklistError(null);
+    setSetupChecklistMessage(null);
+
+    try {
+      await setSetupChecklistDismissed(false);
+      setIsSetupChecklistDismissed(false);
+      setSetupChecklistMessage("The setup checklist has been restored to the admin dashboard.");
+    } catch {
+      setSetupChecklistError("Could not restore the setup checklist.");
+    } finally {
+      setIsRestoringSetupChecklist(false);
+    }
+  }
 
   useEffect(() => {
     let isMounted = true;
@@ -327,13 +376,43 @@ export function AdminSettingsPanel({
         description="Platform details and support information for this instance."
         title="Account"
       >
-        <SettingsPanel icon={<CogIcon />} title="Application">
+        <SettingsPanel collapsible={false} icon={<CogIcon />} title="Application">
           <div className="grid gap-4 sm:grid-cols-3">
             <ReadOnlySetting label="App name" value={appConfig.name} />
             <ReadOnlySetting label="Version" value={appConfig.version} />
             <ReadOnlySetting
               label="Support"
               value={appConfig.supportEmail}
+            />
+          </div>
+        </SettingsPanel>
+        <SettingsPanel icon={<CheckIcon />} title="Getting Started">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-text-control">
+                Admin setup checklist
+              </p>
+              <p className="mt-1 text-sm text-text-muted">
+                {isSetupChecklistDismissed
+                  ? "The checklist is permanently dismissed for your account."
+                  : "The checklist is available on your admin dashboard."}
+              </p>
+            </div>
+            {isSetupChecklistDismissed && (
+              <button
+                className="shrink-0 rounded-md border border-button-border bg-surface px-4 py-2 text-sm font-semibold text-text-control transition hover:bg-surface-hover disabled:opacity-60"
+                disabled={isRestoringSetupChecklist}
+                onClick={restoreSetupChecklist}
+                type="button"
+              >
+                {isRestoringSetupChecklist ? "Restoring..." : "Restore Checklist"}
+              </button>
+            )}
+          </div>
+          <div className="mt-3">
+            <SettingsMessages
+              error={setupChecklistError}
+              message={setupChecklistMessage}
             />
           </div>
         </SettingsPanel>
@@ -344,7 +423,7 @@ export function AdminSettingsPanel({
         title="Organisation"
       >
         <form className="space-y-4" onSubmit={handleProfileSubmit}>
-          <SettingsPanel icon={<UsersIcon />} title="Profile">
+          <SettingsPanel defaultExpanded icon={<UsersIcon />} title="Profile">
             <div className="grid gap-4 md:grid-cols-2">
               <TextField
                 id="schoolName"
@@ -390,13 +469,15 @@ export function AdminSettingsPanel({
                 value={form.address}
               />
             </div>
+            <div className="mt-5">
+              <SettingsActionRow
+                error={error}
+                isSaving={isSaving}
+                message={message}
+                saveLabel="Save Organisation"
+              />
+            </div>
           </SettingsPanel>
-          <SettingsActionRow
-            error={error}
-            isSaving={isSaving}
-            message={message}
-            saveLabel="Save Organisation"
-          />
         </form>
       </SettingsGroup>
 
@@ -416,13 +497,15 @@ export function AdminSettingsPanel({
               onChange={(event) => setLogoFile(event.target.files?.[0] ?? null)}
               schoolName={form.name}
             />
+            <div className="mt-5">
+              <SettingsActionRow
+                error={error}
+                isSaving={isSaving}
+                message={message}
+                saveLabel="Save Appearance"
+              />
+            </div>
           </SettingsPanel>
-          <SettingsActionRow
-            error={error}
-            isSaving={isSaving}
-            message={message}
-            saveLabel="Save Appearance"
-          />
         </form>
       </SettingsGroup>
 
@@ -455,13 +538,15 @@ export function AdminSettingsPanel({
                 value={form.balanceCap}
               />
             </div>
+            <div className="mt-5">
+              <SettingsActionRow
+                error={error}
+                isSaving={isSaving}
+                message={message}
+                saveLabel="Save Rewards"
+              />
+            </div>
           </SettingsPanel>
-          <SettingsActionRow
-            error={error}
-            isSaving={isSaving}
-            message={message}
-            saveLabel="Save Rewards"
-          />
         </form>
       </SettingsGroup>
 
@@ -485,14 +570,15 @@ export function AdminSettingsPanel({
                 reasons={presetReasons}
               />
             </div>
+            <div className="mt-5">
+              <SettingsActionRow
+                error={presetError}
+                isSaving={isSavingPresets}
+                message={presetMessage}
+                saveLabel="Save Quick Transactions"
+              />
+            </div>
           </SettingsPanel>
-
-          <SettingsActionRow
-            error={presetError}
-            isSaving={isSavingPresets}
-            message={presetMessage}
-            saveLabel="Save Quick Transactions"
-          />
         </form>
       </SettingsGroup>
 
@@ -526,6 +612,19 @@ export function AdminSettingsPanel({
           <div className="mt-4">
             <SettingsMessages error={ssoError} message={ssoMessage} />
           </div>
+        </SettingsPanel>
+      </SettingsGroup>
+
+      <SettingsGroup
+        description="Authoritative data sources for users, classes, and schedules."
+        title="Sync Sources"
+      >
+        <SettingsPanel
+          icon={<SlidersHorizontalIcon />}
+          info="Synced records retain a source mapping so later runs update or archive only records managed by that source."
+          title="TASS"
+        >
+          <TassSyncSettingsPanel />
         </SettingsPanel>
       </SettingsGroup>
 
@@ -634,7 +733,7 @@ function SettingsActionRow({
   saveLabel: string;
 }) {
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex items-center justify-end">
       <SettingsMessages error={error} message={message} />
       <button
         className="rounded-md bg-brand px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-70"
@@ -649,29 +748,63 @@ function SettingsActionRow({
 
 function SettingsPanel({
   children,
+  collapsible = true,
+  defaultExpanded = false,
   icon,
   info,
   title,
 }: {
   children: ReactNode;
+  collapsible?: boolean;
+  defaultExpanded?: boolean;
   icon: ReactNode;
   info?: string;
   title: string;
 }) {
+  const [isExpanded, setIsExpanded] = useState(
+    defaultExpanded || !collapsible,
+  );
+  const contentId = useId();
+
   return (
     <section className="theme-panel min-w-0 overflow-hidden p-4 sm:p-5">
-      <div className="flex min-w-0 items-start gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-brand-soft text-brand">
-          {icon}
-        </span>
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h3 className="text-lg font-semibold">{title}</h3>
-            {info && <InfoTooltip label={info} />}
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-brand-soft text-brand">
+            {icon}
+          </span>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-semibold">{title}</h3>
+              {info && <InfoTooltip label={info} />}
+            </div>
           </div>
         </div>
+        {collapsible && (
+          <button
+            aria-controls={contentId}
+            aria-expanded={isExpanded}
+            aria-label={`${isExpanded ? "Collapse" : "Expand"} ${title}`}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-text-muted transition hover:bg-surface-muted hover:text-text-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            onClick={() => setIsExpanded((current) => !current)}
+            type="button"
+          >
+            <ChevronDownIcon
+              aria-hidden="true"
+              className={`h-4 w-4 transition-transform duration-200 ${
+                isExpanded ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+        )}
       </div>
-      <div className="mt-5 min-w-0">{children}</div>
+      <div
+        className="mt-5 min-w-0"
+        hidden={collapsible && !isExpanded}
+        id={contentId}
+      >
+        {children}
+      </div>
     </section>
   );
 }

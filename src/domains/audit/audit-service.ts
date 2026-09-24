@@ -37,6 +37,7 @@ const adminAuditActionPrefixes = [
   "api_client.",
   "auth.",
   "data_export.",
+  "directory_sync.",
   "finance_api.",
   "school_info.",
   "shop_item.",

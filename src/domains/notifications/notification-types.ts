@@ -15,5 +15,10 @@ export type AppNotification = {
 };
 
 export type NotificationPreferences = {
-  emailDigestEnabled: boolean;
+  rewardRequestMode: RewardRequestNotificationMode;
 };
+
+export type RewardRequestNotificationMode =
+  | "off"
+  | "in_app"
+  | "in_app_digest";

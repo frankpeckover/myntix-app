@@ -70,6 +70,7 @@ type IdTokenClaims = {
   given_name?: string;
   hd?: string;
   iss?: string;
+  name?: string;
   nonce?: string;
   preferred_username?: string;
   sub?: string;
@@ -689,6 +690,7 @@ async function createJitStudent(
   claims: IdTokenClaims,
 ) {
   const names = getJitNames(email, claims);
+  const username = await getAvailableJitUsername(client, names);
   const passwordHash = await hashPassword(randomBytes(32).toString("base64url"));
   const result = await client.query<UserRow>(
     `
@@ -705,8 +707,8 @@ async function createJitStudent(
         $1,
         $2,
         $3,
-        $1,
-        $4
+        $4,
+        $5
       )
       returning
         id,
@@ -718,7 +720,7 @@ async function createJitStudent(
         is_active,
         'student'::text as role
     `,
-    [email, names.firstName, names.lastName, passwordHash],
+    [username, names.firstName, names.lastName, email, passwordHash],
   );
   const user = result.rows[0];
 
@@ -729,7 +731,7 @@ async function createJitStudent(
   await auditService.logWithClient(client, {
     action: "auth.sso_jit_user_created",
     actorUserId: user.id,
-    details: { email },
+    details: { email, username },
     entityId: user.id,
     entityType: "auth",
   });
@@ -742,13 +744,77 @@ function getJitNames(email: string, claims: IdTokenClaims) {
     .split("@")[0]
     .split(/[._-]+/)
     .filter(Boolean);
+  const displayNameParts = claims.name?.trim().split(/\s+/).filter(Boolean) ?? [];
+  const firstName =
+    claims.given_name || displayNameParts[0] || localParts[0] || "Student";
+  const lastName =
+    claims.family_name ||
+    getDisplayNameSurname(claims.name, claims.given_name) ||
+    localParts.slice(1).join(" ") ||
+    "User";
 
   return {
-    firstName: normaliseName(claims.given_name || localParts[0] || "Student"),
-    lastName: normaliseName(
-      claims.family_name || localParts.slice(1).join(" ") || "User",
-    ),
+    firstName: normaliseName(firstName),
+    lastName: normaliseName(lastName),
   };
+}
+
+async function getAvailableJitUsername(
+  client: Awaited<ReturnType<typeof db.connect>>,
+  names: { firstName: string; lastName: string },
+) {
+  const firstNamePart = getUsernamePart(names.firstName) || "student";
+  const lastNamePart = getUsernamePart(names.lastName) || "user";
+  const baseUsername = `${firstNamePart}.${lastNamePart}`;
+
+  await client.query("select pg_advisory_xact_lock(hashtext($1))", [
+    baseUsername,
+  ]);
+
+  let suffix = 0;
+
+  while (true) {
+    const candidate = `${baseUsername}${suffix || ""}`;
+    const existing = await client.query(
+      "select 1 from users where lower(username) = $1 limit 1",
+      [candidate],
+    );
+
+    if (existing.rowCount === 0) {
+      return candidate;
+    }
+
+    suffix += 1;
+  }
+}
+
+function getDisplayNameSurname(
+  displayName: string | undefined,
+  givenName: string | undefined,
+) {
+  const trimmedDisplayName = displayName?.trim() ?? "";
+  const trimmedGivenName = givenName?.trim() ?? "";
+
+  if (!trimmedDisplayName) {
+    return "";
+  }
+
+  if (
+    trimmedGivenName &&
+    trimmedDisplayName.toLowerCase().startsWith(`${trimmedGivenName.toLowerCase()} `)
+  ) {
+    return trimmedDisplayName.slice(trimmedGivenName.length).trim();
+  }
+
+  return trimmedDisplayName.split(/\s+/).slice(1).join(" ");
+}
+
+function getUsernamePart(value: string) {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
 }
 
 function normaliseName(value: string) {

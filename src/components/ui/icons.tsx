@@ -150,6 +150,17 @@ export function KeyIcon(props: IconProps) {
   );
 }
 
+export function KeyRoundIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <circle cx="8" cy="12" r="4" />
+      <path d="M12 12h9" />
+      <path d="M18 12v3" />
+      <path d="M15 12v2" />
+    </IconBase>
+  );
+}
+
 export function FilterIcon(props: IconProps) {
   return (
     <IconBase {...props}>
@@ -216,6 +227,19 @@ export function SidebarExpandIcon(props: IconProps) {
       <rect height="16" rx="2" width="18" x="3" y="4" />
       <path d="M9 4v16" />
       <path d="m13 10 2 2-2 2" />
+    </IconBase>
+  );
+}
+
+export function SlidersHorizontalIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M4 6h16" />
+      <path d="M4 12h16" />
+      <path d="M4 18h16" />
+      <circle cx="9" cy="6" r="2" fill="var(--color-surface, white)" />
+      <circle cx="15" cy="12" r="2" fill="var(--color-surface, white)" />
+      <circle cx="8" cy="18" r="2" fill="var(--color-surface, white)" />
     </IconBase>
   );
 }
@@ -312,6 +336,17 @@ export function SearchIcon(props: IconProps) {
     <IconBase {...props}>
       <circle cx="11" cy="11" r="7" />
       <path d="m20 20-3.5-3.5" />
+    </IconBase>
+  );
+}
+
+export function RefreshCwIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M20 6v5h-5" />
+      <path d="M4 18v-5h5" />
+      <path d="M6.1 9a7 7 0 0 1 11.5-2.6L20 9" />
+      <path d="m4 15 2.4 2.6A7 7 0 0 0 17.9 15" />
     </IconBase>
   );
 }

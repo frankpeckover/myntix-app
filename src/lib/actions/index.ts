@@ -25,6 +25,12 @@ export {
   exportSchoolData,
 } from "@/lib/actions/data-export-actions";
 export {
+  getTassSyncSettings,
+  runTassSync,
+  testTassSyncConnection,
+  updateTassSyncSettings,
+} from "@/lib/actions/directory-sync-actions";
+export {
   addStudentsToGroup,
   addStudentToGroup,
   createGroup,
@@ -43,6 +49,11 @@ export {
   updateSchoolInfo,
   uploadSchoolLogo,
 } from "@/lib/actions/school-actions";
+export {
+  completeSetupChecklistStep,
+  getSetupChecklist,
+  setSetupChecklistDismissed,
+} from "@/lib/actions/setup-checklist-actions";
 export {
   getStudentGoal,
   saveStudentGoal,

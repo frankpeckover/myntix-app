@@ -69,6 +69,7 @@ type TimetableEntryRow = {
 type TimetableTeacherRow = {
   id: string;
   first_name: string;
+  preferred_name: string;
   last_name: string;
   username: string;
 };
@@ -85,6 +86,7 @@ type CurrentClassStudentRow = {
   balance: number;
   id: string;
   first_name: string;
+  preferred_name: string;
   last_name: string;
   profile_image_url: string;
   username: string;
@@ -99,7 +101,7 @@ export class TimetableService {
         select
           timetable_entries.id,
           timetable_entries.teacher_user_id,
-          trim(teachers.first_name || ' ' || teachers.last_name) as teacher_name,
+          trim(coalesce(nullif(teachers.preferred_name, ''), teachers.first_name) || ' ' || teachers.last_name) as teacher_name,
           timetable_entries.group_id,
           student_groups.name as group_name,
           timetable_entries.day_of_week,
@@ -127,7 +129,7 @@ export class TimetableService {
         select
           timetable_entries.id,
           timetable_entries.teacher_user_id,
-          trim(teachers.first_name || ' ' || teachers.last_name) as teacher_name,
+          trim(coalesce(nullif(teachers.preferred_name, ''), teachers.first_name) || ' ' || teachers.last_name) as teacher_name,
           timetable_entries.group_id,
           student_groups.name as group_name,
           timetable_entries.day_of_week,
@@ -156,6 +158,7 @@ export class TimetableService {
       select
         users.id,
         users.first_name,
+        users.preferred_name,
         users.last_name,
         users.username
       from users
@@ -168,7 +171,11 @@ export class TimetableService {
 
     return result.rows.map((teacher) => ({
       id: teacher.id,
-      displayName: formatDisplayName(teacher.first_name, teacher.last_name),
+      displayName: formatDisplayName(
+        teacher.first_name,
+        teacher.last_name,
+        teacher.preferred_name,
+      ),
       username: teacher.username,
     }));
   }
@@ -383,10 +390,6 @@ export class TimetableService {
   }
 
   async getCurrentClass(currentUser: SessionUser): Promise<CurrentClass | null> {
-    const now = new Date();
-    const dayOfWeek = now.getDay();
-    const currentTime = formatTimeForDatabase(now);
-
     const classResult = await db.query<CurrentClassRow>(
       `
         select
@@ -397,16 +400,22 @@ export class TimetableService {
           timetable_entries.end_time::text as end_time
         from timetable_entries
         join student_groups on student_groups.id = timetable_entries.group_id
+        cross join lateral (
+          select now() at time zone coalesce(
+            nullif((select timezone from school_info where id = 1), ''),
+            'UTC'
+          ) as local_now
+        ) school_clock
         where timetable_entries.teacher_user_id = $1
-          and timetable_entries.day_of_week = $2
-          and timetable_entries.start_time <= $3::time
-          and timetable_entries.end_time > $3::time
+          and timetable_entries.day_of_week = extract(dow from school_clock.local_now)::int
+          and timetable_entries.start_time <= school_clock.local_now::time
+          and timetable_entries.end_time > school_clock.local_now::time
           and timetable_entries.is_active = true
           and student_groups.is_active = true
         order by timetable_entries.start_time desc
         limit 1
       `,
-      [currentUser.id, dayOfWeek, currentTime],
+      [currentUser.id],
     );
 
     const currentClass = classResult.rows[0];
@@ -420,6 +429,7 @@ export class TimetableService {
         select
           users.id,
           users.first_name,
+          users.preferred_name,
           users.last_name,
           users.profile_image_url,
           users.username,
@@ -451,7 +461,7 @@ export class TimetableService {
         where student_group_memberships.group_id = $1
           and roles.role_key = 'student'
           and users.is_active = true
-        group by users.id, users.first_name, users.last_name,
+        group by users.id, users.first_name, users.preferred_name, users.last_name,
                  users.profile_image_url, users.username,
                  active_holds.held_amount
         order by users.last_name, users.first_name
@@ -469,7 +479,11 @@ export class TimetableService {
         balance: student.balance,
         firstName: student.first_name,
         id: student.id,
-        displayName: formatDisplayName(student.first_name, student.last_name),
+        displayName: formatDisplayName(
+          student.first_name,
+          student.last_name,
+          student.preferred_name,
+        ),
         lastName: student.last_name,
         profileImageUrl: student.profile_image_url,
         username: student.username,
@@ -502,16 +516,8 @@ function isValidTime(value: string) {
   return /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 }
 
-function formatTimeForDatabase(date: Date) {
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  const seconds = String(date.getSeconds()).padStart(2, "0");
-
-  return `${hours}:${minutes}:${seconds}`;
-}
-
-function formatDisplayName(firstName: string, lastName: string) {
-  return `${firstName} ${lastName}`.trim();
+function formatDisplayName(firstName: string, lastName: string, preferredName = "") {
+  return `${preferredName || firstName} ${lastName}`.trim();
 }
 
 function mapTimetableEntryRow(row: TimetableEntryRow): TimetableEntry {

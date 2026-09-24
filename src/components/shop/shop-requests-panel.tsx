@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   approveShopRequest,
   denyShopRequest,
@@ -61,6 +61,7 @@ export function ShopRequestsPanel({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const pendingDecisionIdsRef = useRef(new Set<string>());
 
   async function refreshRequests() {
     setIsLoading(true);
@@ -106,10 +107,28 @@ export function ShopRequestsPanel({
   }, []);
 
   async function handleApprove(purchaseId: string) {
+    if (pendingDecisionIdsRef.current.has(purchaseId)) {
+      return;
+    }
+    if (!navigator.onLine) {
+      setError("You are offline. Reconnect before approving a request.");
+      return;
+    }
+
     setError(null);
     setMessage(null);
+    pendingDecisionIdsRef.current.add(purchaseId);
 
-    const result = await approveShopRequest(purchaseId);
+    let result;
+
+    try {
+      result = await approveShopRequest(purchaseId);
+    } catch {
+      setError("Could not confirm the approval. Refresh before trying again.");
+      pendingDecisionIdsRef.current.delete(purchaseId);
+      return;
+    }
+    pendingDecisionIdsRef.current.delete(purchaseId);
 
     if (!result.ok) {
       setError(result.message);
@@ -125,10 +144,28 @@ export function ShopRequestsPanel({
     if (!denyingRequestId) {
       return;
     }
+    if (pendingDecisionIdsRef.current.has(denyingRequestId)) {
+      return;
+    }
+    if (!navigator.onLine) {
+      setError("You are offline. Reconnect before denying a request.");
+      return;
+    }
     setError(null);
     setMessage(null);
+    pendingDecisionIdsRef.current.add(denyingRequestId);
 
-    const result = await denyShopRequest(denyingRequestId, decisionNote);
+    const purchaseId = denyingRequestId;
+    let result;
+
+    try {
+      result = await denyShopRequest(purchaseId, decisionNote);
+    } catch {
+      setError("Could not confirm the denial. Refresh before trying again.");
+      pendingDecisionIdsRef.current.delete(purchaseId);
+      return;
+    }
+    pendingDecisionIdsRef.current.delete(purchaseId);
 
     if (!result.ok) {
       setError(result.message);

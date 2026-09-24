@@ -54,10 +54,14 @@ import {
   WalletIcon,
 } from "@/components/ui/icons";
 import { PageHeader } from "@/components/ui/page-header";
+import { AdminSetupChecklist } from "@/components/admin-setup-checklist";
+import type { NavigationItem } from "@/components/app-nav";
 
 type AdminDashboardPanelProps = {
   currencyName: string;
+  onNavigate: (target: NavigationItem) => void;
   schoolName: string;
+  userId: string;
 };
 
 type CirculationTooltipProps = {
@@ -76,6 +80,8 @@ const circulationChartTimeScaleOptions = [
 
 export function AdminDashboardPanel({
   currencyName,
+  onNavigate,
+  userId,
 }: AdminDashboardPanelProps) {
   const [summary, setSummary] = useState<AdminDashboardSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -116,6 +122,7 @@ export function AdminDashboardPanel({
   return (
     <>
       <FixedNotification error={error} />
+      <AdminSetupChecklist onNavigate={onNavigate} userId={userId} />
       <div className="dashboard-grid mt-2">
         {isLoading && (
           <section className="dashboard-unit-4 theme-panel min-w-0 p-4">

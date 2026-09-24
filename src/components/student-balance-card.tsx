@@ -55,6 +55,7 @@ export function StudentBalanceCard({
           <h3 className="truncate text-sm font-semibold text-foreground">
             {student.displayName}
           </h3>
+          <p className="truncate text-xs text-text-muted">@{student.username}</p>
           <RecentTrend amount={student.recentChange ?? 0} />
         </div>
       </div>

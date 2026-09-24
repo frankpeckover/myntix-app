@@ -13,9 +13,11 @@ import {
   maxQuickAmounts,
   maxQuickReasons,
 } from "@/lib/transaction-presets";
-import { PlusIcon, TrashIcon, WalletIcon } from "@/components/ui/icons";
+import {
+  PlusIcon,
+  TrashIcon,
+} from "@/components/ui/icons";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
-import { PageHeader } from "@/components/ui/page-header";
 
 const defaultQuickAdjustments = getDefaultQuickAdjustments(
   defaultTransactionPresets,
@@ -115,13 +117,7 @@ export function StaffSettingsPanel() {
   }
 
   return (
-    <section className="motion-panel mt-2 space-y-5">
-      <PageHeader
-        icon={<WalletIcon />}
-        title="Settings"
-        description="Personalise the quick actions used in your credit workflow."
-      />
-
+    <>
       <form className="theme-panel p-5" onSubmit={handleSubmit}>
         {isLoading ? (
           <p className="text-sm text-text-muted">Loading preferences...</p>
@@ -196,7 +192,7 @@ export function StaffSettingsPanel() {
         )}
       </form>
       <NotificationPreferences />
-    </section>
+    </>
   );
 }
 

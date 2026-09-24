@@ -26,7 +26,7 @@ export type DigestRunSummary = {
 const emailService = new EmailService();
 
 export class NotificationDigestService {
-  async sendDailyDigests(): Promise<DigestRunSummary> {
+  async sendDueDigests(): Promise<DigestRunSummary> {
     const tenants = await listActiveTenantReferences();
     const summary: DigestRunSummary = {
       emailsFailed: 0,
@@ -92,15 +92,17 @@ async function sendTenantDigests(client: PoolClient, primaryDomain: string) {
     join roles on roles.id = users.role_id
     left join notification_preferences
       on notification_preferences.user_id = users.id
-    left join notification_digest_deliveries
-      on notification_digest_deliveries.user_id = users.id
-     and notification_digest_deliveries.digest_date = current_date
     where users.is_active = true
       and roles.is_active = true
       and roles.role_key = 'teacher'
       and trim(users.email) <> ''
-      and coalesce(notification_preferences.email_digest_enabled, true) = true
-      and notification_digest_deliveries.id is null
+      and notification_preferences.reward_request_notification_mode = 'in_app_digest'
+      and not exists (
+        select 1
+        from notification_digest_deliveries recent_delivery
+        where recent_delivery.user_id = users.id
+          and recent_delivery.sent_at > now() - interval '7 days'
+      )
     order by users.id
   `);
 
@@ -154,13 +156,13 @@ function buildDigestEmail(input: {
     : "Hello,";
   const summary = `${input.pendingCount} reward request${input.pendingCount === 1 ? "" : "s"} awaiting approval`;
   const subject = `${input.schoolName}: rewards need attention`;
-  const text = `${greeting}\n\n${summary}.\n\nOpen ${appConfig.name}: ${input.appUrl}\n\nYou can turn off this digest in Settings.`;
+  const text = `${greeting}\n\n${summary}.\n\nOpen ${appConfig.name}: ${input.appUrl}\n\nYou can change this digest in Preferences.`;
   const html = `
     <div style="font-family:Arial,sans-serif;line-height:1.5;color:#173b40;max-width:560px">
       <p>${escapeHtml(greeting)}</p>
       <p>${escapeHtml(summary)}.</p>
       <p><a href="${escapeHtml(input.appUrl)}" style="display:inline-block;background:#173b40;color:#fff;text-decoration:none;padding:10px 16px;border-radius:6px">Open ${escapeHtml(appConfig.name)}</a></p>
-      <p style="color:#667773;font-size:13px">You can turn off this digest in Settings.</p>
+      <p style="color:#667773;font-size:13px">You can change this digest in Preferences.</p>
     </div>
   `;
 

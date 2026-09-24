@@ -99,6 +99,16 @@ export class LedgerService {
   }
 
   async getAvailableBalance(client: PoolClient, userId: string) {
+    await client.query(
+      `
+        select id
+        from accounts
+        where user_id = $1
+        for update
+      `,
+      [userId],
+    );
+
     const result = await client.query<{ balance: number }>(
       `
         select

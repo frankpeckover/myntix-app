@@ -57,9 +57,9 @@ export async function setShopItemActive(itemId: string, isActive: boolean) {
   return shopItemService.setItemActive(currentUser, itemId, isActive);
 }
 
-export async function requestShopItem(itemId: string) {
+export async function requestShopItem(itemId: string, requestId: string) {
   const currentUser = await requireUser();
-  return shopPurchaseService.requestPurchase(currentUser, itemId);
+  return shopPurchaseService.requestPurchase(currentUser, itemId, requestId);
 }
 
 export async function listPendingShopRequests() {

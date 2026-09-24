@@ -28,6 +28,7 @@ export const emptyUserForm: UserFormState = {
   id: "",
   username: "",
   firstName: "",
+  preferredName: "",
   lastName: "",
   email: "",
   profileImageUrl: "",

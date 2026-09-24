@@ -89,6 +89,7 @@ type StudentBalanceRow = {
   is_active: boolean;
   last_activity_at: Date | null;
   last_name: string;
+  preferred_name: string;
   profile_image_url: string;
   recent_change: number;
   username: string;
@@ -102,12 +103,14 @@ type LedgerVoidRow = {
 
 export type CreateLedgerAdjustmentInput = {
   amount: number;
+  requestId: string;
   reason: string;
   studentUserId: string;
 };
 
 export type CreateLedgerAdjustmentsInput = {
   amount: number;
+  requestId: string;
   reason: string;
   studentUserIds: string[];
 };
@@ -115,6 +118,7 @@ export type CreateLedgerAdjustmentsInput = {
 export type CreateGroupLedgerAdjustmentInput = {
   amount: number;
   groupId: string;
+  requestId: string;
   reason: string;
 };
 
@@ -158,6 +162,7 @@ export class TransactionService {
       select
         users.id,
         users.first_name,
+        users.preferred_name,
         users.last_name,
         users.profile_image_url,
         users.username,
@@ -193,9 +198,11 @@ export class TransactionService {
           )
       ) active_holds on true
       where roles.role_key = 'student'
+        and users.is_active = true
       group by
         users.id,
         users.first_name,
+        users.preferred_name,
         users.last_name,
         users.profile_image_url,
         users.username,
@@ -225,13 +232,13 @@ export class TransactionService {
           ledger_entries.related_entity_type,
           ledger_entries.description as reason,
           ledger_entries.reversal_of_ledger_entry_id,
-          trim(users.first_name || ' ' || users.last_name) as student_name,
+          trim(coalesce(nullif(users.preferred_name, ''), users.first_name) || ' ' || users.last_name) as student_name,
           users.username as student_username,
-          trim(created_by.first_name || ' ' || created_by.last_name) as created_by_name,
+          trim(coalesce(nullif(created_by.preferred_name, ''), created_by.first_name) || ' ' || created_by.last_name) as created_by_name,
           created_by.username as created_by_username,
           ledger_entries.entry_type as type,
           ledger_entries.voided_at,
-          trim(voided_by.first_name || ' ' || voided_by.last_name) as voided_by_name,
+          trim(coalesce(nullif(voided_by.preferred_name, ''), voided_by.first_name) || ' ' || voided_by.last_name) as voided_by_name,
           ledger_entries.void_reason,
           shop_items.name as shop_item_name,
           student_groups.name as student_group_name,
@@ -371,6 +378,7 @@ export class TransactionService {
   ): Promise<ActionResult> {
     return this.createLedgerAdjustments(currentUser, {
       amount: input.amount,
+      requestId: input.requestId,
       reason: input.reason,
       studentUserIds: [input.studentUserId],
     });
@@ -404,10 +412,24 @@ export class TransactionService {
       };
     }
 
+    if (!isUuid(input.requestId)) {
+      return { ok: false, message: "Invalid transaction request." };
+    }
+
     const client = await db.connect();
 
     try {
       await client.query("begin");
+
+      const previousResult = await getPreviousAdjustmentResult(
+        client,
+        input.requestId,
+      );
+
+      if (previousResult.found) {
+        await client.query("commit");
+        return { ok: true, message: previousResult.message };
+      }
 
       const balanceCap = await ledgerService.getBalanceCap(client);
       const studentsResult = await client.query<{
@@ -423,6 +445,7 @@ export class TransactionService {
             where users.id = any($1::uuid[])
               and users.is_active = true
               and roles.role_key = 'student'
+            order by users.id
           `,
           [studentUserIds],
         );
@@ -507,25 +530,30 @@ export class TransactionService {
         entityType: "ledger_entry",
       });
 
+      const resultMessage = getAdjustmentResultMessage({
+        amount: input.amount,
+        cappedAtBalanceCapCount,
+        createdCount: createdLedgerEntryIds.length,
+        reason,
+        reducedToZeroCount,
+        skippedZeroBalanceCount,
+        targetLabel:
+          studentUserIds.length === 1
+            ? formatDisplayName(
+                adjustmentRecipients[0]?.firstName ?? "",
+                adjustmentRecipients[0]?.lastName ?? "",
+              ) || "student"
+            : `${studentUserIds.length} students`,
+      });
+
+      await saveAdjustmentResult(
+        client,
+        input.requestId,
+        currentUser.id,
+        resultMessage,
+      );
       await client.query("commit");
-      return {
-        ok: true,
-        message: getAdjustmentResultMessage({
-          amount: input.amount,
-          cappedAtBalanceCapCount,
-          createdCount: createdLedgerEntryIds.length,
-          reason,
-          reducedToZeroCount,
-          skippedZeroBalanceCount,
-          targetLabel:
-            studentUserIds.length === 1
-              ? formatDisplayName(
-                  adjustmentRecipients[0]?.firstName ?? "",
-                  adjustmentRecipients[0]?.lastName ?? "",
-                ) || "student"
-              : `${studentUserIds.length} students`,
-        }),
-      };
+      return { ok: true, message: resultMessage };
     } catch (error) {
       await client.query("rollback");
       console.error("Create ledger adjustment failed", error);
@@ -566,10 +594,24 @@ export class TransactionService {
       };
     }
 
+    if (!isUuid(input.requestId)) {
+      return { ok: false, message: "Invalid transaction request." };
+    }
+
     const client = await db.connect();
 
     try {
       await client.query("begin");
+
+      const previousResult = await getPreviousAdjustmentResult(
+        client,
+        input.requestId,
+      );
+
+      if (previousResult.found) {
+        await client.query("commit");
+        return { ok: true, message: previousResult.message };
+      }
 
       const membersResult = await client.query<GroupAdjustmentMemberRow>(
         `
@@ -588,7 +630,7 @@ export class TransactionService {
             and student_groups.is_active = true
             and roles.role_key = 'student'
             and users.is_active = true
-          order by users.last_name, users.first_name
+          order by users.id
         `,
         [input.groupId],
       );
@@ -667,19 +709,24 @@ export class TransactionService {
         entityType: "student_group",
       });
 
+      const resultMessage = getAdjustmentResultMessage({
+        amount: input.amount,
+        cappedAtBalanceCapCount,
+        createdCount: createdLedgerEntryIds.length,
+        reason,
+        reducedToZeroCount,
+        skippedZeroBalanceCount,
+        targetLabel: groupName,
+      });
+
+      await saveAdjustmentResult(
+        client,
+        input.requestId,
+        currentUser.id,
+        resultMessage,
+      );
       await client.query("commit");
-      return {
-        ok: true,
-        message: getAdjustmentResultMessage({
-          amount: input.amount,
-          cappedAtBalanceCapCount,
-          createdCount: createdLedgerEntryIds.length,
-          reason,
-          reducedToZeroCount,
-          skippedZeroBalanceCount,
-          targetLabel: groupName,
-        }),
-      };
+      return { ok: true, message: resultMessage };
     } catch (error) {
       await client.query("rollback");
       console.error("Create group ledger adjustment failed", error);
@@ -786,7 +833,11 @@ function formatLedgerType(type: LedgerEntryType) {
 function mapStudentBalanceRow(row: StudentBalanceRow): StudentBalanceItem {
   return {
     balance: Number(row.balance),
-    displayName: formatDisplayName(row.first_name, row.last_name),
+    displayName: formatDisplayName(
+      row.first_name,
+      row.last_name,
+      row.preferred_name,
+    ),
     email: row.email,
     firstName: row.first_name,
     id: row.id,
@@ -801,8 +852,61 @@ function mapStudentBalanceRow(row: StudentBalanceRow): StudentBalanceItem {
   };
 }
 
-function formatDisplayName(firstName: string, lastName: string) {
-  return `${firstName} ${lastName}`.trim();
+function formatDisplayName(
+  firstName: string,
+  lastName: string,
+  preferredName = "",
+) {
+  return `${preferredName || firstName} ${lastName}`.trim();
+}
+
+async function getPreviousAdjustmentResult(
+  client: import("pg").PoolClient,
+  requestId: string,
+) {
+  await client.query(
+    "select pg_advisory_xact_lock(hashtextextended($1, 0))",
+    [requestId],
+  );
+
+  const result = await client.query<{ result_message: string | null }>(
+    `
+      select result_message
+      from ledger_adjustment_requests
+      where id = $1
+    `,
+    [requestId],
+  );
+
+  return {
+    found: result.rowCount === 1,
+    message: result.rows[0]?.result_message ?? undefined,
+  };
+}
+
+async function saveAdjustmentResult(
+  client: import("pg").PoolClient,
+  requestId: string,
+  actorUserId: string,
+  resultMessage?: string,
+) {
+  await client.query(
+    `
+      insert into ledger_adjustment_requests (
+        id,
+        actor_user_id,
+        result_message
+      )
+      values ($1, $2, $3)
+    `,
+    [requestId, actorUserId, resultMessage ?? null],
+  );
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value,
+  );
 }
 
 function getActualAdjustmentAmount(
