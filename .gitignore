@@ -14,6 +14,7 @@ dist/
 .env.production
 .env.production.*
 .env.*.local
+deploy/*.env
 
 # Logs
 *.log

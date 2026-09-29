@@ -28,13 +28,35 @@ const recommendedVariables = [
   "RESEND_API_KEY",
 ];
 
+const backupCatalogueVariables = [
+  "BACKUP_CATALOG_HOST",
+  "BACKUP_CATALOG_DATABASE",
+  "BACKUP_CATALOG_USER",
+  "BACKUP_CATALOG_PASSWORD",
+];
+
 const env = loadEnvironment();
 const missingRequired = getMissingVariables(requiredVariables, env);
 const missingSchema = getMissingVariables(schemaTenantVariables, env);
 const missingRecommended = getMissingVariables(recommendedVariables, env);
 const invalidPort = getInvalidPortMessage(env.APP_PORT);
+const backupConfigurationError = getOptionalGroupError(
+  backupCatalogueVariables,
+  env,
+  "Backup catalogue",
+);
+const invalidBackupPort = getInvalidPortMessage(
+  env.BACKUP_CATALOG_PORT,
+  "BACKUP_CATALOG_PORT",
+);
 
-if (missingRequired.length > 0 || missingSchema.length > 0 || invalidPort) {
+if (
+  missingRequired.length > 0 ||
+  missingSchema.length > 0 ||
+  invalidPort ||
+  backupConfigurationError ||
+  invalidBackupPort
+) {
   console.error("Production environment is not ready.");
 
   if (missingRequired.length > 0) {
@@ -54,6 +76,14 @@ if (missingRequired.length > 0 || missingSchema.length > 0 || invalidPort) {
     console.error(invalidPort);
   }
 
+  if (backupConfigurationError) {
+    console.error(backupConfigurationError);
+  }
+
+  if (invalidBackupPort) {
+    console.error(invalidBackupPort);
+  }
+
   process.exit(1);
 }
 
@@ -67,7 +97,7 @@ function getMissingVariables(variableNames, env) {
   return variableNames.filter((name) => !String(env[name] ?? "").trim());
 }
 
-function getInvalidPortMessage(value) {
+function getInvalidPortMessage(value, name = "APP_PORT") {
   if (!String(value ?? "").trim()) {
     return null;
   }
@@ -75,8 +105,18 @@ function getInvalidPortMessage(value) {
   const port = Number(value);
 
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
-    return "APP_PORT must be an integer between 1 and 65535.";
+    return `${name} must be an integer between 1 and 65535.`;
   }
 
   return null;
+}
+
+function getOptionalGroupError(variableNames, env, label) {
+  const configured = variableNames.filter((name) => String(env[name] ?? "").trim());
+  if (configured.length === 0 || configured.length === variableNames.length) {
+    return null;
+  }
+
+  const missing = variableNames.filter((name) => !String(env[name] ?? "").trim());
+  return `${label} configuration is incomplete. Missing: ${missing.join(", ")}`;
 }

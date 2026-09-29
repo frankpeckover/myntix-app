@@ -16,7 +16,6 @@ Each school/app schema is split by service area under:
 - `school/05-sso.sql`
 - `school/06-api-clients.sql`
 - `school/07-notifications.sql`
-- `school/08-operations.sql`
 - `school/09-directory-sync.sql`
 - `school/99-grants.sql`
 
@@ -124,7 +123,6 @@ database/school/04-rewards.sql
 database/school/05-sso.sql
 database/school/06-api-clients.sql
 database/school/07-notifications.sql
-database/school/08-operations.sql
 database/school/09-directory-sync.sql
 ```
 
@@ -139,7 +137,6 @@ database/school/04-rewards.sql
 database/school/05-sso.sql
 database/school/06-api-clients.sql
 database/school/07-notifications.sql
-database/school/08-operations.sql
 database/school/09-directory-sync.sql
 database/school/99-grants.sql
 ```
@@ -272,7 +269,9 @@ For example:
 - If SSO is enabled, run `05-sso.sql`.
 - If external API clients are enabled, run `06-api-clients.sql`.
 - If in-app notifications or email digests are enabled, run `07-notifications.sql`.
-- Run `08-operations.sql` to enable backup and operational status reporting.
+- For self-service tenant backups, create the separate catalogue described in
+  `database/backup/README.md`. Do not create those tables inside a tenant.
+- Existing platform databases need the numbered scripts in `database/platform/`.
 - Run `09-directory-sync.sql` to enable TASS and future external data synchronization.
 
 ## Useful Checks

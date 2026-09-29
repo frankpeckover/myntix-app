@@ -6,5 +6,9 @@ export async function register() {
   const { startDirectorySyncScheduler } = await import(
     "@/domains/integrations/directory-sync-scheduler"
   );
+  const { startBackupScheduler } = await import(
+    "@/domains/operations/backup-scheduler"
+  );
   startDirectorySyncScheduler();
+  startBackupScheduler();
 }

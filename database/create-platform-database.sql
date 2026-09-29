@@ -34,6 +34,8 @@ create table if not exists organisations (
   database_user text,
   database_password text,
   is_active boolean not null default true,
+  maintenance_mode boolean not null default false,
+  maintenance_message text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -43,6 +45,12 @@ alter table organisations
 
 alter table organisations
   add column if not exists schema_name text;
+
+alter table organisations
+  add column if not exists maintenance_mode boolean not null default false;
+
+alter table organisations
+  add column if not exists maintenance_message text;
 
 alter table organisations
   alter column database_host drop not null,

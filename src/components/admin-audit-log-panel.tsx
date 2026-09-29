@@ -437,8 +437,16 @@ function formatDetails(details: Record<string, unknown>) {
 
   return visibleEntries
     .slice(0, 3)
-    .map(([key, value]) => `${formatEntityType(key)}: ${String(value)}`)
+    .map(([key, value]) => `${formatEntityType(key)}: ${formatDetailValue(value)}`)
     .join(", ");
+}
+
+function formatDetailValue(value: unknown) {
+  if (typeof value === "boolean") {
+    return value ? "✓" : "✕";
+  }
+
+  return String(value);
 }
 
 function isSimpleDetail(value: unknown) {

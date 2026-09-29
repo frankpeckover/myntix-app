@@ -1,4 +1,5 @@
-import { db } from "@/lib/db";
+import { backupDb, isBackupCatalogueConfigured } from "@/lib/backup-db";
+import { db, getCurrentTenantSlug, platformDb } from "@/lib/db";
 
 export type OperationsDashboardSnapshot = {
   api: {
@@ -67,20 +68,7 @@ export class OperationsDashboardService {
           (select count(*) from api_request_log where status_code >= 400 and created_at >= now() - interval '24 hours') as api_failures_24h,
           (select max(created_at) from api_request_log) as last_api_request_at
       `),
-      db.query<BackupRow>(`
-        select
-          latest.status,
-          latest.destination_label,
-          latest.started_at as last_attempt_at,
-          (
-            select max(started_at)
-            from backup_runs
-            where status = 'succeeded'
-          ) as last_successful_at
-        from backup_runs latest
-        order by latest.started_at desc
-        limit 1
-      `),
+      getBackupStatus(),
       db.query<SecurityActivityRow>(`
         select
           audit_log.action,
@@ -138,6 +126,57 @@ export class OperationsDashboardService {
         status: errorCount > 0 ? "attention" : "operational",
       },
     };
+  }
+}
+
+async function getBackupStatus() {
+  if (!isBackupCatalogueConfigured()) {
+    return { rows: [] as BackupRow[] };
+  }
+
+  try {
+    const slug = await getCurrentTenantSlug();
+    const organisation = await platformDb.query<{ id: string }>(
+      `select id from organisations where slug = $1 limit 1`,
+      [slug],
+    );
+    const organisationId = organisation.rows[0]?.id;
+    if (!organisationId) return { rows: [] as BackupRow[] };
+
+    return backupDb.query<BackupRow>(
+      `
+        select
+          case
+            when latest.status in ('queued', 'running') then 'running'
+            when latest.status in ('failed', 'cancelled') then 'failed'
+            else 'succeeded'
+          end as status,
+          'Encrypted offsite storage' as destination_label,
+          latest.requested_at as last_attempt_at,
+          (
+            select max(completed_at)
+            from tenant_backups
+            where organisation_id = $1 and status = 'available'
+          ) as last_successful_at
+        from (select $1::uuid as organisation_id) organisation
+        left join lateral (
+          select status, requested_at
+          from backup_jobs
+          where organisation_id = $1
+          order by requested_at desc
+          limit 1
+        ) latest on true
+        where latest.status is not null
+           or exists (
+             select 1 from tenant_backups
+             where organisation_id = $1 and status = 'available'
+           )
+      `,
+      [organisationId],
+    );
+  } catch (error) {
+    console.error("Could not load backup catalogue status.", error);
+    return { rows: [] as BackupRow[] };
   }
 }
 

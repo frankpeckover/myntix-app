@@ -35,6 +35,8 @@ type OrganisationTenantRow = {
   database_user: string | null;
   database_password: string | null;
   is_active: boolean;
+  maintenance_message: string | null;
+  maintenance_mode: boolean;
 };
 
 type TenantLookup = {
@@ -101,6 +103,13 @@ export class TenantNotFoundError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "TenantNotFoundError";
+  }
+}
+
+export class TenantMaintenanceError extends Error {
+  constructor(public readonly userMessage: string) {
+    super(userMessage);
+    this.name = "TenantMaintenanceError";
   }
 }
 
@@ -255,7 +264,9 @@ async function getOrganisationTenantTarget(
              database_name,
              database_user,
              database_password,
-             is_active
+             is_active,
+             maintenance_mode,
+             maintenance_message
       from organisations
       where organisations.slug = $1
          or organisations.primary_domain = $2
@@ -268,6 +279,13 @@ async function getOrganisationTenantTarget(
   if (!organisation || !organisation.is_active) {
     throw new TenantNotFoundError(
       `No active organisation found for "${lookup.slug}" or "${lookup.host}".`,
+    );
+  }
+
+  if (organisation.maintenance_mode) {
+    throw new TenantMaintenanceError(
+      organisation.maintenance_message ||
+        "This organisation is temporarily unavailable while maintenance is completed.",
     );
   }
 

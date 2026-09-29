@@ -39,6 +39,7 @@ import {
   WalletIcon,
 } from "@/components/ui/icons";
 import { ApiKeySettings } from "@/components/admin-settings/api-key-settings";
+import { BackupManagementSettings } from "@/components/admin-settings/backup-management-settings";
 import { TassSyncSettingsPanel } from "@/components/admin-settings/tass-sync-settings";
 import { FixedNotification } from "@/components/ui/fixed-notification";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
@@ -645,6 +646,13 @@ export function AdminSettingsPanel({
         description="Administrative export tools for portability and retention."
         title="Data"
       >
+        <SettingsPanel
+          icon={<FileDownIcon />}
+          info="Create encrypted tenant backups and restore verified recovery points. Restores create a safety backup before replacing current data."
+          title="Backups and Restore"
+        >
+          <BackupManagementSettings />
+        </SettingsPanel>
         <SettingsPanel
           icon={<FileDownIcon />}
           info="The export is for organisation data only. Sensitive authentication and platform data is intentionally excluded."

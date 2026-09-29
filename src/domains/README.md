@@ -14,7 +14,7 @@ Rules:
 - `organisation` owns school/profile/settings data.
 - `audit` owns audit and error log records.
 - `integrations` owns external API clients, API finance endpoints, idempotency, and email.
-- `operations` owns system monitoring and the backup-run reporting contract.
+- `operations` owns system monitoring, tenant backup scheduling, and backup requests.
 
 Dependency direction should stay one-way where possible:
 

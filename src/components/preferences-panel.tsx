@@ -84,15 +84,17 @@ function AppearancePreferences({
         <button
           aria-checked={isDarkMode}
           aria-label="Dark theme"
-          className={`relative h-6 w-11 shrink-0 rounded-full transition ${
-            isDarkMode ? "bg-brand" : "bg-surface-muted"
+          className={`relative h-6 w-11 shrink-0 rounded-full border transition ${
+            isDarkMode
+              ? "border-brand bg-brand"
+              : "border-border-strong bg-surface-hover"
           }`}
           onClick={toggleThemeMode}
           role="switch"
           type="button"
         >
           <span
-            className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition ${
+            className={`absolute top-[1px] h-5 w-5 rounded-full border border-border-strong bg-white shadow-sm transition ${
               isDarkMode ? "left-5.5" : "left-0.5"
             }`}
           />

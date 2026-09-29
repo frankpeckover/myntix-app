@@ -1,0 +1,23 @@
+[Unit]
+Description=Myntix tenant backup and restore worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=myntix-backup
+Group=myntix-backup
+WorkingDirectory=/opt/myntix/app
+EnvironmentFile=/etc/myntix/backup-worker.env
+ExecStart=/usr/bin/node scripts/backup-worker.mjs
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=read-only
+ProtectSystem=strict
+ReadOnlyPaths=/opt/myntix/app /etc/myntix
+ReadWritePaths=/var/lib/myntix-backup-worker
+
+[Install]
+WantedBy=multi-user.target

@@ -18,6 +18,11 @@ export {
   listErrorLog,
 } from "@/lib/actions/error-log-actions";
 export {
+  getTenantBackupOverview,
+  requestTenantBackup,
+  requestTenantRestore,
+} from "@/lib/actions/backup-actions";
+export {
   getCreditAnalyticsSummary,
   searchCreditAnalyticsScopes,
 } from "@/lib/actions/credit-analytics-actions";

@@ -7,6 +7,7 @@
     "dev": "next dev",
     "prebuild": "npm run check:env",
     "build": "next build",
+    "backup:worker": "node scripts/backup-worker.mjs",
     "create-api-client": "node scripts/create-api-client-key.mjs",
     "maintenance": "node scripts/manage-platform-announcement.mjs",
     "sync:tass": "node scripts/run-directory-sync-job.mjs",

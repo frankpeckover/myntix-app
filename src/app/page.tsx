@@ -1,6 +1,11 @@
 import { AppEntry } from "@/components/app-entry";
+import { TenantMaintenancePage } from "@/components/tenant-maintenance-page";
 import { getCurrentSessionUser } from "@/lib/actions";
-import { assertCurrentTenantExists, TenantNotFoundError } from "@/lib/db";
+import {
+  assertCurrentTenantExists,
+  TenantMaintenanceError,
+  TenantNotFoundError,
+} from "@/lib/db";
 import { getActiveMaintenanceMessage } from "@/domains/operations/platform-announcement-service";
 import { notFound } from "next/navigation";
 
@@ -10,6 +15,10 @@ export default async function Home({searchParams}:{searchParams:Promise<{returnT
   } catch (error) {
     if (error instanceof TenantNotFoundError) {
       notFound();
+    }
+
+    if (error instanceof TenantMaintenanceError) {
+      return <TenantMaintenancePage message={error.userMessage} />;
     }
 
     throw error;
