@@ -53,6 +53,11 @@ const localOrganisationSlug = getRequiredServerEnvInProduction(
   "local",
 );
 const defaultPostgresPort = 5432;
+const poolOptions = {
+  connectionTimeoutMillis: 5_000,
+  idleTimeoutMillis: 30_000,
+  max: 5,
+};
 const allowOrganisationHeaderOverride =
   process.env.NODE_ENV !== "production" ||
   process.env.ALLOW_ORGANISATION_HEADER_OVERRIDE === "true";
@@ -189,6 +194,7 @@ function getDatabaseTenantPool(tenantConfig: TenantDatabaseConfig) {
   }
 
   const pool = new Pool({
+    ...poolOptions,
     database: tenantConfig.database,
     host: tenantConfig.host,
     password: tenantConfig.password,
@@ -318,6 +324,7 @@ function getPlatformPool() {
   }
 
   const platformPool = new Pool({
+    ...poolOptions,
     database: getRequiredServerEnv("PLATFORM_POSTGRES_DATABASE"),
     host: getRequiredServerEnv("PLATFORM_POSTGRES_HOST"),
     password: getRequiredServerEnv("PLATFORM_POSTGRES_PASSWORD"),
@@ -325,9 +332,7 @@ function getPlatformPool() {
     user: getRequiredServerEnv("PLATFORM_POSTGRES_USER"),
   });
 
-  if (process.env.NODE_ENV !== "production") {
-    globalThis.appPlatformPool = platformPool;
-  }
+  globalThis.appPlatformPool = platformPool;
 
   return platformPool;
 }
@@ -338,6 +343,7 @@ function getSharedSchemaPool() {
   }
 
   const sharedSchemaPool = new Pool({
+    ...poolOptions,
     database: getRequiredServerEnv("APP_POSTGRES_DATABASE"),
     host: getRequiredServerEnv("APP_POSTGRES_HOST"),
     password: getRequiredServerEnv("APP_POSTGRES_PASSWORD"),
@@ -345,9 +351,7 @@ function getSharedSchemaPool() {
     user: getRequiredServerEnv("APP_POSTGRES_USER"),
   });
 
-  if (process.env.NODE_ENV !== "production") {
-    globalThis.appSharedSchemaPool = sharedSchemaPool;
-  }
+  globalThis.appSharedSchemaPool = sharedSchemaPool;
 
   return sharedSchemaPool;
 }
