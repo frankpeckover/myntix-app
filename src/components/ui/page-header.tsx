@@ -21,11 +21,11 @@ export function PageHeader({
 }: PageHeaderProps) {
   const titleClassName =
     titleSize === "large"
-      ? "truncate text-xl font-semibold"
-      : "truncate text-base font-semibold";
+      ? "page-title-large truncate text-2xl font-semibold leading-tight sm:text-[1.7rem]"
+      : "page-title-compact truncate text-base font-semibold leading-snug";
 
   return (
-    <div className="flex min-w-0 items-start justify-between gap-3">
+    <div className={`page-header flex min-w-0 items-start justify-between ${titleSize === "large" ? "gap-4" : "gap-3"}`}>
       <div className="flex min-w-0 items-start gap-3">
         {icon && (
           <span
@@ -42,11 +42,11 @@ export function PageHeader({
           )}
           <h2 className={titleClassName}>{title}</h2>
           {description && (
-            <p className="mt-1 text-sm text-text-muted">{description}</p>
+            <p className={`${titleSize === "large" ? "mt-1.5 max-w-3xl" : "mt-1"} text-sm text-text-muted`}>{description}</p>
           )}
         </div>
       </div>
-      {actions && <div className="flex shrink-0 gap-2">{actions}</div>}
+      {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
     </div>
   );
 }

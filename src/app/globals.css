@@ -711,9 +711,9 @@ html[data-theme="dark"] .professional-shell {
 
 .theme-panel {
   background: var(--surface);
-  border: 1px solid transparent;
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-panel);
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--shadow-panel) 72%, transparent), 0 10px 28px rgba(31, 37, 35, 0.025);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--shadow-panel) 62%, transparent), 0 8px 24px rgba(31, 37, 35, 0.022);
 }
 
 .student-wallet-card::before {
@@ -894,8 +894,9 @@ html[data-theme="dark"] .professional-shell {
 
 .theme-card {
   background: var(--surface);
-  border: 1px solid transparent;
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-card);
+  transition: border-color var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease), transform var(--motion-fast) var(--motion-ease);
 }
 
 .theme-subpanel {
@@ -1007,7 +1008,8 @@ table {
 
 .table-toolbar-band {
   background: var(--surface);
-  border: 0;
+  border: 1px solid var(--border-muted);
+  border-bottom: 0;
   border-radius: var(--radius-card) var(--radius-card) 0 0;
   padding: 0.7rem 1.25rem;
 }
@@ -1072,8 +1074,8 @@ table td:last-child {
 }
 
 table thead th {
-  background: var(--surface);
-  border-bottom: 2px solid var(--border-strong);
+  background: color-mix(in srgb, var(--panel-soft) 72%, var(--surface));
+  border-bottom: 1px solid var(--border);
 }
 
 table tbody tr:last-child td {
@@ -1112,14 +1114,14 @@ table tbody tr:last-child td {
 
 .professional-shell .theme-panel {
   background: var(--professional-panel-bg);
-  border-color: transparent;
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--professional-panel-shadow) 70%, transparent);
+  border-color: var(--border-subtle);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--professional-panel-shadow) 66%, transparent), 0 8px 22px color-mix(in srgb, var(--professional-panel-shadow) 15%, transparent);
 }
 
 .professional-shell .theme-card {
   background: var(--professional-card-bg);
-  border-color: transparent;
-  box-shadow: none;
+  border-color: var(--border-subtle);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--professional-panel-shadow) 42%, transparent);
 }
 
 .professional-shell .theme-subpanel {
@@ -1183,7 +1185,7 @@ table tbody tr:last-child td {
 }
 
 .professional-shell table tbody tr:hover {
-  background: color-mix(in srgb, var(--panel-soft) 52%, transparent);
+  background: color-mix(in srgb, var(--brand-soft) 42%, transparent);
 }
 
 .professional-shell .admin-recent-activity-table tbody tr:hover {
@@ -1203,6 +1205,32 @@ table tbody tr:last-child td {
 .professional-shell .text-xl.font-semibold {
   font-size: 1rem;
   line-height: 1.35;
+}
+
+.professional-shell .page-title-large {
+  font-size: 1.7rem;
+  line-height: 1.2;
+}
+
+.page-header + .theme-panel,
+.page-header + .theme-card {
+  margin-top: 1.25rem;
+}
+
+.metric-card {
+  position: relative;
+}
+
+.metric-card::after {
+  background: var(--brand);
+  border-radius: 9999px;
+  bottom: 0.75rem;
+  content: "";
+  height: 2px;
+  left: 1rem;
+  opacity: 0.34;
+  position: absolute;
+  width: 2rem;
 }
 
 .professional-shell .text-xs.font-semibold.uppercase {
@@ -1292,12 +1320,12 @@ html[data-theme="dark"] .professional-shell .app-modal.theme-panel {
 .theme-card:hover,
 .theme-subpanel:hover,
 .wallet-card:hover {
-  border-color: transparent !important;
+  border-color: var(--border-subtle) !important;
 }
 
 .theme-card:hover,
 .theme-subpanel:hover {
-  box-shadow: none !important;
+  box-shadow: 0 5px 16px color-mix(in srgb, var(--shadow-panel) 42%, transparent) !important;
 }
 
 .theme-panel:hover {
@@ -1314,7 +1342,7 @@ html[data-theme="dark"] .professional-shell .app-modal.theme-panel {
 
 .professional-shell .theme-panel:hover,
 .professional-shell .wallet-card:hover {
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--professional-panel-shadow) 70%, transparent) !important;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--professional-panel-shadow) 66%, transparent), 0 8px 22px color-mix(in srgb, var(--professional-panel-shadow) 15%, transparent) !important;
 }
 
 .professional-shell .admin-recent-activity.theme-panel:hover,

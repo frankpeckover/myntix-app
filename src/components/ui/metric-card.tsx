@@ -19,7 +19,7 @@ export function MetricCard({
 }: MetricCardProps) {
   if (variant === "centered") {
     return (
-      <article className="theme-card flex min-h-24 flex-col p-3">
+      <article className="metric-card theme-card flex min-h-24 flex-col p-4">
         <MetricCardHeader icon={icon} label={label} tone={tone} />
         <div className="flex flex-1 items-center justify-center text-center">
           <p className="text-3xl font-semibold tracking-normal text-foreground">
@@ -31,23 +31,23 @@ export function MetricCard({
   }
 
   return (
-    <article className="theme-card flex min-h-28 min-w-0 flex-col p-3 sm:p-4">
-      <div className="flex flex-1 items-start justify-end">
+    <article className="metric-card theme-card flex min-h-32 min-w-0 flex-col p-4">
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 truncate text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-text-kicker">
+          {label}
+        </p>
         {icon && (
           <span
-            className={`hidden h-9 w-9 shrink-0 items-center justify-center rounded-md sm:flex ${getMetricToneClassName(tone)}`}
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${getMetricToneClassName(tone)}`}
           >
             {icon}
           </span>
         )}
       </div>
-      <div className="mt-3 flex items-end justify-between gap-3">
+      <div className="mt-auto pt-5">
         <div className="min-w-0">
-          <p className="break-words text-xl font-semibold leading-tight text-foreground sm:text-2xl sm:leading-none">
+          <p className="break-words text-2xl font-semibold leading-none text-foreground sm:text-[1.75rem]">
             {value}
-          </p>
-          <p className="mt-2 whitespace-normal break-words text-[0.68rem] font-semibold uppercase leading-snug tracking-[0.08em] text-text-kicker sm:truncate sm:text-xs">
-            {label}
           </p>
         </div>
       </div>
