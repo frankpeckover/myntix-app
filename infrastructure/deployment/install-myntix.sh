@@ -27,6 +27,7 @@ BACKUP_ENV_SOURCE=""
 BACKUP_DATA_DIRECTORY="/var/lib/myntix-backup-worker"
 RCLONE_CONFIG_FILE="/etc/myntix/rclone.conf"
 RCLONE_CONFIG_SOURCE=""
+DEFAULT_RCLONE_CONFIG_SOURCE="/root/.config/rclone/rclone.conf"
 
 NODE_MAJOR_VERSION="24"
 SYSTEM_TIMEZONE="Australia/Brisbane"
@@ -220,8 +221,28 @@ install_environment_files() {
     "$APP_DIRECTORY/infrastructure/config/backup-worker/backup-worker.env.example" \
     "$BACKUP_GROUP"
 
-  if [[ -n "$RCLONE_CONFIG_SOURCE" ]]; then
-    install -m 0640 -o root -g "$BACKUP_GROUP" "$RCLONE_CONFIG_SOURCE" "$RCLONE_CONFIG_FILE"
+  install_rclone_config
+}
+
+install_rclone_config() {
+  local source_file="$RCLONE_CONFIG_SOURCE"
+
+  if [[ -z "$source_file" && -s "$DEFAULT_RCLONE_CONFIG_SOURCE" ]]; then
+    source_file="$DEFAULT_RCLONE_CONFIG_SOURCE"
+    log "Using existing root rclone configuration from ${source_file}"
+  fi
+
+  if [[ -n "$source_file" ]]; then
+    if [[ ! -s "$source_file" ]]; then
+      log "ERROR: rclone configuration source is missing or empty: ${source_file}"
+      exit 1
+    fi
+    install -m 0640 -o root -g "$BACKUP_GROUP" "$source_file" "$RCLONE_CONFIG_FILE"
+  elif [[ -s "$RCLONE_CONFIG_FILE" ]]; then
+    chown root:"$BACKUP_GROUP" "$RCLONE_CONFIG_FILE"
+    chmod 0640 "$RCLONE_CONFIG_FILE"
+  else
+    log "Backup worker setup is pending: configure rclone as root or set RCLONE_CONFIG_SOURCE, then rerun."
   fi
 }
 

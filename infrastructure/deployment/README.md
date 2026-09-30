@@ -37,6 +37,12 @@ and application startup are deferred until the placeholders are replaced and
 the installer is rerun. Existing env files are preserved unless an explicit
 source file is configured.
 
+For backup storage, the installer preserves `/etc/myntix/rclone.conf`, copies
+an explicitly configured `RCLONE_CONFIG_SOURCE`, or automatically imports
+`/root/.config/rclone/rclone.conf` when one already exists. If none exists, run
+`sudo rclone config` and rerun the installer; the web app can still be deployed
+while backup-worker startup remains deferred.
+
 The script is idempotent: later runs pull the configured branch using a
 fast-forward update, reinstall exact dependencies, rebuild, and restart the
 services. It refuses to overwrite a checkout containing local modifications.
