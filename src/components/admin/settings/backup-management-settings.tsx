@@ -167,8 +167,10 @@ export function BackupManagementSettings() {
             <p className="mt-0.5 truncate text-xs text-text-muted">
               {formatPhase(overview.jobs[0].phase)} · {formatDateTime(overview.jobs[0].requestedAt)}
             </p>
-            {overview.jobs[0].errorMessage && (
-              <p className="mt-1 text-xs text-danger-strong">{overview.jobs[0].errorMessage}</p>
+            {overview.jobs[0].status === "failed" && (
+              <p className="mt-1 text-xs text-danger-strong">
+                There has been an issue with your backups. Please contact support.
+              </p>
             )}
           </div>
           {(overview.jobs[0].status === "queued" || overview.jobs[0].status === "running") && (

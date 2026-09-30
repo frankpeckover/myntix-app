@@ -24,7 +24,6 @@ type BackupRow = {
 type BackupJobRow = {
   backup_id: string | null;
   completed_at: Date | null;
-  error_message: string | null;
   id: string;
   job_type: TenantBackupJobType;
   phase: string;
@@ -56,7 +55,6 @@ export type TenantBackupOverview = {
   jobs: Array<{
     backupId: string | null;
     completedAt: string | null;
-    errorMessage: string | null;
     id: string;
     jobType: TenantBackupJobType;
     phase: string;
@@ -98,7 +96,7 @@ export class TenantBackupService {
       backupDb.query<BackupJobRow>(
         `
           select id, job_type, source, status, phase, backup_id,
-                 requested_at, started_at, completed_at, error_message
+                 requested_at, started_at, completed_at
           from backup_jobs
           where organisation_id = $1
           order by requested_at desc
@@ -285,7 +283,6 @@ function mapJob(job: BackupJobRow) {
   return {
     backupId: job.backup_id,
     completedAt: job.completed_at?.toISOString() ?? null,
-    errorMessage: job.error_message,
     id: job.id,
     jobType: job.job_type,
     phase: job.phase,
