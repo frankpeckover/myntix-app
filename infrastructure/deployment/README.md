@@ -28,9 +28,11 @@ sudo infrastructure/deployment/install-myntix.sh
 ```
 
 If no environment sources are supplied, the first run creates protected
-templates under `/etc/myntix` and stops. Enter the real values and rerun the
-installer. Existing env files are preserved unless an explicit source file is
-configured.
+templates under `/etc/myntix`, installs the dependencies and services, then
+prints the remaining environment-file action at the end. The production build
+and application startup are deferred until the placeholders are replaced and
+the installer is rerun. Existing env files are preserved unless an explicit
+source file is configured.
 
 The script is idempotent: later runs pull the configured branch using a
 fast-forward update, reinstall exact dependencies, rebuild, and restart the

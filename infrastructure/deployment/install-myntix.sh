@@ -11,6 +11,7 @@ REPOSITORY_BRANCH="main"
 
 APP_USER="myntix"
 APP_GROUP="myntix"
+APP_HOME_DIRECTORY="/var/lib/myntix"
 APP_DIRECTORY="/opt/myntix/app"
 APP_SERVICE_NAME="myntix-app"
 APP_ENV_FILE="/etc/myntix/app.env"
@@ -33,6 +34,7 @@ START_SERVICES="true"
 
 INSTALLER_LOG_DIRECTORY="/var/log/myntix-installer"
 INSTALLER_LOG_FILE="${INSTALLER_LOG_DIRECTORY}/install-$(date -u +%Y%m%dT%H%M%SZ).log"
+APP_ENV_READY="true"
 
 require_root() {
   if [[ "${EUID}" -ne 0 ]]; then
@@ -134,9 +136,13 @@ create_service_accounts() {
     groupadd --system "$APP_GROUP"
   fi
   if ! id "$APP_USER" >/dev/null 2>&1; then
-    useradd --system --gid "$APP_GROUP" --home-dir /nonexistent --shell /usr/sbin/nologin "$APP_USER"
+    useradd --system --gid "$APP_GROUP" --home-dir "$APP_HOME_DIRECTORY" --shell /usr/sbin/nologin "$APP_USER"
+  elif [[ "$(getent passwd "$APP_USER" | cut -d: -f6)" != "$APP_HOME_DIRECTORY" ]]; then
+    usermod --home "$APP_HOME_DIRECTORY" "$APP_USER"
   fi
 
+  install -d -m 0750 -o "$APP_USER" -g "$APP_GROUP" "$APP_HOME_DIRECTORY"
+  install -d -m 0750 -o "$APP_USER" -g "$APP_GROUP" "$APP_HOME_DIRECTORY/.npm"
   install -d -m 0755 -o "$APP_USER" -g "$APP_GROUP" "$(dirname "$APP_DIRECTORY")"
   install -d -m 0755 -o root -g root /etc/myntix
 
@@ -145,7 +151,9 @@ create_service_accounts() {
       groupadd --system "$BACKUP_GROUP"
     fi
     if ! id "$BACKUP_USER" >/dev/null 2>&1; then
-      useradd --system --gid "$BACKUP_GROUP" --home-dir /nonexistent --shell /usr/sbin/nologin "$BACKUP_USER"
+      useradd --system --gid "$BACKUP_GROUP" --home-dir "$BACKUP_DATA_DIRECTORY" --shell /usr/sbin/nologin "$BACKUP_USER"
+    elif [[ "$(getent passwd "$BACKUP_USER" | cut -d: -f6)" != "$BACKUP_DATA_DIRECTORY" ]]; then
+      usermod --home "$BACKUP_DATA_DIRECTORY" "$BACKUP_USER"
     fi
     install -d -m 0750 -o "$BACKUP_USER" -g "$BACKUP_GROUP" "$BACKUP_DATA_DIRECTORY"
   fi
@@ -221,18 +229,17 @@ install_environment_file() {
 
 validate_application_environment() {
   if grep -Eq '=(change_me|your-|example\.)' "$APP_ENV_FILE"; then
-    log "ERROR: ${APP_ENV_FILE} still contains placeholder values."
-    log "Edit it, then rerun this installer."
-    exit 1
+    APP_ENV_READY="false"
+    log "Application environment still contains placeholders; build and service startup will be deferred."
   fi
 }
 
 install_application() {
   log "Installing exact npm dependencies"
-  runuser -u "$APP_USER" -- npm --prefix "$APP_DIRECTORY" ci
-
-  log "Building the production application"
-  runuser -u "$APP_USER" -- npm --prefix "$APP_DIRECTORY" run build
+  runuser -u "$APP_USER" -- env \
+    HOME="$APP_HOME_DIRECTORY" \
+    npm_config_cache="$APP_HOME_DIRECTORY/.npm" \
+    npm --prefix "$APP_DIRECTORY" ci
 
   install -d -m 0755 -o "$APP_USER" -g "$APP_GROUP" \
     "$APP_DIRECTORY/.next/cache" \
@@ -240,6 +247,17 @@ install_application() {
     "$APP_DIRECTORY/public/uploads/logos" \
     "$APP_DIRECTORY/public/uploads/shop-items" \
     "$APP_DIRECTORY/public/uploads/users"
+
+  if ! is_true "$APP_ENV_READY"; then
+    log "Skipping production build until ${APP_ENV_FILE} is configured."
+    return
+  fi
+
+  log "Building the production application"
+  runuser -u "$APP_USER" -- env \
+    HOME="$APP_HOME_DIRECTORY" \
+    npm_config_cache="$APP_HOME_DIRECTORY/.npm" \
+    npm --prefix "$APP_DIRECTORY" run build
 }
 
 install_systemd_services() {
@@ -257,6 +275,7 @@ Group=${APP_GROUP}
 WorkingDirectory=${APP_DIRECTORY}
 Environment=NODE_ENV=production
 Environment=APP_PORT=${APP_PORT}
+Environment=HOME=${APP_HOME_DIRECTORY}
 EnvironmentFile=${APP_ENV_FILE}
 ExecStart=/usr/bin/npm run start
 Restart=on-failure
@@ -320,6 +339,11 @@ start_services() {
     return
   fi
 
+  if ! is_true "$APP_ENV_READY"; then
+    log "Application service not started until ${APP_ENV_FILE} is configured."
+    return
+  fi
+
   log "Enabling and starting ${APP_SERVICE_NAME}"
   systemctl enable "$APP_SERVICE_NAME"
   systemctl restart "$APP_SERVICE_NAME"
@@ -343,7 +367,7 @@ start_services() {
 }
 
 verify_application() {
-  if ! is_true "$START_SERVICES"; then
+  if ! is_true "$START_SERVICES" || ! is_true "$APP_ENV_READY"; then
     return
   fi
 
@@ -382,7 +406,12 @@ main() {
   start_services
   verify_application
 
-  log "Myntix installation completed successfully"
+  if is_true "$APP_ENV_READY"; then
+    log "Myntix installation completed successfully"
+  else
+    log "Myntix installation preparation completed successfully"
+    log "NEXT STEP: edit ${APP_ENV_FILE}, replace its placeholders, then rerun this installer."
+  fi
   log "Installer log: ${INSTALLER_LOG_FILE}"
   log "Application logs: journalctl -u ${APP_SERVICE_NAME} -f"
   if is_true "$INSTALL_BACKUP_WORKER"; then
