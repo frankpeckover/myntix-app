@@ -54,7 +54,7 @@
   --accent-highlight: #7ae4b7;
   --login-submit-bg: #173b40;
   --custom-accent-primary: #2563eb;
-  --foreground: #111827;
+  --foreground: rgb(0, 0, 0);
   --surface: #ffffff;
   --panel-soft: #f4f7f5;
   --surface-hover: #f0f4f2;
@@ -63,11 +63,11 @@
   --border-muted: #edf1f5;
   --border-strong: #aeb8c4;
   --button-border: #9ca8b6;
-  --text-muted: #4f5b69;
-  --text-subtle: #596575;
-  --text-kicker: #4d5867;
-  --text-label: #475262;
-  --text-control: #2f3948;
+  --text-muted: #414c5a;
+  --text-subtle: #485361;
+  --text-kicker: #3e4957;
+  --text-label: #374250;
+  --text-control: #222d3b;
   --brand: var(--accent-primary);
   --brand-foreground: #ffffff;
   --brand-hover: color-mix(in srgb, var(--accent-primary) 84%, black);
@@ -125,7 +125,7 @@
   --student-card-muted: #b9d5d0;
   --student-card-accent: #7ae4b7;
   --progress-track: #d7dee7;
-  --activity-meta: #687386;
+  --activity-meta: #566173;
   --shell-gradient-accent: color-mix(in srgb, var(--accent-primary) 10%, transparent);
   --shell-gradient-surface: rgba(255, 255, 255, 0.8);
   --shadow-panel: rgba(17, 24, 39, 0.07);
@@ -142,7 +142,7 @@ html[data-theme="dark"] {
   color-scheme: dark;
   --background: #050608;
   --background-gradient-start: #090b0f;
-  --foreground: #f5f7fa;
+  --foreground: #fafbfc;
   --surface: #101216;
   --panel-soft: #171a20;
   --surface-hover: #1f232b;
@@ -151,11 +151,11 @@ html[data-theme="dark"] {
   --border-muted: #1c2027;
   --border-strong: #5d6675;
   --button-border: #5d6675;
-  --text-muted: #a9b1bd;
-  --text-subtle: #c1c8d1;
-  --text-kicker: #aeb6c2;
-  --text-label: #d0d6de;
-  --text-control: #e0e5eb;
+  --text-muted: #bcc4cf;
+  --text-subtle: #d0d5dd;
+  --text-kicker: #c5cbd4;
+  --text-label: #dce1e7;
+  --text-control: #edf0f4;
   --brand: color-mix(in srgb, var(--accent-primary) 72%, white);
   --brand-hover: color-mix(in srgb, var(--accent-primary) 54%, white);
   --brand-soft: color-mix(in srgb, var(--accent-primary) 22%, #101216);
@@ -351,13 +351,18 @@ html[data-wallet-pattern="orbit"] {
 }
 
 body {
+  -moz-osx-font-smoothing: auto;
+  -webkit-font-smoothing: subpixel-antialiased;
   background:
     linear-gradient(180deg, var(--background-gradient-start) 0, var(--background) 260px),
     var(--background);
   color: var(--foreground);
   font-family: var(--font-lato), "Segoe UI", Arial, Helvetica, sans-serif;
+  font-kerning: normal;
+  font-synthesis: none;
   font-weight: 400;
   min-height: 100dvh;
+  text-rendering: optimizeLegibility;
 }
 
 h1,

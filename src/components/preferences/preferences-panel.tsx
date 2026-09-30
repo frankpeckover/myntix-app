@@ -119,7 +119,7 @@ function AppearancePreferences({
                 aria-pressed={accentTheme === option.value}
                 className={`h-8 w-8 rounded-full border transition hover:scale-105 ${
                   accentTheme === option.value
-                    ? "border-foreground ring-2 ring-brand-soft-strong"
+                    ? "border-foreground ring-1 ring-foreground ring-offset-1 ring-offset-surface"
                     : "border-border-subtle"
                 }`}
                 onClick={() => handleAccentThemeChange(option.value)}

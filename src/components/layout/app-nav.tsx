@@ -7,12 +7,12 @@ import { isAdmin, isStudent } from "@/lib/auth/permissions";
 import {
   AlertTriangleIcon,
   ClockIcon,
+  CoinStackIcon,
   CogIcon,
   EyeIcon,
   KeyRoundIcon,
   ListIcon,
   LogOutIcon,
-  PlusIcon,
   SidebarCollapseIcon,
   SidebarExpandIcon,
   SlidersHorizontalIcon,
@@ -655,7 +655,7 @@ function NavigationItemIcon({ item }: { item: NavigationItem }) {
     case "Dashboard":
       return <WalletIcon className={className} />;
     case "Credit Management":
-      return <PlusIcon className={className} />;
+      return <CoinStackIcon className={className} />;
     case "Analytics":
       return <TrendingUpIcon className={className} />;
     case "Rewards":

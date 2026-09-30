@@ -248,7 +248,7 @@ function CalendarClassBlock({ calendarRange, entry, onOpenGroup }: {
   return (
     <button
       aria-label={`Open ${entry.groupName} on the dashboard`}
-      className="absolute left-1 right-1 z-10 overflow-hidden rounded-md bg-brand-soft px-2 py-1.5 text-left text-brand-strong shadow-sm transition hover:bg-brand hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+      className="absolute left-1 right-1 z-10 overflow-hidden rounded-md bg-brand-soft-strong px-2 py-1.5 text-left text-brand-strong shadow-sm transition hover:bg-brand hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
       onClick={() => onOpenGroup(entry.groupId, entry.groupName)}
       style={style}
       title={`${entry.groupName}, ${formatDisplayTime(entry.startTime)} to ${formatDisplayTime(entry.endTime)}`}
