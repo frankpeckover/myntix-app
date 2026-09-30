@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getTenantBackupOverview,
   requestTenantBackup,
@@ -12,6 +12,7 @@ import type {
 import { FileDownIcon, RefreshCwIcon } from "@/components/ui/icons";
 import { FixedNotification } from "@/components/ui/fixed-notification";
 import { ModalShell } from "@/components/ui/modal-shell";
+import { notifySessionExpired } from "@/lib/auth/session-expiry-event";
 
 const refreshIntervalMilliseconds = 10_000;
 
@@ -24,13 +25,19 @@ export function BackupManagementSettings() {
   const [restoreBackupId, setRestoreBackupId] = useState<string | null>(null);
   const [restoreConfirmation, setRestoreConfirmation] = useState("");
   const [isRequestingRestore, setIsRequestingRestore] = useState(false);
+  const restoreQueuedRef = useRef(false);
 
   const loadOverview = useCallback(async () => {
     try {
       const result = await getTenantBackupOverview();
+      if (hasActiveRestore(result)) restoreQueuedRef.current = true;
       setOverview(result);
       setError(null);
     } catch {
+      if (restoreQueuedRef.current) {
+        notifySessionExpired();
+        return;
+      }
       setError("Could not load backup history.");
     } finally {
       setIsLoading(false);
@@ -43,12 +50,17 @@ export function BackupManagementSettings() {
       try {
         const result = await getTenantBackupOverview();
         if (isMounted) {
+          if (hasActiveRestore(result)) restoreQueuedRef.current = true;
           setOverview(result);
           setError(null);
           setIsLoading(false);
         }
       } catch {
         if (isMounted) {
+          if (restoreQueuedRef.current) {
+            notifySessionExpired();
+            return;
+          }
           setError("Could not load backup history.");
           setIsLoading(false);
         }
@@ -106,6 +118,7 @@ export function BackupManagementSettings() {
         setError(result.message);
         return;
       }
+      restoreQueuedRef.current = true;
       setMessage(result.message);
       closeRestoreModal();
       await loadOverview();
@@ -243,11 +256,11 @@ export function BackupManagementSettings() {
         >
           <div className="mt-5 space-y-4">
             <div className="rounded-md bg-warning-soft p-3 text-sm text-warning">
-              Current tenant data will be replaced. A fresh safety backup is created first, and all sessions are invalidated after restoration.
+              Current tenant data will be replaced. A safety backup is retained for 24 hours, and all sessions are invalidated after restoration.
             </div>
             <div>
               <label className="text-sm font-semibold text-text-control" htmlFor="restore-confirmation">
-                Enter {overview.organisationName} to continue
+                Enter <strong>&quot;{overview.organisationName}&quot;</strong> to continue
               </label>
               <input
                 autoComplete="off"
@@ -261,6 +274,14 @@ export function BackupManagementSettings() {
         </ModalShell>
       )}
     </div>
+  );
+}
+
+function hasActiveRestore(overview: TenantBackupOverview) {
+  return overview.jobs.some(
+    (job) =>
+      job.jobType === "restore" &&
+      (job.status === "queued" || job.status === "running"),
   );
 }
 

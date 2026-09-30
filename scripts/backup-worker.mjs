@@ -13,6 +13,10 @@ const workerId = `${hostname()}-${process.pid}`;
 const pollingMilliseconds = 10_000;
 const leaseMinutes = 120;
 const retentionDays = nonNegativeIntegerEnvironment("BACKUP_RETENTION_DAYS", 7);
+const safetyRetentionHours = nonNegativeIntegerEnvironment(
+  "BACKUP_SAFETY_RETENTION_HOURS",
+  24,
+);
 const localRoot = environment("BACKUP_LOCAL_DIR", "/var/lib/myntix-backup-worker");
 const rcloneRemote = requiredEnvironment("BACKUP_RCLONE_REMOTE").replace(/\/$/, "");
 const runOnce = process.env.BACKUP_WORKER_ONCE === "true";
@@ -279,7 +283,7 @@ async function restoreTenantBackup(job, organisation) {
 }
 
 async function cleanupExpiredBackups() {
-  if (retentionDays === 0) return;
+  if (retentionDays === 0 && safetyRetentionHours === 0) return;
 
   try {
     const result = await cataloguePool.query(
@@ -287,7 +291,18 @@ async function cleanupExpiredBackups() {
         select id, storage_key
         from tenant_backups backups
         where backups.status = 'available'
-          and backups.completed_at < now() - ($1::int * interval '1 day')
+          and (
+            (
+              backups.source = 'pre_restore'
+              and $2::int > 0
+              and backups.completed_at < now() - ($2::int * interval '1 hour')
+            )
+            or (
+              backups.source <> 'pre_restore'
+              and $1::int > 0
+              and backups.completed_at < now() - ($1::int * interval '1 day')
+            )
+          )
           and not exists (
             select 1
             from backup_jobs jobs
@@ -297,7 +312,7 @@ async function cleanupExpiredBackups() {
         order by backups.completed_at
         limit 100
       `,
-      [retentionDays],
+      [retentionDays, safetyRetentionHours],
     );
 
     for (const backup of result.rows) {

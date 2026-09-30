@@ -40,8 +40,9 @@ BACKUP_SHARED_DATABASE=myntix_app
 BACKUP_APP_USER=myntix_web
 
 RCLONE_CONFIG=/etc/myntix/rclone.conf
-BACKUP_RCLONE_REMOTE=encrypted-r2:myntix-backup
+BACKUP_RCLONE_REMOTE=encrypted-r2:
 BACKUP_RETENTION_DAYS=7
+BACKUP_SAFETY_RETENTION_HOURS=24
 ```
 
 ## Start and test
@@ -71,6 +72,9 @@ BACKUP_WORKER_ONCE=true npm run backup:worker
   timezone.
 - Manual backups have a 15-minute cooldown.
 - Restore points are retained for seven days by default.
+- Pre-restore safety points are retained for 24 hours by default.
 - A restore first creates a safety backup, enables maintenance mode, restores
   in one transaction, reapplies access, and clears active sessions.
 - A failed restore automatically reapplies its safety backup.
+- Dump files use the worker's local directory only while being created,
+  verified, or restored. Available restore points live in encrypted R2 storage.
