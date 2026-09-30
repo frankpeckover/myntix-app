@@ -242,7 +242,6 @@ install_application() {
     npm --prefix "$APP_DIRECTORY" ci
 
   install -d -m 0755 -o "$APP_USER" -g "$APP_GROUP" \
-    "$APP_DIRECTORY/.next/cache" \
     "$APP_DIRECTORY/public/uploads" \
     "$APP_DIRECTORY/public/uploads/logos" \
     "$APP_DIRECTORY/public/uploads/shop-items" \
@@ -253,9 +252,17 @@ install_application() {
     return
   fi
 
+  # Build output is disposable. Recreate it to prevent stale root-owned files
+  # from blocking builds performed by the unprivileged application account.
+  rm -rf -- "$APP_DIRECTORY/.next"
+  install -d -m 0755 -o "$APP_USER" -g "$APP_GROUP" \
+    "$APP_DIRECTORY/.next" \
+    "$APP_DIRECTORY/.next/cache"
+
   log "Building the production application"
   runuser -u "$APP_USER" -- env \
     HOME="$APP_HOME_DIRECTORY" \
+    NEXT_TELEMETRY_DISABLED=1 \
     npm_config_cache="$APP_HOME_DIRECTORY/.npm" \
     npm --prefix "$APP_DIRECTORY" run build
 }

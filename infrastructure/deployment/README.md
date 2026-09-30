@@ -10,6 +10,7 @@ separate server.
 - System-wide Node.js, Git, PostgreSQL client tools, and rclone.
 - A dedicated application user and optional backup-worker user.
 - The GitHub checkout, exact npm dependencies, and production build.
+- Clean, application-owned Next.js build output on every deployment.
 - `/etc/myntix/app.env` and `/etc/myntix/backup-worker.env`.
 - Hardened systemd services for the web app and backup worker.
 - Runtime upload and local backup directories.
