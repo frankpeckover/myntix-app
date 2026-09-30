@@ -1,5 +1,5 @@
 import { createHash } from "crypto";
-import { db } from "@/lib/db";
+import { db } from "@/lib/database/db";
 
 type ApiIdempotencyRow = {
   request_hash: string;

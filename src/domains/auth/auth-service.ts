@@ -1,8 +1,8 @@
-import { db } from "@/lib/db";
-import { getDatabaseErrorMessage } from "@/lib/database-error-message";
-import { appConfig } from "@/lib/app-config";
-import { verifyPassword } from "@/lib/passwords";
-import type { Role, SessionUser } from "@/lib/session";
+import { db } from "@/lib/database/db";
+import { getDatabaseErrorMessage } from "@/lib/database/database-error-message";
+import { appConfig } from "@/lib/config/app-config";
+import { verifyPassword } from "@/lib/auth/passwords";
+import type { Role, SessionUser } from "@/lib/auth/session";
 import { AuditService } from "@/domains/audit/audit-service";
 
 type UserRow = {

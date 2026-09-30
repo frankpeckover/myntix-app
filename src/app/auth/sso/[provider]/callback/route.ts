@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import {
   clearSsoStateCookie,
   getSsoStateCookie,
-} from "@/lib/sso-state-cookie";
-import type { SsoProviderType } from "@/lib/sso-types";
+} from "@/lib/auth/sso-state-cookie";
+import type { SsoProviderType } from "@/lib/auth/sso-types";
 import { SessionService } from "@/domains/auth/session-service";
 import { SsoAuthError, SsoAuthService } from "@/domains/auth/sso-auth-service";
 import { ErrorLogService } from "@/domains/audit/error-log-service";

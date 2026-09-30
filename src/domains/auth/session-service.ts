@@ -1,8 +1,8 @@
 import { randomBytes } from "crypto";
 import { cookies } from "next/headers";
-import { db } from "@/lib/db";
-import { hashServerSecret } from "@/lib/server-hash";
-import type { Role, SessionUser } from "@/lib/session";
+import { db } from "@/lib/database/db";
+import { hashServerSecret } from "@/lib/security/server-hash";
+import type { Role, SessionUser } from "@/lib/auth/session";
 
 type SessionUserRow = {
   email: string;

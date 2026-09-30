@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { AppFooter } from "@/components/ui/app-footer";
 import { GlobalMaintenanceBanner } from "@/components/ui/global-maintenance-banner";
-import { appConfig } from "@/lib/app-config";
+import { appConfig } from "@/lib/config/app-config";
 import { getActiveMaintenanceMessage } from "@/domains/operations/platform-announcement-service";
 
 type LegalPageProps = {

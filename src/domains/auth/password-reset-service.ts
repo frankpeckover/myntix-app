@@ -1,9 +1,9 @@
 import { createHash, randomBytes } from "crypto";
 import type { PoolClient } from "pg";
-import type { ActionResult } from "@/lib/action-results";
-import { appConfig } from "@/lib/app-config";
-import { db } from "@/lib/db";
-import { hashPassword } from "@/lib/passwords";
+import type { ActionResult } from "@/lib/actions/action-results";
+import { appConfig } from "@/lib/config/app-config";
+import { db } from "@/lib/database/db";
+import { hashPassword } from "@/lib/auth/passwords";
 import { validateNewPassword } from "@/lib/security/password-policy";
 import { AuditService } from "@/domains/audit/audit-service";
 import { EmailService } from "@/domains/integrations/email-service";

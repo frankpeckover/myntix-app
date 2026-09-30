@@ -1,6 +1,6 @@
-import { db } from "@/lib/db";
-import { canViewAuditLog } from "@/lib/permissions";
-import type { SessionUser } from "@/lib/session";
+import { db } from "@/lib/database/db";
+import { canViewAuditLog } from "@/lib/auth/permissions";
+import type { SessionUser } from "@/lib/auth/session";
 
 type ErrorLogInput = {
   context?: Record<string, unknown>;

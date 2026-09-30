@@ -1,7 +1,7 @@
 import { TransactionStatusBadge } from "@/components/transactions/transaction-status-badge";
 import { ModalCloseButton } from "@/components/ui/modal-close-button";
-import { formatCurrencyAmount, formatDateTime } from "@/lib/formatters";
-import { getSignedAmountTextClassName } from "@/lib/amount-style";
+import { formatCurrencyAmount, formatDateTime } from "@/lib/presentation/formatters";
+import { getSignedAmountTextClassName } from "@/lib/presentation/amount-style";
 import type { TransactionLogItem } from "@/domains/ledger/transaction-service";
 
 type TransactionDetailsModalProps = {

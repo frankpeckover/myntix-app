@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { AlertTriangleIcon } from "@/components/ui/icons";
-import { appConfig } from "@/lib/app-config";
+import { appConfig } from "@/lib/config/app-config";
 
 export default function GlobalError({
   error,

@@ -2,9 +2,9 @@ import { AuditService } from "@/domains/audit/audit-service";
 import {
   backupDb,
   isBackupCatalogueConfigured,
-} from "@/lib/backup-db";
-import { getCurrentTenantSlug, platformDb } from "@/lib/db";
-import type { SessionUser } from "@/lib/session";
+} from "@/lib/database/backup-db";
+import { getCurrentTenantSlug, platformDb } from "@/lib/database/db";
+import type { SessionUser } from "@/lib/auth/session";
 
 type OrganisationRow = {
   id: string;

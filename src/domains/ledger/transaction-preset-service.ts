@@ -1,7 +1,7 @@
 import type { PoolClient } from "pg";
-import type { ActionResult } from "@/lib/action-results";
-import { db } from "@/lib/db";
-import type { SessionUser } from "@/lib/session";
+import type { ActionResult } from "@/lib/actions/action-results";
+import { db } from "@/lib/database/db";
+import type { SessionUser } from "@/lib/auth/session";
 import {
   defaultTransactionPresets,
   getDefaultQuickAdjustments,
@@ -9,7 +9,7 @@ import {
   maxQuickReasons,
   type PersonalTransactionPresets,
   type TransactionPresets,
-} from "@/lib/transaction-presets";
+} from "@/lib/ledger/transaction-presets";
 import { AuditService } from "@/domains/audit/audit-service";
 
 export type UpdateTransactionPresetsInput = TransactionPresets;

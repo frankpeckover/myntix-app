@@ -1,7 +1,7 @@
-import type { ActionResult } from "@/lib/action-results";
-import { db } from "@/lib/db";
-import { isStudent } from "@/lib/permissions";
-import type { SessionUser } from "@/lib/session";
+import type { ActionResult } from "@/lib/actions/action-results";
+import { db } from "@/lib/database/db";
+import { isStudent } from "@/lib/auth/permissions";
+import type { SessionUser } from "@/lib/auth/session";
 import { AuditService } from "@/domains/audit/audit-service";
 
 export type StudentGoal = {

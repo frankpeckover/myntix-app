@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { db } from "@/lib/database/db";
 import type { AuditLogItem } from "@/domains/audit/audit-service";
 import type { LedgerEntryStatus, LedgerEntryType } from "@/domains/ledger/ledger-service";
 import {

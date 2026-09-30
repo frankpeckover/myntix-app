@@ -1,11 +1,11 @@
 import type { PoolClient } from "pg";
-import type { ActionResult } from "@/lib/action-results";
-import { db } from "@/lib/db";
+import type { ActionResult } from "@/lib/actions/action-results";
+import { db } from "@/lib/database/db";
 import {
   canApproveShopRequests,
   canRequestShopItems,
-} from "@/lib/permissions";
-import type { SessionUser } from "@/lib/session";
+} from "@/lib/auth/permissions";
+import type { SessionUser } from "@/lib/auth/session";
 import { AuditService } from "@/domains/audit/audit-service";
 import { LedgerService } from "@/domains/ledger/ledger-service";
 import { NotificationService } from "@/domains/notifications/notification-service";

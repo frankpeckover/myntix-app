@@ -1,6 +1,6 @@
-import type { ActionResult } from "@/lib/action-results";
-import { appConfig } from "@/lib/app-config";
-import { getRequiredServerEnvInProduction } from "@/lib/server-env";
+import type { ActionResult } from "@/lib/actions/action-results";
+import { appConfig } from "@/lib/config/app-config";
+import { getRequiredServerEnvInProduction } from "@/lib/config/server-env";
 
 type SendEmailInput = {
   html: string;

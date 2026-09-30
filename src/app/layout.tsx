@@ -1,21 +1,21 @@
 import type { Metadata } from "next";
 import { Lato } from "next/font/google";
-import { appConfig } from "@/lib/app-config";
+import { appConfig } from "@/lib/config/app-config";
 import {
   accentThemeStorageKey,
   customAccentColorStorageKey,
   defaultCustomAccentColor,
   defaultAccentTheme,
-} from "@/lib/accent-theme-config";
-import { themeStorageKey } from "@/lib/theme-config";
+} from "@/lib/theme/accent-theme-config";
+import { themeStorageKey } from "@/lib/theme/theme-config";
 import {
   defaultWalletStyle,
   defaultWalletPattern,
   walletPatternStorageKey,
   walletStyleStorageKey,
-} from "@/lib/wallet-style-config";
+} from "@/lib/theme/wallet-style-config";
 import "./globals.css";
-import { SessionChecker } from "@/components/session-checker";
+import { SessionChecker } from "@/components/auth/session-checker";
 
 const lato = Lato({
   display: "swap",

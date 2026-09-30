@@ -1,5 +1,5 @@
 import type { PoolClient } from "pg";
-import { db } from "@/lib/db";
+import { db } from "@/lib/database/db";
 import type { ApiClient } from "@/lib/api/api-types";
 import { AuditService } from "@/domains/audit/audit-service";
 import { LedgerService } from "@/domains/ledger/ledger-service";

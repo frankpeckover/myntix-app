@@ -1,6 +1,6 @@
 "use client";
 
-import type { CsvCell } from "@/lib/client-csv";
+import type { CsvCell } from "@/lib/csv/client";
 import { FileDownIcon } from "@/components/ui/icons";
 
 type CsvTemplateButtonProps = {

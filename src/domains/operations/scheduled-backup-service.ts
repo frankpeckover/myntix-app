@@ -1,6 +1,6 @@
 import type { PoolClient } from "pg";
-import { backupDb, isBackupCatalogueConfigured } from "@/lib/backup-db";
-import { connectTenantBySlug, platformDb } from "@/lib/db";
+import { backupDb, isBackupCatalogueConfigured } from "@/lib/database/backup-db";
+import { connectTenantBySlug, platformDb } from "@/lib/database/db";
 
 type OrganisationRow = {
   id: string;

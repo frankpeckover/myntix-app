@@ -1,11 +1,11 @@
-import { AppEntry } from "@/components/app-entry";
-import { TenantMaintenancePage } from "@/components/tenant-maintenance-page";
+import { AppEntry } from "@/components/layout/app-entry";
+import { TenantMaintenancePage } from "@/components/layout/tenant-maintenance-page";
 import { getCurrentSessionUser } from "@/lib/actions";
 import {
   assertCurrentTenantExists,
   TenantMaintenanceError,
   TenantNotFoundError,
-} from "@/lib/db";
+} from "@/lib/database/db";
 import { getActiveMaintenanceMessage } from "@/domains/operations/platform-announcement-service";
 import { notFound } from "next/navigation";
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
-import { db } from "@/lib/db";
+import { db } from "@/lib/database/db";
 import { apiError } from "@/lib/api/api-response";
 import type {
   ApiClient,
@@ -20,7 +20,7 @@ import {
   consumeRateLimit,
   type RateLimitResult,
 } from "@/lib/security/rate-limit";
-import { getServerEnvNumber } from "@/lib/server-env";
+import { getServerEnvNumber } from "@/lib/config/server-env";
 
 export type ApiJsonBody = Record<string, unknown>;
 

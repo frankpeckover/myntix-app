@@ -1,5 +1,5 @@
-import { db } from "@/lib/db";
-import type { SessionUser } from "@/lib/session";
+import { db } from "@/lib/database/db";
+import type { SessionUser } from "@/lib/auth/session";
 import { AuditService } from "@/domains/audit/audit-service";
 
 export type ImportGroupMembershipInput = {

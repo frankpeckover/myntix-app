@@ -2,7 +2,7 @@ import type { PoolClient } from "pg";
 import {
   connectTenantBySlug,
   listActiveTenantReferences,
-} from "@/lib/db";
+} from "@/lib/database/db";
 import { DirectorySyncService } from "@/domains/integrations/directory-sync-service";
 
 export type ScheduledDirectorySyncSummary = {

@@ -3,18 +3,18 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { listTransactionLog, voidTransaction } from "@/lib/actions";
-import { downloadCsv } from "@/lib/client-csv";
+import { downloadCsv } from "@/lib/csv/client";
 import {
   canViewAllTransactions,
   canVoidTransactions,
-} from "@/lib/permissions";
-import type { SessionUser } from "@/lib/session";
+} from "@/lib/auth/permissions";
+import type { SessionUser } from "@/lib/auth/session";
 import type { TransactionLogItem } from "@/domains/ledger/transaction-service";
-import { getSignedAmountTextClassName } from "@/lib/amount-style";
+import { getSignedAmountTextClassName } from "@/lib/presentation/amount-style";
 import {
   formatDateTime,
   formatSignedAmount,
-} from "@/lib/formatters";
+} from "@/lib/presentation/formatters";
 import { matchesTransactionFilters } from "@/components/transactions/transaction-filter-utils";
 import { TransactionDetailsModal } from "@/components/transactions/transaction-details-modal";
 import {

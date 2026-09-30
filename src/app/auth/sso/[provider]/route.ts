@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { setSsoStateCookie } from "@/lib/sso-state-cookie";
-import type { SsoProviderType } from "@/lib/sso-types";
+import { setSsoStateCookie } from "@/lib/auth/sso-state-cookie";
+import type { SsoProviderType } from "@/lib/auth/sso-types";
 import { SsoAuthService } from "@/domains/auth/sso-auth-service";
 
 type SsoStartContext = {

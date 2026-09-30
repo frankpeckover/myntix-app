@@ -1,4 +1,4 @@
-import { platformDb } from "@/lib/db";
+import { platformDb } from "@/lib/database/db";
 
 type PublicOrganisationRow = {
   name: string;

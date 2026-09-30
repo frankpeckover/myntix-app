@@ -2,8 +2,8 @@ import type { PoolClient } from "pg";
 import {
   connectTenantBySlug,
   listActiveTenantReferences,
-} from "@/lib/db";
-import { appConfig } from "@/lib/app-config";
+} from "@/lib/database/db";
+import { appConfig } from "@/lib/config/app-config";
 import { EmailService } from "@/domains/integrations/email-service";
 
 type DigestRecipientRow = {

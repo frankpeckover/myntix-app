@@ -1,16 +1,16 @@
 import { randomUUID } from "crypto";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
-import { db } from "@/lib/db";
-import { getDatabaseErrorMessage } from "@/lib/database-error-message";
+import { db } from "@/lib/database/db";
+import { getDatabaseErrorMessage } from "@/lib/database/database-error-message";
 import {
   generateTemporaryPassword,
   hashPassword,
   verifyPassword,
-} from "@/lib/passwords";
+} from "@/lib/auth/passwords";
 import { validateNewPassword } from "@/lib/security/password-policy";
-import type { ActionResult } from "@/lib/action-results";
-import type { Role, SessionUser } from "@/lib/session";
+import type { ActionResult } from "@/lib/actions/action-results";
+import type { Role, SessionUser } from "@/lib/auth/session";
 import { AuditService } from "@/domains/audit/audit-service";
 import { LedgerService } from "@/domains/ledger/ledger-service";
 

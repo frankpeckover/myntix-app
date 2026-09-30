@@ -1,5 +1,5 @@
-import { db } from "@/lib/db";
-import type { ActionResult } from "@/lib/action-results";
+import { db } from "@/lib/database/db";
+import type { ActionResult } from "@/lib/actions/action-results";
 
 export type GroupListItem = {
   id: string;

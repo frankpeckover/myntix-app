@@ -8,7 +8,9 @@ Myntix Ledger is an internal currency ledger for organisations. The core loop is
 
 The app is a Next.js application backed by PostgreSQL. Tenants are resolved through a platform database and can use either a dedicated database or a schema inside a shared app database.
 
-Product, API, notification, operations, and backup documentation is indexed in [docs/README.md](docs/README.md).
+Product, API, notification, operations, and backup documentation is indexed in [infrastructure/docs/README.md](infrastructure/docs/README.md).
+Fresh Debian/Ubuntu containers can be provisioned with the
+[deployment installer](infrastructure/deployment/README.md).
 
 ## Tech Stack
 
@@ -26,15 +28,15 @@ Create `.env.local` from `.env.example` and adjust the platform database credent
 ```txt
 NEXT_PUBLIC_APP_NAME=Myntix Ledger
 NEXT_PUBLIC_APP_INITIALS=ML
-NEXT_PUBLIC_APP_LOGO_URL=/brand/myntix-ledger-app-icon.png
-NEXT_PUBLIC_APP_LOCKUP_URL=/brand/myntix-ledger-lockup.png
-NEXT_PUBLIC_APP_WORDMARK_URL=/brand/myntix-ledger-wordmark.png
+NEXT_PUBLIC_APP_LOGO_URL=/brand/myntix-stacked-coins.png
+NEXT_PUBLIC_APP_LOCKUP_URL=/brand/myntix-lockup.png
+NEXT_PUBLIC_APP_WORDMARK_URL=/brand/myntix-wordmark.png
 NEXT_PUBLIC_APP_TAGLINE=Internal currency, made simple.
 
 PLATFORM_POSTGRES_HOST=localhost
 PLATFORM_POSTGRES_PORT=5432
 PLATFORM_POSTGRES_DATABASE=app_platform
-PLATFORM_POSTGRES_USER=platform_app_user
+PLATFORM_POSTGRES_USER=myntix_web
 PLATFORM_POSTGRES_PASSWORD=change_me
 
 LOCAL_ORGANISATION_SLUG=dev
@@ -76,13 +78,13 @@ LOCAL_ORGANISATION_SLUG=dev
 PLATFORM_POSTGRES_HOST=your-postgres-host
 PLATFORM_POSTGRES_PORT=5432
 PLATFORM_POSTGRES_DATABASE=your-platform-database
-PLATFORM_POSTGRES_USER=your-platform-user
+PLATFORM_POSTGRES_USER=myntix_web
 PLATFORM_POSTGRES_PASSWORD=your-platform-password
 
 APP_POSTGRES_HOST=your-postgres-host
 APP_POSTGRES_PORT=5432
 APP_POSTGRES_DATABASE=your-shared-app-database
-APP_POSTGRES_USER=your-shared-app-user
+APP_POSTGRES_USER=myntix_web
 APP_POSTGRES_PASSWORD=your-shared-app-password
 
 SESSION_TOKEN_HASH_SECRET=long-random-secret
@@ -120,17 +122,10 @@ npm run check:env
 npm run build
 ```
 
-For an LXC/Proxmox deployment, use:
-
-```bash
-sudo APP_DIR=/opt/myntix/app \
-  REPO_URL=https://github.com/frankpeckover/schoolbank.git \
-  BRANCH=main \
-  SERVICE_NAME=myntix \
-  bash scripts/deploy-proxmox-lxc.sh
-```
-
-The deploy script creates a systemd service that reads `${APP_DIR}/.env.production` and `${APP_DIR}/.env.local`, then runs `npm run start`. Change ports by editing `APP_PORT` in the env file, not the service command.
+For an LXC/Proxmox deployment, clone the repository into the application
+directory and run it as a systemd service with that directory as
+`WorkingDirectory`. Load `.env.production` from the service and execute
+`npm run start`. Change ports through `APP_PORT`, not the service command.
 
 Keep production secrets out of git. `.env`, `.env.local`, `.env.production`, `.env.production.local`, and uploaded runtime files are ignored.
 

@@ -1,5 +1,7 @@
-# Dependencies
+# Dependencies and package-manager caches
 node_modules/
+.npm/
+.pnpm-store/
 
 # Next.js output
 .next/
@@ -8,30 +10,26 @@ out/
 build/
 dist/
 
-# Environment files
-.env
-.env.local
-.env.production
-.env.production.*
-.env.*.local
-deploy/*.env
+# Environment files and local credentials
+.env*
+!.env.example
+infrastructure/config/backup-worker/*.env
 
 # Logs
 *.log
-dev-server*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+*.pid
+*.pid.lock
 
-# Test and coverage output
+# Coverage and generated reports
 coverage/
 test-results/
-playwright-report/
-blob-report/
-playwright/.auth/
+reports/
 
-# Local import/export test data
+# Local import/export data and database dumps
 sample-*.csv
 dummy-*.csv
 test-*.csv
@@ -40,12 +38,33 @@ test-*.png
 *-sample.csv
 exports/
 backups/
+*.dump
+*.dump.gz
+*.backup
+*.sql.gz
 
 # Hosting and tooling
 .vercel/
 *.tsbuildinfo
 .turbo/
 .cache/
+.codex/
+.claude/
+
+# Editors
+.idea/
+.vscode/
+*.code-workspace
+*.swp
+*.swo
+*~
+
+# Temporary and patch files
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
 
 # OS files
 .DS_Store
@@ -60,6 +79,9 @@ desktop.ini
 *.pem
 *.key
 *.cert
+*.crt
+*.p12
+*.pfx
 
 # Runtime uploads
 public/uploads/*

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { LegalPage, LegalSection } from "@/components/legal/legal-page";
-import { appConfig } from "@/lib/app-config";
+import { appConfig } from "@/lib/config/app-config";
 
 export const metadata: Metadata = {
   description: `Data retention expectations for ${appConfig.name} users, ledger records, audit logs, and backups.`,

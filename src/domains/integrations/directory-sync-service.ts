@@ -1,10 +1,10 @@
 import { randomBytes } from "crypto";
 import type { PoolClient } from "pg";
-import { db } from "@/lib/db";
-import { decryptServerSecret, encryptServerSecret } from "@/lib/server-crypto";
-import { hashPassword } from "@/lib/passwords";
-import type { ActionResult } from "@/lib/action-results";
-import type { SessionUser } from "@/lib/session";
+import { db } from "@/lib/database/db";
+import { decryptServerSecret, encryptServerSecret } from "@/lib/security/server-crypto";
+import { hashPassword } from "@/lib/auth/passwords";
+import type { ActionResult } from "@/lib/actions/action-results";
+import type { SessionUser } from "@/lib/auth/session";
 import { AuditService } from "@/domains/audit/audit-service";
 import type {
   DirectorySyncResult,

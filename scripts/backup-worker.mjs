@@ -10,18 +10,39 @@ import pg from "pg";
 
 const { Pool } = pg;
 const workerId = `${hostname()}-${process.pid}`;
-const pollingMilliseconds = numberEnvironment("BACKUP_WORKER_POLL_SECONDS", 10) * 1000;
-const leaseMinutes = numberEnvironment("BACKUP_WORKER_LEASE_MINUTES", 120);
+const pollingMilliseconds = 10_000;
+const leaseMinutes = 120;
 const retentionDays = nonNegativeIntegerEnvironment("BACKUP_RETENTION_DAYS", 7);
 const localRoot = environment("BACKUP_LOCAL_DIR", "/var/lib/myntix-backup-worker");
 const rcloneRemote = requiredEnvironment("BACKUP_RCLONE_REMOTE").replace(/\/$/, "");
 const runOnce = process.env.BACKUP_WORKER_ONCE === "true";
+const backupDatabase = {
+  host: requiredEnvironmentAny("BACKUP_POSTGRES_HOST", "BACKUP_WORKER_CATALOG_HOST"),
+  password: requiredEnvironmentAny(
+    "BACKUP_POSTGRES_PASSWORD",
+    "BACKUP_WORKER_CATALOG_PASSWORD",
+  ),
+  port: numberEnvironmentAny(
+    "BACKUP_POSTGRES_PORT",
+    "BACKUP_WORKER_CATALOG_PORT",
+    5432,
+  ),
+  user: requiredEnvironmentAny("BACKUP_POSTGRES_USER", "BACKUP_WORKER_CATALOG_USER"),
+};
+const appDatabaseUser = requiredEnvironmentAny(
+  "BACKUP_APP_USER",
+  "BACKUP_SHARED_APP_USER",
+);
 let isStopping = false;
 let lastRetentionCleanup = 0;
 const retentionCleanupIntervalMilliseconds = 6 * 60 * 60 * 1000;
 
-const cataloguePool = postgresPool("BACKUP_WORKER_CATALOG");
-const platformPool = postgresPool("BACKUP_WORKER_PLATFORM");
+const cataloguePool = postgresPool(
+  requiredEnvironmentAny("BACKUP_CATALOG_DATABASE", "BACKUP_WORKER_CATALOG_DATABASE"),
+);
+const platformPool = postgresPool(
+  requiredEnvironmentAny("BACKUP_PLATFORM_DATABASE", "BACKUP_WORKER_PLATFORM_DATABASE"),
+);
 
 process.on("SIGINT", () => { isStopping = true; });
 process.on("SIGTERM", () => { isStopping = true; });
@@ -373,13 +394,13 @@ function tenantTarget(organisation) {
   const mode = tenancyMode(organisation);
   if (mode === "schema") {
     return {
-      appUser: requiredEnvironment("BACKUP_SHARED_APP_USER"),
+      appUser: appDatabaseUser,
       database: requiredEnvironment("BACKUP_SHARED_DATABASE"),
-      host: requiredEnvironment("BACKUP_SHARED_HOST"),
-      port: numberEnvironment("BACKUP_SHARED_PORT", 5432),
+      host: backupDatabase.host,
+      port: backupDatabase.port,
       schemaName: validateIdentifier(organisation.schema_name, "schema"),
-      workerPassword: requiredEnvironment("BACKUP_PG_PASSWORD"),
-      workerUser: requiredEnvironment("BACKUP_PG_USER"),
+      workerPassword: backupDatabase.password,
+      workerUser: backupDatabase.user,
     };
   }
   const host = String(organisation.database_host || "").trim();
@@ -396,8 +417,8 @@ function tenantTarget(organisation) {
     host,
     port,
     schemaName: null,
-    workerPassword: requiredEnvironment("BACKUP_PG_PASSWORD"),
-    workerUser: requiredEnvironment("BACKUP_PG_USER"),
+    workerPassword: backupDatabase.password,
+    workerUser: backupDatabase.user,
   };
 }
 
@@ -507,13 +528,10 @@ function sha256File(path) {
   });
 }
 
-function postgresPool(prefix) {
+function postgresPool(database) {
   return new Pool({
-    database: requiredEnvironment(`${prefix}_DATABASE`),
-    host: requiredEnvironment(`${prefix}_HOST`),
-    password: requiredEnvironment(`${prefix}_PASSWORD`),
-    port: numberEnvironment(`${prefix}_PORT`, 5432),
-    user: requiredEnvironment(`${prefix}_USER`),
+    ...backupDatabase,
+    database,
   });
 }
 
@@ -523,13 +541,25 @@ function requiredEnvironment(name) {
   return value;
 }
 
+function requiredEnvironmentAny(primaryName, legacyName) {
+  const value = String(
+    process.env[primaryName] || process.env[legacyName] || "",
+  ).trim();
+  if (!value) throw new Error(`Missing required environment variable: ${primaryName}`);
+  return value;
+}
+
 function environment(name, fallback) {
   return String(process.env[name] || fallback).trim() || fallback;
 }
 
-function numberEnvironment(name, fallback) {
-  const value = Number(process.env[name] || fallback);
-  if (!Number.isFinite(value) || value <= 0) throw new Error(`${name} must be a positive number.`);
+function numberEnvironmentAny(primaryName, legacyName, fallback) {
+  const value = Number(
+    process.env[primaryName] || process.env[legacyName] || fallback,
+  );
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`${primaryName} must be a positive number.`);
+  }
   return value;
 }
 

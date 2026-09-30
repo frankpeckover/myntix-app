@@ -1,11 +1,11 @@
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
-import { db } from "@/lib/db";
-import type { ActionResult } from "@/lib/action-results";
-import { appConfig } from "@/lib/app-config";
-import { defaultCurrencyName } from "@/lib/school-defaults";
-import type { SessionUser } from "@/lib/session";
+import { db } from "@/lib/database/db";
+import type { ActionResult } from "@/lib/actions/action-results";
+import { appConfig } from "@/lib/config/app-config";
+import { defaultCurrencyName } from "@/lib/config/school-defaults";
+import type { SessionUser } from "@/lib/auth/session";
 import { AuditService } from "@/domains/audit/audit-service";
 
 export type SchoolInfo = {

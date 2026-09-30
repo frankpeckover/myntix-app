@@ -1,4 +1,4 @@
-import { appConfig } from "@/lib/app-config";
+import { appConfig } from "@/lib/config/app-config";
 import { AppBrand } from "@/components/ui/app-brand";
 
 export default function NotFound() {

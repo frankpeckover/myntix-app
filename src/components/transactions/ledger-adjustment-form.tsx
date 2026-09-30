@@ -16,8 +16,8 @@ import type {
 import {
   defaultTransactionPresets,
   type TransactionPresets,
-} from "@/lib/transaction-presets";
-import { formatAmount } from "@/lib/formatters";
+} from "@/lib/ledger/transaction-presets";
+import { formatAmount } from "@/lib/presentation/formatters";
 import { MinusIcon, PlusIcon } from "@/components/ui/icons";
 import type { GroupListItem } from "@/domains/groups/group-service";
 import type { StudentListItem } from "@/domains/users/user-service";

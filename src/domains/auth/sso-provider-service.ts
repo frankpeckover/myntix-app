@@ -1,13 +1,13 @@
-import { db } from "@/lib/db";
-import { encryptServerSecret } from "@/lib/server-crypto";
+import { db } from "@/lib/database/db";
+import { encryptServerSecret } from "@/lib/security/server-crypto";
 import {
   ssoProviderDefaults,
   type PublicSsoProvider,
   type SsoProviderSettings,
   type SsoProviderType,
-} from "@/lib/sso-types";
-import type { ActionResult } from "@/lib/action-results";
-import type { SessionUser } from "@/lib/session";
+} from "@/lib/auth/sso-types";
+import type { ActionResult } from "@/lib/actions/action-results";
+import type { SessionUser } from "@/lib/auth/session";
 import { AuditService } from "@/domains/audit/audit-service";
 
 export type UpdateSsoProviderInput = {

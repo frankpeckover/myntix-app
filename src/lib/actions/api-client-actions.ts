@@ -1,7 +1,7 @@
 "use server";
 
 import { requireSchoolSettingsManager } from "@/lib/actions/action-auth";
-import type { ActionResult } from "@/lib/action-results";
+import type { ActionResult } from "@/lib/actions/action-results";
 import type { ApiScope } from "@/lib/api/api-types";
 import { AuditService } from "@/domains/audit/audit-service";
 import {

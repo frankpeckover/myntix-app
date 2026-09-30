@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { LegalPage, LegalSection } from "@/components/legal/legal-page";
-import { appConfig } from "@/lib/app-config";
+import { appConfig } from "@/lib/config/app-config";
 
 export const metadata: Metadata = {
   description: `How ${appConfig.name} handles school reward wallet user, ledger, audit, and security information.`,

@@ -1,5 +1,5 @@
-import { backupDb, isBackupCatalogueConfigured } from "@/lib/backup-db";
-import { db, getCurrentTenantSlug, platformDb } from "@/lib/db";
+import { backupDb, isBackupCatalogueConfigured } from "@/lib/database/backup-db";
+import { db, getCurrentTenantSlug, platformDb } from "@/lib/database/db";
 
 export type OperationsDashboardSnapshot = {
   api: {

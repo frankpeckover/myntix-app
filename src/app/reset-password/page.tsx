@@ -1,4 +1,4 @@
-import { ResetPasswordCard } from "@/components/reset-password-card";
+import { ResetPasswordCard } from "@/components/auth/reset-password-card";
 
 type ResetPasswordPageProps = {
   searchParams: Promise<{

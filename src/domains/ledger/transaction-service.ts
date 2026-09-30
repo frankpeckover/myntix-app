@@ -1,12 +1,12 @@
-import { db } from "@/lib/db";
+import { db } from "@/lib/database/db";
 import {
   canCreateLedgerAdjustments,
   canViewAllTransactions,
   canViewStudentBalances,
   canVoidTransactions,
-} from "@/lib/permissions";
-import type { Role, SessionUser } from "@/lib/session";
-import type { ActionResult } from "@/lib/action-results";
+} from "@/lib/auth/permissions";
+import type { Role, SessionUser } from "@/lib/auth/session";
+import type { ActionResult } from "@/lib/actions/action-results";
 import {
   LedgerService,
   type LedgerEntryStatus,

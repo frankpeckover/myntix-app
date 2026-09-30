@@ -1,9 +1,9 @@
 import { createPublicKey, randomBytes, verify } from "crypto";
-import { db } from "@/lib/db";
-import { decryptServerSecret } from "@/lib/server-crypto";
-import { hashPassword } from "@/lib/passwords";
-import type { Role, SessionUser } from "@/lib/session";
-import type { SsoProviderType } from "@/lib/sso-types";
+import { db } from "@/lib/database/db";
+import { decryptServerSecret } from "@/lib/security/server-crypto";
+import { hashPassword } from "@/lib/auth/passwords";
+import type { Role, SessionUser } from "@/lib/auth/session";
+import type { SsoProviderType } from "@/lib/auth/sso-types";
 import { AuditService } from "@/domains/audit/audit-service";
 
 export type SsoAuthProvider = {

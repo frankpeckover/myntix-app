@@ -1,7 +1,7 @@
 import type { PoolClient } from "pg";
-import { db } from "@/lib/db";
-import { isTeacher } from "@/lib/permissions";
-import type { SessionUser } from "@/lib/session";
+import { db } from "@/lib/database/db";
+import { isTeacher } from "@/lib/auth/permissions";
+import type { SessionUser } from "@/lib/auth/session";
 import type {
   AppNotification,
   NotificationActionTarget,

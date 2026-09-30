@@ -1,6 +1,6 @@
 import { randomBytes } from "crypto";
-import { db } from "@/lib/db";
-import { hashServerSecret } from "@/lib/server-hash";
+import { db } from "@/lib/database/db";
+import { hashServerSecret } from "@/lib/security/server-hash";
 import type { ApiClient, ApiScope } from "@/lib/api/api-types";
 
 type ApiClientRow = {
