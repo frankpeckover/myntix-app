@@ -28,6 +28,7 @@ BACKUP_DATA_DIRECTORY="/var/lib/myntix-backup-worker"
 RCLONE_CONFIG_FILE="/etc/myntix/rclone.conf"
 RCLONE_CONFIG_SOURCE=""
 DEFAULT_RCLONE_CONFIG_SOURCE="/root/.config/rclone/rclone.conf"
+RCLONE_CONFIG_EXAMPLE="${APP_DIRECTORY}/infrastructure/config/backup-worker/rclone.conf.example"
 
 NODE_MAJOR_VERSION="24"
 SYSTEM_TIMEZONE="Australia/Brisbane"
@@ -242,7 +243,8 @@ install_rclone_config() {
     chown root:"$BACKUP_GROUP" "$RCLONE_CONFIG_FILE"
     chmod 0640 "$RCLONE_CONFIG_FILE"
   else
-    log "Backup worker setup is pending: configure rclone as root or set RCLONE_CONFIG_SOURCE, then rerun."
+    install -m 0640 -o root -g "$BACKUP_GROUP" "$RCLONE_CONFIG_EXAMPLE" "$RCLONE_CONFIG_FILE"
+    log "Created ${RCLONE_CONFIG_FILE} from its example. Enter the R2 credentials and rerun the installer."
   fi
 }
 
@@ -407,6 +409,11 @@ start_services() {
   fi
   if [[ ! -s "$RCLONE_CONFIG_FILE" ]]; then
     log "Backup worker not started: ${RCLONE_CONFIG_FILE} is missing or empty."
+    systemctl disable --now "$BACKUP_SERVICE_NAME" >/dev/null 2>&1 || true
+    return
+  fi
+  if grep -Eq '(change_me|<account-id>)' "$RCLONE_CONFIG_FILE"; then
+    log "Backup worker not started: ${RCLONE_CONFIG_FILE} contains placeholders."
     systemctl disable --now "$BACKUP_SERVICE_NAME" >/dev/null 2>&1 || true
     return
   fi

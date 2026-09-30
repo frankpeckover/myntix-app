@@ -14,6 +14,7 @@ dist/
 .env*
 !.env.example
 infrastructure/config/backup-worker/*.env
+infrastructure/config/backup-worker/rclone.conf
 
 # Logs
 *.log

@@ -40,8 +40,9 @@ source file is configured.
 For backup storage, the installer preserves `/etc/myntix/rclone.conf`, copies
 an explicitly configured `RCLONE_CONFIG_SOURCE`, or automatically imports
 `/root/.config/rclone/rclone.conf` when one already exists. If none exists, run
-`sudo rclone config` and rerun the installer; the web app can still be deployed
-while backup-worker startup remains deferred.
+it creates a protected file from `rclone.conf.example`; enter the account ID,
+R2 credentials and crypt password, then rerun the installer. The web app can
+still be deployed while backup-worker startup remains deferred.
 An already-installed backup worker is stopped when either its environment or
 rclone configuration is incomplete, preventing queued jobs from failing while
 storage is unavailable.
