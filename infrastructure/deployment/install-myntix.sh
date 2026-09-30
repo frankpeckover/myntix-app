@@ -155,6 +155,7 @@ create_service_accounts() {
     elif [[ "$(getent passwd "$BACKUP_USER" | cut -d: -f6)" != "$BACKUP_DATA_DIRECTORY" ]]; then
       usermod --home "$BACKUP_DATA_DIRECTORY" "$BACKUP_USER"
     fi
+    usermod --append --groups "$APP_GROUP" "$BACKUP_USER"
     install -d -m 0750 -o "$BACKUP_USER" -g "$BACKUP_GROUP" "$BACKUP_DATA_DIRECTORY"
   fi
 }
@@ -315,6 +316,7 @@ Wants=network-online.target
 Type=simple
 User=${BACKUP_USER}
 Group=${BACKUP_GROUP}
+SupplementaryGroups=${APP_GROUP}
 WorkingDirectory=${APP_DIRECTORY}
 EnvironmentFile=${BACKUP_ENV_FILE}
 ExecStart=/usr/bin/node scripts/backup-worker.mjs
