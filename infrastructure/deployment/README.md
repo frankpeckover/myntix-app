@@ -42,6 +42,9 @@ an explicitly configured `RCLONE_CONFIG_SOURCE`, or automatically imports
 `/root/.config/rclone/rclone.conf` when one already exists. If none exists, run
 `sudo rclone config` and rerun the installer; the web app can still be deployed
 while backup-worker startup remains deferred.
+An already-installed backup worker is stopped when either its environment or
+rclone configuration is incomplete, preventing queued jobs from failing while
+storage is unavailable.
 
 The script is idempotent: later runs pull the configured branch using a
 fast-forward update, reinstall exact dependencies, rebuild, and restart the

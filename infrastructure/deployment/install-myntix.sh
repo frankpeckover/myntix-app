@@ -402,10 +402,12 @@ start_services() {
 
   if grep -Eq '=(change_me|your-|example\.)' "$BACKUP_ENV_FILE"; then
     log "Backup worker not started: ${BACKUP_ENV_FILE} contains placeholders."
+    systemctl disable --now "$BACKUP_SERVICE_NAME" >/dev/null 2>&1 || true
     return
   fi
   if [[ ! -s "$RCLONE_CONFIG_FILE" ]]; then
     log "Backup worker not started: ${RCLONE_CONFIG_FILE} is missing or empty."
+    systemctl disable --now "$BACKUP_SERVICE_NAME" >/dev/null 2>&1 || true
     return
   fi
 
