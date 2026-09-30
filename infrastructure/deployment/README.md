@@ -7,6 +7,7 @@ separate server.
 ## What it configures
 
 - Operating-system updates and required packages.
+- The container timezone, defaulting to `Australia/Brisbane`.
 - System-wide Node.js, Git, PostgreSQL client tools, and rclone.
 - A dedicated application user and an isolated optional backup-worker user
   with read-only group access to the application code.

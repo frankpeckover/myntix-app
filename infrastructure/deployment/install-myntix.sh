@@ -29,6 +29,7 @@ RCLONE_CONFIG_FILE="/etc/myntix/rclone.conf"
 RCLONE_CONFIG_SOURCE=""
 
 NODE_MAJOR_VERSION="24"
+SYSTEM_TIMEZONE="Australia/Brisbane"
 RUN_SYSTEM_UPGRADE="true"
 START_SERVICES="true"
 
@@ -98,7 +99,24 @@ install_system_packages() {
     git \
     gnupg \
     postgresql-client \
-    rclone
+    rclone \
+    tzdata
+}
+
+configure_timezone() {
+  local zone_file="/usr/share/zoneinfo/${SYSTEM_TIMEZONE}"
+  if [[ ! -f "$zone_file" ]]; then
+    log "ERROR: unknown system timezone: ${SYSTEM_TIMEZONE}"
+    exit 1
+  fi
+
+  log "Configuring system timezone as ${SYSTEM_TIMEZONE}"
+  if command -v timedatectl >/dev/null 2>&1; then
+    timedatectl set-timezone "$SYSTEM_TIMEZONE"
+  else
+    ln -sfn "$zone_file" /etc/localtime
+    printf '%s\n' "$SYSTEM_TIMEZONE" >/etc/timezone
+  fi
 }
 
 install_nodejs() {
@@ -405,6 +423,7 @@ main() {
   log "Starting Myntix installation"
   validate_platform
   install_system_packages
+  configure_timezone
   install_nodejs
   create_service_accounts
   checkout_application
