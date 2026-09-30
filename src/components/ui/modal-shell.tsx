@@ -34,7 +34,7 @@ export function ModalShell({
         aria-describedby={description ? descriptionId : undefined}
         aria-labelledby={titleId}
         aria-modal="true"
-        className={`app-modal theme-panel motion-pop min-w-0 max-h-full w-full ${maxWidthClassName} overflow-x-hidden overflow-y-auto p-5 shadow-lg`}
+        className={`app-modal theme-panel motion-pop min-w-0 max-h-full w-full ${maxWidthClassName} overflow-x-hidden overflow-y-auto p-5 shadow-lg sm:p-6`}
         ref={dialogRef}
         role="dialog"
         tabIndex={-1}
@@ -55,7 +55,7 @@ export function ModalShell({
         <div className="app-modal-body">{children}</div>
 
         {footer && (
-          <div className="app-modal-footer flex justify-end">
+          <div className="app-modal-footer flex flex-wrap justify-end gap-2">
             {footer}
           </div>
         )}

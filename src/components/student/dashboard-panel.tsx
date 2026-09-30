@@ -60,15 +60,15 @@ const balanceHistoryWindowOptions: {
   label: string;
   value: BalanceHistoryWindow;
 }[] = [
-  { label: "24H", value: "day" },
-  { label: "7D", value: "week" },
-  { label: "30D", value: "month" },
+  { label: "Day", value: "day" },
+  { label: "Week", value: "week" },
+  { label: "Month", value: "month" },
   { label: "Custom", value: "custom" },
 ];
 const studentMetricTimeframeOptions = [
-  { label: "7 days", value: 7 },
-  { label: "30 days", value: 30 },
-  { label: "90 days", value: 90 },
+  { label: "Week", value: 7 },
+  { label: "Month", value: 30 },
+  { label: "3 months", value: 90 },
 ] as const;
 type StudentMetricTimeframeDays =
   (typeof studentMetricTimeframeOptions)[number]["value"];
@@ -254,9 +254,9 @@ export function StudentDashboardPanel({
       </section>
 
       <TransactionLogPanel
+        className="student-dashboard-card student-dashboard-transaction-log"
         currencyName={currencyName}
         currentUser={currentUser}
-        title="Recent Activity"
       />
 
       {unseenTransactions.length > 0 && (
@@ -529,7 +529,7 @@ function StudentMetricStrip({
         <div className="min-w-0">
           <h2 className="text-base font-semibold text-foreground">Averages</h2>
           <p className="mt-1 text-xs text-text-muted">
-            {selectedOption?.label ?? "30 days"}
+            {selectedOption?.label ?? "Month"}
           </p>
         </div>
         <InlineSelectMenu

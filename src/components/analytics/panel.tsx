@@ -67,11 +67,11 @@ type AnalyticsWindowKey = number | "custom";
 
 const analyticsSearchDebounceMs = 300;
 const analyticsWindowOptions: AnalyticsWindowOption[] = [
-  { days: 1, label: "Today" },
-  { days: 7, label: "7D" },
-  { days: 30, label: "30D" },
-  { days: 90, label: "90D" },
-  { days: 365, label: "1Y" },
+  { days: 1, label: "Day" },
+  { days: 7, label: "Week" },
+  { days: 30, label: "Month" },
+  { days: 90, label: "3 months" },
+  { days: 365, label: "Year" },
 ];
 const scopeSearchDebounceMs = 250;
 

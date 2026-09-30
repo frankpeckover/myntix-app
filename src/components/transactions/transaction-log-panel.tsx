@@ -50,9 +50,9 @@ import { TableToolbar } from "@/components/ui/table-toolbar";
 import { TextReasonModal } from "@/components/ui/text-reason-modal";
 
 type TransactionLogPanelProps = {
+  className?: string;
   currencyName: string;
   currentUser: SessionUser;
-  title?: string;
 };
 
 const transactionTypeOptions = [
@@ -89,6 +89,7 @@ const amountDirectionOptions = [
 ];
 
 export function TransactionLogPanel({
+  className = "",
   currencyName,
   currentUser,
 }: TransactionLogPanelProps) {
@@ -187,7 +188,7 @@ export function TransactionLogPanel({
   }
 
   return (
-    <section className="theme-panel motion-panel mt-5 min-w-0 p-0">
+    <section className={`theme-panel motion-panel mt-5 min-w-0 overflow-hidden p-0 ${className}`}>
       <FixedNotification error={error} message={message} />
       <div>
         {isLoading && (

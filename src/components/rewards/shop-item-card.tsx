@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/icons";
 import { formatAmount } from "@/lib/presentation/formatters";
 import type { ShopItem } from "@/domains/rewards/shop-service";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 type ShopItemCardProps = {
   canManage: boolean;
@@ -70,9 +71,7 @@ export function ShopItemCard({
               {getAvailabilityLabel(item)}
             </span>
             {!item.isActive && (
-              <span className="rounded-sm bg-danger-soft px-2 py-1 text-xs font-medium text-danger-strong">
-                Removed
-              </span>
+              <StatusBadge label="Archived" tone="danger" />
             )}
           </div>
         </div>

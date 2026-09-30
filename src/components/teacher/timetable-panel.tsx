@@ -148,11 +148,11 @@ function WeeklyCalendar({ calendarRange, currentMoment, entriesByDay, onOpenGrou
       className="max-h-[calc(100dvh-12rem)] min-w-0 overflow-y-auto rounded-lg bg-surface"
       ref={scrollContainerRef}
     >
-      <div className="sticky top-0 z-30 grid grid-cols-[4.5rem_repeat(7,minmax(0,1fr))] bg-surface-muted shadow-sm">
-        <div aria-hidden="true" />
+      <div className="sticky top-0 z-30 grid grid-cols-[4.5rem_repeat(7,minmax(0,1fr))] border-b border-border-subtle bg-surface shadow-sm">
+        <div aria-hidden="true" className="bg-surface" />
         {calendarDays.map((day) => (
           <div
-            className={`border-l border-border-subtle px-2 py-3 text-center ${currentMoment?.dayOfWeek === day.dayOfWeek ? "bg-brand-soft" : ""}`}
+            className={`border-l border-border-subtle px-2 py-3 text-center ${currentMoment?.dayOfWeek === day.dayOfWeek ? "bg-brand-soft" : "bg-surface"}`}
             key={day.dayOfWeek}
           >
             <span className="text-xs font-semibold text-text-control">{day.shortLabel}</span>

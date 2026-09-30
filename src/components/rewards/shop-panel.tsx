@@ -52,6 +52,7 @@ import {
   TableHeaderFilterSelect,
 } from "@/components/ui/table-header-filter";
 import { TableToolbar } from "@/components/ui/table-toolbar";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 type ShopPanelProps = {
   currencyName: string;
@@ -1018,26 +1019,14 @@ function ShopManagementActions({
 
 function ShopItemStatusBadge({ item }: { item: ShopItem }) {
   if (!item.isActive) {
-    return (
-      <span className="inline-flex rounded-sm bg-danger-soft px-2 py-1 text-xs font-semibold text-danger-strong">
-        Archived
-      </span>
-    );
+    return <StatusBadge label="Archived" tone="danger" />;
   }
 
   if (!item.isQuantityUnlimited && item.quantity <= 0) {
-    return (
-      <span className="inline-flex rounded-sm bg-danger-soft px-2 py-1 text-xs font-semibold text-danger-strong">
-        Unavailable
-      </span>
-    );
+    return <StatusBadge label="Unavailable" tone="warning" />;
   }
 
-  return (
-    <span className="inline-flex rounded-sm bg-success-soft px-2 py-1 text-xs font-semibold text-success">
-      Active
-    </span>
-  );
+  return <StatusBadge label="Active" tone="success" />;
 }
 
 function ShopEmptyState({

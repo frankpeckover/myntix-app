@@ -32,7 +32,11 @@ const defaultNavigationItems = [
   "Rewards",
   "Transaction Log",
 ] as const;
-const studentNavigationItems = ["Dashboard", "Rewards"] as const;
+const studentNavigationItems = [
+  "Dashboard",
+  "Rewards",
+  "Transaction History",
+] as const;
 const adminNavigationItems = [
   "Dashboard",
   "Credit Management",
@@ -49,6 +53,7 @@ const adminNavigationItems = [
 
 export type NavigationItem =
   | (typeof adminNavigationItems)[number]
+  | (typeof studentNavigationItems)[number]
   | "Preferences";
 
 type NavigationSection = {
@@ -508,10 +513,10 @@ function SideNavButton({
     <button
       aria-current={isActive ? "page" : undefined}
       aria-label={item}
-      className={`group flex h-9 w-full items-center text-[0.72rem] font-light tracking-[0.012em] transition ${
+      className={`group mx-2 flex h-9 w-[calc(100%_-_1rem)] items-center rounded-md border border-transparent text-[0.72rem] font-light tracking-[0.012em] transition ${
         isActive
-          ? "bg-brand-soft text-foreground"
-          : "text-text-muted hover:bg-surface-muted hover:text-text-control"
+          ? "border-brand-soft-strong bg-brand-soft text-brand-ink shadow-sm"
+          : "text-text-muted hover:bg-panel-soft hover:text-text-control"
       } ${isExpanded ? "justify-start gap-2.5 px-5" : "justify-center px-0"}`}
       onClick={() => onItemChange(item)}
       title={item}
@@ -555,10 +560,10 @@ function MenuItemButton({
   return (
     <button
       aria-current={isActive ? "page" : undefined}
-      className={`group flex min-h-11 w-full items-center gap-3 px-3 py-2.5 text-left text-sm font-light tracking-[0.01em] transition lg:min-h-0 lg:text-xs ${
+      className={`group flex min-h-11 w-full items-center gap-3 rounded-md border border-transparent px-3 py-2.5 text-left text-sm font-light tracking-[0.01em] transition lg:min-h-0 lg:text-xs ${
         isActive
-          ? "bg-brand-soft text-foreground"
-          : "text-text-muted hover:bg-surface-muted hover:text-text-control"
+          ? "border-brand-soft-strong bg-brand-soft text-brand-ink"
+          : "text-text-muted hover:bg-panel-soft hover:text-text-control"
       }`}
       onClick={() => onItemChange(item)}
       type="button"
@@ -661,6 +666,7 @@ function NavigationItemIcon({ item }: { item: NavigationItem }) {
     case "Rewards":
       return <TrophyIcon className={className} />;
     case "Transaction Log":
+    case "Transaction History":
       return <ListIcon className={className} />;
     case "Users":
       return <UserIcon className={className} />;

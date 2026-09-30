@@ -261,7 +261,8 @@ export function DashboardShell({
           />
         )}
 
-        {activeNavItem === "Transaction Log" && (
+        {(activeNavItem === "Transaction Log" ||
+          (isStudent(user) && activeNavItem === "Transaction History")) && (
           <TransactionLogPanel
             currencyName={schoolInfo.currencyName}
             currentUser={user}

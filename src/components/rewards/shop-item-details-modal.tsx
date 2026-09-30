@@ -6,6 +6,7 @@ import type { ShopItem } from "@/domains/rewards/shop-service";
 import { CheckIcon, PencilIcon, ShoppingBagIcon, TicketIcon } from "@/components/ui/icons";
 import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import { useDialogFocus } from "@/components/ui/use-dialog-focus";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 type ShopItemDetailsModalProps = {
   canManage: boolean;
@@ -44,8 +45,8 @@ export function ShopItemDetailsModal({
           <div className="min-w-0">
             <h3 className="text-2xl font-semibold">{item.name}</h3>
             {!item.isActive && (
-              <span className="mt-2 inline-flex rounded-sm bg-danger-soft px-2 py-1 text-xs font-semibold text-danger-strong">
-                Removed
+              <span className="mt-2 block">
+                <StatusBadge label="Archived" tone="danger" />
               </span>
             )}
           </div>

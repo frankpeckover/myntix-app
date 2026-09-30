@@ -71,19 +71,19 @@ export function InlineSelectMenu<TValue extends number | string>({
         aria-controls={isOpen ? menuId : undefined}
         aria-haspopup="menu"
         aria-label={ariaLabel}
-        className="inline-flex h-[46px] items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 text-xs font-medium text-text-control transition hover:bg-panel-soft hover:text-foreground"
+        className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-surface px-3 text-xs font-medium text-text-control transition hover:border-border-strong hover:text-foreground"
         onClick={() => setIsOpen((currentValue) => !currentValue)}
         ref={triggerRef}
         type="button"
       >
         <span>{selectedOption?.label ?? "Select"}</span>
-        <ChevronDownIcon className="h-3.5 w-3.5 text-text-muted" />
+        <ChevronDownIcon className={`h-3.5 w-3.5 text-text-muted transition-transform ${isOpen ? "rotate-180" : ""}`} />
       </button>
 
       {isOpen && (
         <div
           aria-label={ariaLabel}
-          className="motion-pop absolute right-0 top-10 z-[170] min-w-32 rounded-md border border-border bg-surface p-1.5 text-sm shadow-lg"
+          className="motion-pop absolute right-0 top-11 z-[170] min-w-36 rounded-md border border-border bg-surface p-1.5 text-sm shadow-lg"
           id={menuId}
           onKeyDown={handleMenuKeyDown}
           ref={popupRef}
@@ -91,7 +91,12 @@ export function InlineSelectMenu<TValue extends number | string>({
         >
           {options.map((option) => (
             <button
-              className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-text-control transition hover:bg-panel-soft"
+              aria-current={option.value === value ? "true" : undefined}
+              className={`flex w-full items-center justify-between gap-3 rounded-md border px-3 py-2 text-left font-medium transition ${
+                option.value === value
+                  ? "border-brand bg-surface text-brand-ink"
+                  : "border-transparent text-text-control hover:bg-panel-soft"
+              }`}
               key={option.value}
               onClick={() => {
                 onChange(option.value);

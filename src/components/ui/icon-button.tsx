@@ -14,10 +14,10 @@ type IconButtonProps = {
 
 const toneClassNames: Record<IconButtonTone, string> = {
   danger:
-    "border-danger-button-border text-danger-strong hover:bg-danger-soft",
-  default: "border-button-border text-text-control hover:bg-surface",
+    "border-danger-button-border bg-surface text-danger-strong hover:bg-danger-soft",
+  default: "border-button-border bg-surface text-text-control hover:border-border-strong hover:bg-panel-soft",
   primary:
-    "border-brand bg-brand text-white shadow-sm hover:bg-brand-hover hover:shadow-md",
+    "border-brand bg-brand text-white shadow-sm hover:bg-brand-hover hover:shadow",
 };
 
 export function IconButton({
@@ -33,8 +33,8 @@ export function IconButton({
     <button
       aria-expanded={ariaExpanded}
       aria-label={label}
-      className={`inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md border text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-        text ? "w-9 sm:w-auto sm:px-3" : "w-9"
+      className={`ui-icon-button inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${
+        text ? "w-10 sm:w-auto sm:px-3.5" : "w-10"
       } ${toneClassNames[tone]}`}
       disabled={disabled}
       onClick={onClick}

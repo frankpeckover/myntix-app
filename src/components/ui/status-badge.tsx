@@ -8,8 +8,9 @@ type StatusBadgeProps = {
 export function StatusBadge({ label, tone = "neutral" }: StatusBadgeProps) {
   return (
     <span
-      className={`inline-flex w-fit rounded-sm px-2 py-1 text-xs font-semibold ${getToneClasses(tone)}`}
+      className={`status-badge inline-flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 text-[0.7rem] font-semibold leading-none ${getToneClasses(tone)}`}
     >
+      <span aria-hidden="true" className="status-badge-dot h-1.5 w-1.5 rounded-full" />
       {label}
     </span>
   );
@@ -17,16 +18,16 @@ export function StatusBadge({ label, tone = "neutral" }: StatusBadgeProps) {
 
 function getToneClasses(tone: StatusTone) {
   if (tone === "danger") {
-    return "bg-danger-soft text-danger-strong";
+    return "border-danger-border bg-danger-soft text-danger-strong";
   }
 
   if (tone === "success") {
-    return "bg-success-soft text-success";
+    return "border-success-border bg-success-soft text-success";
   }
 
   if (tone === "warning") {
-    return "bg-brand-soft text-brand";
+    return "border-warning-border bg-warning-soft text-warning";
   }
 
-  return "bg-chip-bg text-chip-text";
+  return "border-border bg-chip-bg text-chip-text";
 }

@@ -447,6 +447,59 @@ button:not(:disabled):active {
   transform: translateY(1px) scale(0.99);
 }
 
+button.bg-brand:not(:disabled) {
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--brand) 24%, transparent);
+}
+
+button.bg-brand:not(:disabled):hover {
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--brand) 22%, transparent);
+  transform: translateY(-1px);
+}
+
+button.border-button-border:not(:disabled) {
+  background: var(--surface);
+}
+
+button.border-button-border:not(:disabled):hover {
+  border-color: var(--border-strong);
+}
+
+button:disabled {
+  box-shadow: none !important;
+  filter: saturate(0.72);
+}
+
+:where(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="file"]),
+  select,
+  textarea
+) {
+  box-shadow: 0 1px 1px color-mix(in srgb, var(--shadow-panel) 35%, transparent);
+}
+
+:where(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="file"]),
+  select,
+  textarea
+):hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
+:where(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="file"]),
+  select,
+  textarea
+):focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 14%, transparent);
+}
+
+:where(input, select, textarea):disabled {
+  background: var(--panel-soft);
+  color: var(--text-muted);
+  opacity: 0.78;
+}
+
 #main-content {
   scroll-margin-top: 1rem;
 }
@@ -597,9 +650,19 @@ html[data-theme="dark"] .professional-shell {
 }
 
 .student-activity-recap {
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--brand) 7%, transparent), transparent 42%),
-    var(--surface);
+  background: var(--surface);
+}
+
+.student-dashboard-transaction-log.theme-panel {
+  background: var(--surface);
+  border-color: transparent;
+  border-radius: 1.5rem;
+  box-shadow: none;
+}
+
+.student-dashboard-transaction-log.theme-panel:hover {
+  border-color: transparent !important;
+  box-shadow: none !important;
 }
 
 .student-recap-item {
@@ -621,12 +684,7 @@ html[data-theme="dark"] .professional-shell {
 .student-balance-trend-card,
 .student-goal-card,
 .student-metric-strip {
-  background:
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--brand) 6%, var(--surface)),
-      var(--surface) 58%
-    );
+  background: var(--surface);
 }
 
 .student-balance-trend-card > div {
@@ -926,17 +984,17 @@ html[data-theme="dark"] .professional-shell {
 
 .app-modal-header {
   border-bottom: 1px solid var(--border-subtle);
-  padding-bottom: 1rem;
+  padding-bottom: 1.15rem;
 }
 
 .app-modal-body {
-  margin-top: 1.25rem;
+  margin-top: 1.35rem;
 }
 
 .app-modal-footer {
   border-top: 1px solid var(--border-subtle);
-  margin-top: 1.25rem;
-  padding-top: 1rem;
+  margin-top: 1.35rem;
+  padding-top: 1.15rem;
 }
 
 .app-modal.flex .app-modal-body,
@@ -1074,7 +1132,7 @@ table td:last-child {
 }
 
 table thead th {
-  background: color-mix(in srgb, var(--panel-soft) 72%, var(--surface));
+  background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
 
@@ -1231,6 +1289,27 @@ table tbody tr:last-child td {
   opacity: 0.34;
   position: absolute;
   width: 2rem;
+}
+
+.status-badge-dot {
+  background: currentColor;
+  box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 12%, transparent);
+}
+
+@media (max-width: 639px) {
+  .page-header {
+    flex-wrap: wrap;
+  }
+
+  .page-header-actions {
+    justify-content: flex-end;
+    width: 100%;
+  }
+
+  .page-header-actions > button,
+  .page-header-actions > a {
+    min-height: 2.5rem;
+  }
 }
 
 .professional-shell .text-xs.font-semibold.uppercase {
