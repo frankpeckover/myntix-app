@@ -399,6 +399,13 @@ install_application() {
     "$APP_DIRECTORY/.next" \
     "$APP_DIRECTORY/.next/cache"
 
+  # Next.js refreshes this generated declaration during production builds.
+  # Git checkouts are managed by root, so explicitly make this file writable
+  # by the unprivileged account that performs the build.
+  if [[ -e "$APP_DIRECTORY/next-env.d.ts" ]]; then
+    chown "$APP_USER:$APP_GROUP" "$APP_DIRECTORY/next-env.d.ts"
+  fi
+
   log "Building the production application"
   runuser -u "$APP_USER" -- env \
     HOME="$APP_HOME_DIRECTORY" \
