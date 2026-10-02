@@ -53,6 +53,7 @@ import {
 } from "@/components/ui/table-header-filter";
 import { TableToolbar } from "@/components/ui/table-toolbar";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 
 type ShopPanelProps = {
   currencyName: string;
@@ -775,7 +776,7 @@ function ShopManagementList({
           ))}
         </tbody>
       </table>
-      <div className="mt-4 grid gap-3 md:hidden">
+      <div className="mt-3 grid min-w-0 gap-2 md:hidden sm:mt-4">
         {items.map((item) => (
           <ShopManagementCard
             currencyName={currencyName}
@@ -829,7 +830,7 @@ function ShopManagementCard({
   selected: boolean;
 }) {
   return (
-    <article className="rounded-md bg-surface p-3">
+    <article className="min-w-0 max-w-full overflow-hidden rounded-md bg-surface p-2.5 sm:p-3">
       <MobileSelectionShell
         checkbox={
           <RowSelectionCheckbox
@@ -840,7 +841,7 @@ function ShopManagementCard({
         }
       >
         <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
             <ShopTableImage item={item} />
             <div className="min-w-0">
               <h3 className="truncate text-sm font-semibold">{item.name}</h3>
@@ -857,7 +858,7 @@ function ShopManagementCard({
             onView={onView}
           />
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-text-muted">
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-text-muted sm:mt-3 sm:gap-3">
           <span>
             {formatAmount(item.price)} {currencyName}
           </span>
@@ -895,7 +896,9 @@ function StudentShopGrid({
   return (
     <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {isLoading && (
-        <p className="text-sm text-text-muted">Loading rewards...</p>
+        <div className="sm:col-span-2 lg:col-span-4">
+          <LoadingSkeleton className="px-0 py-0" lines={4} variant="cards" />
+        </div>
       )}
       {!isLoading &&
         pageItems.map((item) => (
@@ -1010,7 +1013,7 @@ function ShopManagementActions({
           icon: item.isActive ? <TrashIcon /> : <CheckIcon />,
           label: item.isActive ? "Archive" : "Enable",
           onSelect: () => onStatusChange(item),
-          tone: item.isActive ? "danger" : "primary",
+          tone: item.isActive ? "danger" : "success",
         },
       ]}
     />

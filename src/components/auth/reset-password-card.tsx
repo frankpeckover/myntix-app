@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { completePasswordReset } from "@/lib/actions";
+import { PasswordRequirements } from "@/components/auth/password-requirements";
 import { appConfig } from "@/lib/config/app-config";
 
 type ResetPasswordCardProps = {
@@ -68,11 +69,13 @@ export function ResetPasswordCard({ token }: ResetPasswordCardProps) {
 
           <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
             <PasswordField
+              describedBy="resetPasswordRequirements"
               id="newPassword"
               label="New password"
               onChange={setNewPassword}
               value={newPassword}
             />
+            <PasswordRequirements id="resetPasswordRequirements" />
             <PasswordField
               id="confirmPassword"
               label="Confirm password"
@@ -106,11 +109,13 @@ export function ResetPasswordCard({ token }: ResetPasswordCardProps) {
 }
 
 function PasswordField({
+  describedBy,
   id,
   label,
   onChange,
   value,
 }: {
+  describedBy?: string;
   id: string;
   label: string;
   onChange: (value: string) => void;
@@ -122,6 +127,7 @@ function PasswordField({
         {label}
       </label>
       <input
+        aria-describedby={describedBy}
         autoComplete="new-password"
         className="mt-2 w-full rounded-md border border-border bg-surface px-3 py-3 text-sm outline-none ring-brand transition focus:ring-2"
         id={id}

@@ -29,6 +29,12 @@ RCLONE_CONFIG_FILE="/etc/myntix/rclone.conf"
 RCLONE_CONFIG_SOURCE=""
 DEFAULT_RCLONE_CONFIG_SOURCE="/root/.config/rclone/rclone.conf"
 RCLONE_CONFIG_EXAMPLE="${APP_DIRECTORY}/infrastructure/config/backup-worker/rclone.conf.example"
+BACKUP_AGE_IDENTITY_FILE="/etc/myntix/backup-age.key"
+BACKUP_AGE_IDENTITY_SOURCE=""
+GENERATE_BACKUP_AGE_IDENTITY_IF_MISSING="true"
+OFFBOARD_ENV_FILE="/etc/myntix/offboarding.env"
+OFFBOARD_ENV_SOURCE=""
+OFFBOARD_ENV_EXAMPLE="${APP_DIRECTORY}/infrastructure/config/offboarding/offboarding.env.example"
 
 NODE_MAJOR_VERSION="24"
 SYSTEM_TIMEZONE="Australia/Brisbane"
@@ -94,8 +100,9 @@ install_system_packages() {
     apt-get upgrade -y
   fi
 
-  log "Installing Git, PostgreSQL client tools, rclone, and prerequisites"
+  log "Installing Git, PostgreSQL client tools, age, rclone, and prerequisites"
   apt-get install -y --no-install-recommends \
+    age \
     ca-certificates \
     curl \
     git \
@@ -212,6 +219,8 @@ install_environment_files() {
   ln -sfn "$APP_ENV_FILE" "$APP_DIRECTORY/.env.production"
   chown -h "$APP_USER:$APP_GROUP" "$APP_DIRECTORY/.env.production"
 
+  install_offboarding_environment
+
   if ! is_true "$INSTALL_BACKUP_WORKER"; then
     return
   fi
@@ -222,7 +231,72 @@ install_environment_files() {
     "$APP_DIRECTORY/infrastructure/config/backup-worker/backup-worker.env.example" \
     "$BACKUP_GROUP"
 
+  ensure_backup_environment_defaults
   install_rclone_config
+  install_backup_age_identity
+}
+
+ensure_backup_environment_defaults() {
+  local key value
+
+  migrate_backup_environment_key "BACKUP_POSTGRES_HOST" "BACKUP_WORKER_CATALOG_HOST"
+  migrate_backup_environment_key "BACKUP_POSTGRES_PORT" "BACKUP_WORKER_CATALOG_PORT"
+  migrate_backup_environment_key "BACKUP_POSTGRES_USER" "BACKUP_WORKER_CATALOG_USER"
+  migrate_backup_environment_key "BACKUP_POSTGRES_PASSWORD" "BACKUP_WORKER_CATALOG_PASSWORD"
+  migrate_backup_environment_key "BACKUP_CATALOG_DATABASE" "BACKUP_WORKER_CATALOG_DATABASE"
+  migrate_backup_environment_key "BACKUP_PLATFORM_DATABASE" "BACKUP_WORKER_PLATFORM_DATABASE"
+  migrate_backup_environment_key "BACKUP_APP_USER" "BACKUP_SHARED_APP_USER"
+
+  while IFS='=' read -r key value; do
+    if ! grep -q "^${key}=" "$BACKUP_ENV_FILE"; then
+      printf '\n%s=%s\n' "$key" "$value" >>"$BACKUP_ENV_FILE"
+    fi
+  done <<'EOF'
+BACKUP_AGE_IDENTITY=/etc/myntix/backup-age.key
+BACKUP_TEMP_DIR=/run/myntix-backup-worker
+BACKUP_LOCAL_RETENTION_DAYS=3
+BACKUP_RETENTION_DAYS=14
+BACKUP_SAFETY_RETENTION_HOURS=24
+EOF
+
+  if grep -q '^BACKUP_RCLONE_REMOTE=encrypted-r2:' "$BACKUP_ENV_FILE"; then
+    sed -i 's|^BACKUP_RCLONE_REMOTE=.*|BACKUP_RCLONE_REMOTE=cloudflareR2:myntix-backup|' "$BACKUP_ENV_FILE"
+    log "Migrated backup uploads from rclone crypt to locally encrypted R2 objects"
+  fi
+
+  sed -i -E '/^(BACKUP_WORKER_(CATALOG|PLATFORM)_(HOST|PORT|DATABASE|USER|PASSWORD)|BACKUP_PG_(USER|PASSWORD)|BACKUP_SHARED_(HOST|PORT|APP_USER)|BACKUP_WORKER_(POLL_SECONDS|LEASE_MINUTES))=/d' "$BACKUP_ENV_FILE"
+
+  chown root:"$BACKUP_GROUP" "$BACKUP_ENV_FILE"
+  chmod 0640 "$BACKUP_ENV_FILE"
+}
+
+migrate_backup_environment_key() {
+  local canonical_key="$1"
+  local legacy_key="$2"
+  local legacy_line
+
+  if grep -q "^${canonical_key}=" "$BACKUP_ENV_FILE"; then
+    return
+  fi
+
+  legacy_line="$(grep -m1 "^${legacy_key}=" "$BACKUP_ENV_FILE" || true)"
+  if [[ -n "$legacy_line" ]]; then
+    printf '\n%s=%s\n' "$canonical_key" "${legacy_line#*=}" >>"$BACKUP_ENV_FILE"
+  fi
+}
+
+install_offboarding_environment() {
+  if [[ -n "$OFFBOARD_ENV_SOURCE" ]]; then
+    install -m 0600 -o root -g root "$OFFBOARD_ENV_SOURCE" "$OFFBOARD_ENV_FILE"
+    log "Installed ${OFFBOARD_ENV_FILE} from ${OFFBOARD_ENV_SOURCE}"
+  elif [[ ! -e "$OFFBOARD_ENV_FILE" ]]; then
+    install -m 0600 -o root -g root "$OFFBOARD_ENV_EXAMPLE" "$OFFBOARD_ENV_FILE"
+    log "Created ${OFFBOARD_ENV_FILE} from its example. Configure it before processing deletion requests."
+  else
+    chmod 0600 "$OFFBOARD_ENV_FILE"
+    chown root:root "$OFFBOARD_ENV_FILE"
+    log "Preserved existing ${OFFBOARD_ENV_FILE}"
+  fi
 }
 
 install_rclone_config() {
@@ -245,6 +319,30 @@ install_rclone_config() {
   else
     install -m 0640 -o root -g "$BACKUP_GROUP" "$RCLONE_CONFIG_EXAMPLE" "$RCLONE_CONFIG_FILE"
     log "Created ${RCLONE_CONFIG_FILE} from its example. Enter the R2 credentials and rerun the installer."
+  fi
+}
+
+install_backup_age_identity() {
+  if [[ -n "$BACKUP_AGE_IDENTITY_SOURCE" ]]; then
+    if [[ ! -s "$BACKUP_AGE_IDENTITY_SOURCE" ]]; then
+      log "ERROR: backup encryption identity source is missing or empty: ${BACKUP_AGE_IDENTITY_SOURCE}"
+      exit 1
+    fi
+    install -m 0640 -o root -g "$BACKUP_GROUP" \
+      "$BACKUP_AGE_IDENTITY_SOURCE" "$BACKUP_AGE_IDENTITY_FILE"
+    log "Installed the shared backup encryption identity"
+  elif [[ -s "$BACKUP_AGE_IDENTITY_FILE" ]]; then
+    chown root:"$BACKUP_GROUP" "$BACKUP_AGE_IDENTITY_FILE"
+    chmod 0640 "$BACKUP_AGE_IDENTITY_FILE"
+    log "Preserved existing backup encryption identity"
+  elif is_true "$GENERATE_BACKUP_AGE_IDENTITY_IF_MISSING"; then
+    log "Generating the first backup encryption identity"
+    age-keygen -o "$BACKUP_AGE_IDENTITY_FILE"
+    chown root:"$BACKUP_GROUP" "$BACKUP_AGE_IDENTITY_FILE"
+    chmod 0640 "$BACKUP_AGE_IDENTITY_FILE"
+    log "IMPORTANT: save an offline copy of ${BACKUP_AGE_IDENTITY_FILE}; provision it to every future backup worker"
+  else
+    log "Backup encryption identity is not installed. Set BACKUP_AGE_IDENTITY_SOURCE or provision ${BACKUP_AGE_IDENTITY_FILE}."
   fi
 }
 
@@ -370,6 +468,8 @@ ProtectHome=true
 ProtectSystem=strict
 ReadOnlyPaths=${APP_DIRECTORY} ${BACKUP_ENV_FILE} ${RCLONE_CONFIG_FILE}
 ReadWritePaths=${BACKUP_DATA_DIRECTORY}
+RuntimeDirectory=myntix-backup-worker
+RuntimeDirectoryMode=0750
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=${BACKUP_SERVICE_NAME}
@@ -414,6 +514,11 @@ start_services() {
   fi
   if grep -Eq '(change_me|<account-id>)' "$RCLONE_CONFIG_FILE"; then
     log "Backup worker not started: ${RCLONE_CONFIG_FILE} contains placeholders."
+    systemctl disable --now "$BACKUP_SERVICE_NAME" >/dev/null 2>&1 || true
+    return
+  fi
+  if [[ ! -s "$BACKUP_AGE_IDENTITY_FILE" ]]; then
+    log "Backup worker not started: ${BACKUP_AGE_IDENTITY_FILE} is missing or empty."
     systemctl disable --now "$BACKUP_SERVICE_NAME" >/dev/null 2>&1 || true
     return
   fi

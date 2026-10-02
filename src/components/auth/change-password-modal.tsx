@@ -2,8 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 import { changeOwnPassword } from "@/lib/actions";
-import { ModalCloseButton } from "@/components/ui/modal-close-button";
-import { useDialogFocus } from "@/components/ui/use-dialog-focus";
+import { PasswordRequirements } from "@/components/auth/password-requirements";
+import { ModalShell } from "@/components/ui/modal-shell";
 
 type ChangePasswordModalProps = {
   onClose: () => void;
@@ -18,7 +18,6 @@ export function ChangePasswordModal({
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const dialogRef = useDialogFocus({ onEscape: onClose });
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -51,26 +50,13 @@ export function ChangePasswordModal({
   }
 
   return (
-    <div className="app-modal-backdrop fixed inset-0 z-50 flex items-center justify-center px-4 py-6">
-      <div
-        aria-label="Change password"
-        aria-modal="true"
-        className="app-modal theme-panel motion-pop w-full max-w-md p-5 shadow-lg"
-        ref={dialogRef}
-        role="dialog"
-        tabIndex={-1}
-      >
-        <div className="app-modal-header flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h3 className="text-xl font-semibold">Change Password</h3>
-            <p className="mt-1 text-sm text-text-muted">
-              Update the password for your account.
-            </p>
-          </div>
-          <ModalCloseButton onClick={onClose} />
-        </div>
-
-        <form className="app-modal-body space-y-4" onSubmit={handleSubmit}>
+    <ModalShell
+      description="Update the password for your account."
+      maxWidthClassName="max-w-md"
+      onClose={onClose}
+      title="Change Password"
+    >
+        <form className="space-y-4" onSubmit={handleSubmit}>
           <PasswordField
             autoComplete="current-password"
             id="currentPassword"
@@ -80,11 +66,13 @@ export function ChangePasswordModal({
           />
           <PasswordField
             autoComplete="new-password"
+            describedBy="newPasswordRequirements"
             id="newPassword"
             label="New password"
             onChange={setNewPassword}
             value={newPassword}
           />
+          <PasswordRequirements id="newPasswordRequirements" />
           <PasswordField
             autoComplete="new-password"
             id="confirmPassword"
@@ -127,19 +115,20 @@ export function ChangePasswordModal({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </ModalShell>
   );
 }
 
 function PasswordField({
   autoComplete,
+  describedBy,
   id,
   label,
   onChange,
   value,
 }: {
   autoComplete: string;
+  describedBy?: string;
   id: string;
   label: string;
   onChange: (value: string) => void;
@@ -151,6 +140,7 @@ function PasswordField({
         {label}
       </label>
       <input
+        aria-describedby={describedBy}
         autoComplete={autoComplete}
         className="mt-2 w-full rounded-md border border-border bg-surface px-3 py-3 text-sm outline-none ring-brand transition focus:ring-2"
         id={id}

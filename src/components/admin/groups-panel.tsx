@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/icons";
 import { TableActionMenu } from "@/components/ui/table-action-menu";
 import { TableToolbar } from "@/components/ui/table-toolbar";
+import { showToast } from "@/components/ui/toast-viewport";
 import { downloadCsv } from "@/lib/csv/client";
 import { formatDateTime } from "@/lib/presentation/formatters";
 import type {
@@ -88,6 +89,7 @@ export function AdminGroupsPanel() {
   const [isLoadingGroups, setIsLoadingGroups] = useState(true);
   const [isLoadingMembers, setIsLoadingMembers] = useState(false);
   const [isSearchingStudents, setIsSearchingStudents] = useState(false);
+  const [isChangingGroupStatus, setIsChangingGroupStatus] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -346,14 +348,35 @@ export function AdminGroupsPanel() {
 
     const group = pendingGroupStatusChange;
     const nextActiveState = !group.isActive;
+    setIsChangingGroupStatus(true);
     const result = await setGroupActive(group.id, nextActiveState);
 
     if (!result.ok) {
       setError(result.message);
+      setIsChangingGroupStatus(false);
       return;
     }
 
-    setMessage(nextActiveState ? "Group reactivated." : "Group archived.");
+    if (nextActiveState) {
+      setMessage("Group reactivated.");
+    } else {
+      setMessage(null);
+      showToast({
+        action: {
+          label: "Undo",
+          onSelect: async () => {
+            const undoResult = await setGroupActive(group.id, true);
+            if (!undoResult.ok) {
+              showToast({ text: undoResult.message, tone: "error" });
+              return;
+            }
+            await refreshGroups();
+            showToast({ text: "Group restored." });
+          },
+        },
+        text: "Group archived.",
+      });
+    }
     setError(null);
     setPendingGroupStatusChange(null);
     if (!nextActiveState && !showInactiveGroups && selectedGroupId === group.id) {
@@ -361,6 +384,7 @@ export function AdminGroupsPanel() {
       setSelectedGroupId("");
       setMembers([]);
     }
+    setIsChangingGroupStatus(false);
     await refreshGroups();
   }
 
@@ -619,7 +643,7 @@ export function AdminGroupsPanel() {
                         groupIds: selectedGroupIds,
                         isActive: true,
                       }),
-                    tone: "primary",
+                    tone: "success",
                   },
                 ]}
                 allSelectedLabel="Select all groups"
@@ -705,6 +729,7 @@ export function AdminGroupsPanel() {
               : "Reactivate Group"
           }
           description={`${pendingGroupStatusChange.isActive ? "Archive" : "Reactivate"} ${pendingGroupStatusChange.name}?`}
+          isConfirming={isChangingGroupStatus}
           onCancel={() => setPendingGroupStatusChange(null)}
           onConfirm={confirmGroupStatusChange}
           title={
@@ -712,7 +737,7 @@ export function AdminGroupsPanel() {
               ? "Archive group"
               : "Reactivate group"
           }
-          tone={pendingGroupStatusChange.isActive ? "danger" : "primary"}
+          tone={pendingGroupStatusChange.isActive ? "danger" : "success"}
         />
       )}
 
@@ -731,7 +756,7 @@ export function AdminGroupsPanel() {
               ? "Reactivate selected groups"
               : "Archive selected groups"
           }
-          tone={pendingBulkGroupStatusChange.isActive ? "primary" : "danger"}
+          tone={pendingBulkGroupStatusChange.isActive ? "success" : "danger"}
         />
       )}
     </AdminPageSection>

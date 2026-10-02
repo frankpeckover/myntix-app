@@ -31,12 +31,16 @@ create table if not exists timetable_entries (
   day_of_week integer not null,
   start_time time not null,
   end_time time not null,
+  cycle_week integer,
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint timetable_entries_day_check check (day_of_week between 0 and 6),
-  constraint timetable_entries_time_check check (start_time < end_time)
+  constraint timetable_entries_time_check check (start_time < end_time),
+  constraint timetable_entries_cycle_week_check check (cycle_week between 1 and 6)
 );
+
+alter table timetable_entries add column if not exists cycle_week integer;
 
 create index if not exists student_groups_active_idx on student_groups(is_active);
 create index if not exists student_group_memberships_group_idx on student_group_memberships(group_id);
@@ -45,8 +49,9 @@ create index if not exists timetable_entries_teacher_time_idx
   on timetable_entries(teacher_user_id, day_of_week, start_time, end_time)
   where is_active = true;
 create index if not exists timetable_entries_group_idx on timetable_entries(group_id);
-create unique index if not exists timetable_entries_active_unique_idx
-  on timetable_entries(teacher_user_id, group_id, day_of_week, start_time, end_time)
+drop index if exists timetable_entries_active_unique_idx;
+create unique index timetable_entries_active_unique_idx
+  on timetable_entries(teacher_user_id, group_id, day_of_week, start_time, end_time, coalesce(cycle_week, 0))
   where is_active = true;
 
 insert into permissions (key, name, description, category)

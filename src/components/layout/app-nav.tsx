@@ -622,11 +622,9 @@ function AccountMenuItems({
   onPreferences: () => void;
 }) {
   return (
-    <>
+    <div className={hasTopBorder ? "mt-2 border-t border-border-subtle pt-2" : ""}>
       <button
-        className={`flex w-full items-center gap-2 border-l-2 border-transparent px-3 py-2.5 text-left text-xs font-light tracking-[0.01em] text-text-muted transition hover:bg-surface-muted hover:text-text-control ${
-          hasTopBorder ? "mt-2 border-t border-border-subtle" : ""
-        }`}
+        className="flex w-full items-center gap-2 border-l-2 border-transparent px-3 py-2.5 text-left text-xs font-light tracking-[0.01em] text-text-muted transition hover:bg-surface-muted hover:text-text-control"
         onClick={onPreferences}
         type="button"
       >
@@ -649,7 +647,7 @@ function AccountMenuItems({
         <LogOutIcon />
         <span>Sign out</span>
       </button>
-    </>
+    </div>
   );
 }
 

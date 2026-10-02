@@ -2,8 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 import { resetUserPassword } from "@/lib/actions";
-import { ModalCloseButton } from "@/components/ui/modal-close-button";
-import { useDialogFocus } from "@/components/ui/use-dialog-focus";
+import { PasswordRequirements } from "@/components/auth/password-requirements";
+import { ModalShell } from "@/components/ui/modal-shell";
 import type { UserListItem } from "@/domains/users/user-service";
 
 type ResetUserPasswordModalProps = {
@@ -20,7 +20,6 @@ export function ResetUserPasswordModal({
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const dialogRef = useDialogFocus({ onEscape: onClose });
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -39,31 +38,19 @@ export function ResetUserPasswordModal({
   }
 
   return (
-    <div className="app-modal-backdrop fixed inset-0 z-50 flex items-center justify-center px-3 py-2 sm:px-4 sm:py-6">
-      <div
-        aria-label={`Reset password for ${user.displayName}`}
-        aria-modal="true"
-        className="app-modal theme-panel motion-pop w-full max-w-md p-4 shadow-lg sm:p-5"
-        ref={dialogRef}
-        role="dialog"
-        tabIndex={-1}
-      >
-        <div className="app-modal-header flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h3 className="text-xl font-semibold sm:text-2xl">Reset Password</h3>
-            <p className="mt-1 text-sm text-text-muted">
-              Set a new password for {user.displayName}.
-            </p>
-          </div>
-          <ModalCloseButton onClick={onClose} />
-        </div>
-
-        <form className="app-modal-body space-y-4" onSubmit={handleSubmit}>
+    <ModalShell
+      description={`Set a new password for ${user.displayName}.`}
+      maxWidthClassName="max-w-md"
+      onClose={onClose}
+      title="Reset Password"
+    >
+        <form className="space-y-4" onSubmit={handleSubmit}>
           <div>
             <label className="text-sm font-semibold text-text-control" htmlFor="resetUserPassword">
               New password
             </label>
             <input
+              aria-describedby="resetUserPasswordRequirements"
               autoComplete="new-password"
               className="mt-2 w-full rounded-md border border-border bg-surface px-3 py-3 text-sm outline-none ring-brand transition focus:ring-2"
               id="resetUserPassword"
@@ -72,6 +59,7 @@ export function ResetUserPasswordModal({
               type="password"
               value={password}
             />
+            <PasswordRequirements id="resetUserPasswordRequirements" />
           </div>
 
           {error && (
@@ -97,7 +85,6 @@ export function ResetUserPasswordModal({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

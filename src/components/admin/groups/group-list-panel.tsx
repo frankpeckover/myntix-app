@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/icons";
 import { IconButton } from "@/components/ui/icon-button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import {
   MobileSelectionShell,
   RowSelectionCheckbox,
@@ -91,7 +92,7 @@ export function GroupListPanel({
     <div>
       <div>
         {isLoading && (
-          <p className="text-sm text-text-muted">Loading groups...</p>
+          <LoadingSkeleton className="px-0" lines={5} />
         )}
         {!isLoading && totalGroupsCount === 0 && (
           <EmptyState
@@ -197,7 +198,7 @@ function GroupList({
   return (
     <>
       {toolbar && <div className="mb-3 md:hidden">{toolbar}</div>}
-      <div className="grid gap-3 md:hidden">
+      <div className="grid min-w-0 gap-2 md:hidden">
         {groups.map((group) => (
           <GroupCard
             group={group}
@@ -383,7 +384,7 @@ function GroupCard({
 }) {
   return (
     <article
-      className={`rounded-md border p-3 ${
+      className={`min-w-0 max-w-full overflow-hidden rounded-md border p-2.5 sm:p-3 ${
         isSelected
           ? "border-brand bg-brand-soft"
           : "border-border-subtle bg-surface"
@@ -420,7 +421,7 @@ function GroupCard({
             onGroupStatusChange={onGroupStatusChange}
           />
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-text-muted">
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-text-muted sm:mt-3">
           <span>{group.memberCount} members</span>
           <GroupStatusBadge group={group} />
         </div>
@@ -472,7 +473,7 @@ function GroupActions({
           icon: group.isActive ? <XIcon /> : <CheckIcon />,
           label: group.isActive ? "Archive" : "Reactivate",
           onSelect: () => onGroupStatusChange(group),
-          tone: group.isActive ? "danger" : "primary",
+          tone: group.isActive ? "danger" : "success",
         },
       ]}
     />

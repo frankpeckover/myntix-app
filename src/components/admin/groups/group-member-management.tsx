@@ -7,6 +7,7 @@ import type {
   GroupMemberItem,
 } from "@/domains/groups/group-service";
 import type { StudentListItem } from "@/domains/users/user-service";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 
 type GroupMemberManagementProps = {
   availableStudents: StudentListItem[];
@@ -241,7 +242,7 @@ function GroupMembersTable({
   return (
     <div className="mt-5">
       {isLoading && (
-        <p className="text-sm text-text-muted">Loading members...</p>
+        <LoadingSkeleton className="px-0 py-0" lines={4} />
       )}
       {!isLoading && members.length === 0 && (
         <p className="text-sm text-text-muted">

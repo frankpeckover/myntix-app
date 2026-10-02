@@ -2,7 +2,8 @@
 
 Create a separate PostgreSQL database such as `myntix_backup`, then run
 `00-catalogue.sql` while connected to it. The catalogue stores metadata
-only; encrypted dump files remain in R2.
+only; short-lived encrypted local copies remain on the worker and the same
+encrypted artifacts are retained in R2.
 
 Database access uses the consolidated accounts created by:
 

@@ -1,4 +1,5 @@
 import type { Role } from "@/lib/auth/session";
+import { PasswordRequirements } from "@/components/auth/password-requirements";
 import {
   type UserFormFieldChange,
   type UserFormState,
@@ -49,18 +50,22 @@ function NameFields({
   return (
     <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
       <TextField
+        alignLabel
         id="firstName"
         label="First Name"
         onChange={(value) => onChange("firstName", value)}
         value={form.firstName}
       />
       <TextField
+        alignLabel
         id="preferredName"
-        label="Preferred Name (optional)"
+        label="Preferred Name"
         onChange={(value) => onChange("preferredName", value)}
+        optional
         value={form.preferredName}
       />
       <TextField
+        alignLabel
         id="lastName"
         label="Last Name"
         onChange={(value) => onChange("lastName", value)}
@@ -113,8 +118,9 @@ function AccountFields({
 
       <TextField
         id="email"
-        label="Email (optional)"
+        label="Email"
         onChange={(value) => onChange("email", value)}
+        required
         type="email"
         value={form.email}
       />
@@ -134,12 +140,16 @@ function AccountFields({
       {mode === "create" && (
         <TextField
           autoComplete="new-password"
+          describedBy="createUserPasswordRequirements"
           id="password"
           label="Password"
           onChange={(value) => onChange("password", value)}
           type="password"
           value={form.password}
         />
+      )}
+      {mode === "create" && (
+        <PasswordRequirements id="createUserPasswordRequirements" />
       )}
     </>
   );
@@ -193,30 +203,50 @@ function ProfileImageUploadField({
 }
 
 function TextField({
+  alignLabel = false,
   autoComplete,
+  describedBy,
   id,
   label,
   onChange,
+  optional = false,
+  required = false,
   type = "text",
   value,
 }: {
+  alignLabel?: boolean;
   autoComplete?: string;
+  describedBy?: string;
   id: string;
   label: string;
   onChange: (value: string) => void;
+  optional?: boolean;
+  required?: boolean;
   type?: string;
   value: string;
 }) {
   return (
     <div>
-      <label className="text-sm font-semibold text-text-control" htmlFor={id}>
-        {label}
+      <label
+        className={`block min-h-5 text-sm font-semibold text-text-control ${
+          alignLabel ? "sm:h-10" : ""
+        }`}
+        htmlFor={id}
+      >
+        <span className="block whitespace-nowrap leading-5">{label}</span>
+        {optional && (
+          <span className="block text-xs font-normal leading-4 text-text-muted">
+            Optional
+          </span>
+        )}
       </label>
       <input
+        aria-describedby={describedBy}
         autoComplete={autoComplete}
         className="mt-1.5 w-full rounded-md border border-border bg-surface px-3 py-2.5 text-sm outline-none ring-brand transition focus:ring-2 sm:mt-2 sm:py-3"
         id={id}
         onChange={(event) => onChange(event.target.value)}
+        required={required}
         type={type}
         value={value}
       />

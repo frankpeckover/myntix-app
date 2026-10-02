@@ -40,7 +40,7 @@ const csvColumns = [
   { name: "first_name" },
   { name: "preferred_name", optional: true },
   { name: "last_name" },
-  { name: "email", optional: true },
+  { name: "email" },
   { name: "role" },
   { name: "card_number", optional: true },
 ];
@@ -177,7 +177,7 @@ export function UserImportModal({
     >
         <CsvColumnGuide
           columns={csvColumns}
-          note="Role must be admin, teacher, or student. Preferred name, email and card number are optional; their headers should stay in the file."
+          note="Role must be admin, teacher, or student. Email is required for every user. Preferred name and card number are optional; all headers should stay in the file."
         />
 
         <CsvFileInput

@@ -37,7 +37,7 @@ export function ShopItemCard({
 }: ShopItemCardProps) {
   return (
     <article
-      className={`flex h-full flex-col overflow-hidden rounded-2xl border bg-surface transition-colors duration-200 hover:bg-surface-hover ${
+      className={`flex h-full flex-col overflow-hidden rounded-xl border bg-surface transition-colors duration-200 hover:border-border hover:bg-surface-hover ${
         requested ? "border-success-border" : "border-transparent"
       } ${!item.isActive ? "opacity-70" : ""}`}
     >
@@ -61,15 +61,10 @@ export function ShopItemCard({
             </p>
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1">
-            <span
-              className={`text-xs font-medium ${
-                !item.isQuantityUnlimited && item.quantity <= 0
-                  ? "text-danger-strong"
-                  : "text-text-muted"
-              }`}
-            >
-              {getAvailabilityLabel(item)}
-            </span>
+            <StatusBadge
+              label={getAvailabilityLabel(item)}
+              tone={!item.isQuantityUnlimited && item.quantity <= 0 ? "warning" : "neutral"}
+            />
             {!item.isActive && (
               <StatusBadge label="Archived" tone="danger" />
             )}
@@ -106,7 +101,7 @@ function ShopItemImage({ item }: { item: ShopItem }) {
     return (
       <div
         aria-label={`${item.name} image`}
-        className="h-36 bg-cover bg-center"
+        className="aspect-[16/7] bg-cover bg-center sm:aspect-[5/3]"
         role="img"
         style={{ backgroundImage: `url("${item.imageUrl}")` }}
       />
@@ -114,9 +109,9 @@ function ShopItemImage({ item }: { item: ShopItem }) {
   }
 
   return (
-    <div className="reward-shine flex h-36 items-center justify-center bg-brand-soft text-brand">
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-surface/85">
-        <TicketIcon className="h-8 w-8" />
+    <div className="reward-shine flex aspect-[16/7] items-center justify-center bg-brand-soft text-brand sm:aspect-[5/3]">
+      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface/85 sm:h-16 sm:w-16 sm:rounded-2xl">
+        <TicketIcon className="h-6 w-6 sm:h-8 sm:w-8" />
       </div>
     </div>
   );
@@ -148,7 +143,7 @@ function ShopItemActions({
           {requested ? (
             <>
               <CheckIcon />
-              Added to Cart
+              In cart
             </>
           ) : (
             <>

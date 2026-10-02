@@ -3,7 +3,7 @@
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { mkdir, rm, stat } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, stat } from "node:fs/promises";
 import { hostname } from "node:os";
 import { dirname, join } from "node:path";
 import pg from "pg";
@@ -12,13 +12,20 @@ const { Pool } = pg;
 const workerId = `${hostname()}-${process.pid}`;
 const pollingMilliseconds = 10_000;
 const leaseMinutes = 120;
-const retentionDays = nonNegativeIntegerEnvironment("BACKUP_RETENTION_DAYS", 7);
+const retentionDays = nonNegativeIntegerEnvironment("BACKUP_RETENTION_DAYS", 14);
+const localRetentionDays = nonNegativeIntegerEnvironment(
+  "BACKUP_LOCAL_RETENTION_DAYS",
+  3,
+);
 const safetyRetentionHours = nonNegativeIntegerEnvironment(
   "BACKUP_SAFETY_RETENTION_HOURS",
   24,
 );
 const localRoot = environment("BACKUP_LOCAL_DIR", "/var/lib/myntix-backup-worker");
+const temporaryRoot = environment("BACKUP_TEMP_DIR", "/run/myntix-backup-worker");
 const rcloneRemote = requiredEnvironment("BACKUP_RCLONE_REMOTE").replace(/\/$/, "");
+const ageIdentityPath = requiredEnvironment("BACKUP_AGE_IDENTITY");
+const ageRecipient = await readAgeRecipient(ageIdentityPath);
 const runOnce = process.env.BACKUP_WORKER_ONCE === "true";
 const backupDatabase = {
   host: requiredEnvironmentAny("BACKUP_POSTGRES_HOST", "BACKUP_WORKER_CATALOG_HOST"),
@@ -52,6 +59,22 @@ process.on("SIGINT", () => { isStopping = true; });
 process.on("SIGTERM", () => { isStopping = true; });
 
 await mkdir(localRoot, { recursive: true });
+await mkdir(temporaryRoot, { recursive: true });
+const retiredLegacyBackups = await cataloguePool.query(
+  `
+    update tenant_backups
+    set status = 'deleted',
+        metadata = metadata || jsonb_build_object('legacyFormatRetiredAt', now())
+    where status = 'available'
+      and (storage_key is null or storage_key not like '%.age')
+    returning id
+  `,
+);
+if (retiredLegacyBackups.rowCount > 0) {
+  console.log(
+    `[backup-worker] retired ${retiredLegacyBackups.rowCount} restore points using the old encryption format`,
+  );
+}
 console.log(`[backup-worker] started as ${workerId}`);
 
 do {
@@ -174,9 +197,10 @@ async function createTenantBackup(organisation, source, requestedByUserId, jobId
     ],
   );
   const backup = backupResult.rows[0];
-  const workDirectory = join(localRoot, backup.id);
+  const workDirectory = join(temporaryRoot, backup.id);
   const dumpPath = join(workDirectory, "tenant.dump");
   const target = tenantTarget(organisation);
+  let durableLocalPath = null;
 
   await mkdir(workDirectory, { recursive: true });
   try {
@@ -197,29 +221,53 @@ async function createTenantBackup(organisation, source, requestedByUserId, jobId
     );
 
     if (jobId) await updateJobPhase(jobId, "uploading");
-    const checksum = await sha256File(dumpPath);
-    const fileSize = (await stat(dumpPath)).size;
     const datePrefix = backup.created_at.toISOString().slice(0, 10);
-    const storageKey = `tenants/${organisation.slug}/${datePrefix}/${backup.id}/tenant.dump`;
+    const storageKey = `tenants/${organisation.slug}/${datePrefix}/${backup.id}/tenant.dump.age`;
+    const localPath = localBackupPath(storageKey);
+    durableLocalPath = localPath;
+    const partialLocalPath = `${localPath}.partial`;
+    await mkdir(dirname(localPath), { recursive: true });
+    await rm(partialLocalPath, { force: true });
+    await runCommand("age", [
+      "--encrypt",
+      "--recipient", ageRecipient,
+      "--output", partialLocalPath,
+      dumpPath,
+    ]);
+    await rename(partialLocalPath, localPath);
+
+    const checksum = await sha256File(localPath);
+    const fileSize = (await stat(localPath)).size;
     const remotePath = `${rcloneRemote}/${storageKey}`;
     const remoteDirectory = dirname(remotePath).replaceAll("\\", "/");
 
-    await runCommand("rclone", ["copyto", dumpPath, remotePath, "--immutable"]);
+    await runCommand("rclone", ["copyto", localPath, remotePath, "--immutable"]);
     if (jobId) await updateJobPhase(jobId, "verifying");
-    await runCommand("rclone", ["check", workDirectory, remoteDirectory, "--one-way"]);
+    await runCommand("rclone", ["check", dirname(localPath), remoteDirectory, "--one-way"]);
 
     await cataloguePool.query(
       `
         update tenant_backups
         set status = 'available', storage_key = $2, checksum_sha256 = $3,
-            size_bytes = $4, completed_at = now()
+            size_bytes = $4, completed_at = now(),
+            metadata = metadata || $5::jsonb
         where id = $1 and status = 'creating'
       `,
-      [backup.id, storageKey, checksum, fileSize],
+      [
+        backup.id,
+        storageKey,
+        checksum,
+        fileSize,
+        JSON.stringify({ encryption: "age-v1", localCopy: true }),
+      ],
     );
     return backup.id;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Backup failed.";
+    if (durableLocalPath) {
+      await rm(durableLocalPath, { force: true });
+      await rm(`${durableLocalPath}.partial`, { force: true });
+    }
     await cataloguePool.query(
       `update tenant_backups set status = 'failed', failure_message = $2, completed_at = now() where id = $1`,
       [backup.id, message],
@@ -283,9 +331,45 @@ async function restoreTenantBackup(job, organisation) {
 }
 
 async function cleanupExpiredBackups() {
-  if (retentionDays === 0 && safetyRetentionHours === 0) return;
+  if (
+    retentionDays === 0 &&
+    safetyRetentionHours === 0 &&
+    localRetentionDays === 0
+  ) return;
 
   try {
+    if (localRetentionDays > 0) {
+      const localResult = await cataloguePool.query(
+        `
+          select id, storage_key
+          from tenant_backups
+          where status = 'available'
+            and storage_key like '%.age'
+            and coalesce((metadata->>'localCopy')::boolean, false) = true
+            and completed_at < now() - ($1::int * interval '1 day')
+          order by completed_at
+          limit 250
+        `,
+        [localRetentionDays],
+      );
+
+      for (const backup of localResult.rows) {
+        await rm(localBackupPath(backup.storage_key), { force: true });
+        await cataloguePool.query(
+          `update tenant_backups set metadata = metadata || '{"localCopy": false}'::jsonb where id = $1`,
+          [backup.id],
+        );
+      }
+
+      if (localResult.rowCount > 0) {
+        console.log(
+          `[backup-worker] removed ${localResult.rowCount} expired local backup copies`,
+        );
+      }
+    }
+
+    if (retentionDays === 0 && safetyRetentionHours === 0) return;
+
     const result = await cataloguePool.query(
       `
         select id, storage_key
@@ -321,6 +405,7 @@ async function cleanupExpiredBackups() {
         "deletefile",
         `${rcloneRemote}/${backup.storage_key}`,
       ]);
+      await rm(localBackupPath(backup.storage_key), { force: true });
       await cataloguePool.query(
         `
           update tenant_backups
@@ -340,17 +425,52 @@ async function restoreCatalogueBackup(jobId, organisation, backup, updatePhase =
   if (!backup?.storage_key || !backup?.checksum_sha256) {
     throw new Error("The restore point has incomplete storage metadata.");
   }
-  const workDirectory = join(localRoot, `${jobId}-restore`);
+  const workDirectory = join(temporaryRoot, `${jobId}-restore`);
   const dumpPath = join(workDirectory, "tenant.dump");
+  const downloadedPath = join(workDirectory, "tenant.dump.age");
+  const retainedLocalPath = localBackupPath(backup.storage_key);
   await rm(workDirectory, { force: true, recursive: true });
   await mkdir(workDirectory, { recursive: true });
   try {
-    if (updatePhase) await updateJobPhase(jobId, "downloading");
-    await runCommand("rclone", ["copyto", `${rcloneRemote}/${backup.storage_key}`, dumpPath]);
-    const checksum = await sha256File(dumpPath);
-    if (checksum !== backup.checksum_sha256) {
-      throw new Error("The downloaded restore point failed checksum verification.");
+    if (!backup.storage_key.endsWith(".age")) {
+      throw new Error("This restore point uses the retired backup format.");
     }
+
+    let encryptedPath = retainedLocalPath;
+    let shouldDownload = !(await fileExists(encryptedPath));
+    if (!shouldDownload) {
+      const localChecksum = await sha256File(encryptedPath);
+      if (localChecksum !== backup.checksum_sha256) {
+        console.warn(
+          `[backup-worker] local copy for restore point ${backup.id} is corrupt; downloading the R2 copy`,
+        );
+        await rm(encryptedPath, { force: true });
+        shouldDownload = true;
+      }
+    }
+
+    if (shouldDownload) {
+      if (updatePhase) await updateJobPhase(jobId, "downloading");
+      await runCommand("rclone", [
+        "copyto",
+        `${rcloneRemote}/${backup.storage_key}`,
+        downloadedPath,
+      ]);
+      encryptedPath = downloadedPath;
+    }
+
+    const checksum = await sha256File(encryptedPath);
+    if (checksum !== backup.checksum_sha256) {
+      throw new Error("The encrypted restore point failed checksum verification.");
+    }
+
+    if (updatePhase) await updateJobPhase(jobId, "decrypting");
+    await runCommand("age", [
+      "--decrypt",
+      "--identity", ageIdentityPath,
+      "--output", dumpPath,
+      encryptedPath,
+    ]);
 
     if (updatePhase) await updateJobPhase(jobId, "restoring");
     const target = tenantTarget(organisation);
@@ -511,6 +631,54 @@ async function setMaintenance(organisationId, enabled) {
 
 async function runPostgresCommand(command, args, password) {
   await runCommand(command, args, { PGPASSWORD: password });
+}
+
+async function readAgeRecipient(identityPath) {
+  const configuredRecipient = String(process.env.BACKUP_AGE_RECIPIENT || "").trim();
+  if (configuredRecipient) return configuredRecipient;
+
+  const identity = await readFile(identityPath, "utf8");
+  const match = identity.match(/^# public key: (age1[0-9a-z]+)\s*$/m);
+  if (!match) {
+    throw new Error(
+      "BACKUP_AGE_IDENTITY does not contain an age public-key comment. Set BACKUP_AGE_RECIPIENT explicitly.",
+    );
+  }
+  return match[1];
+}
+
+function localBackupPath(storageKey) {
+  const parts = String(storageKey || "").split("/");
+  if (
+    parts.length < 2 ||
+    parts.some(
+      (part) =>
+        !part ||
+        part === "." ||
+        part === ".." ||
+        !/^[a-zA-Z0-9._-]+$/.test(part),
+    )
+  ) {
+    throw new Error("Invalid backup storage key.");
+  }
+  return join(localRoot, ...parts);
+}
+
+async function fileExists(path) {
+  try {
+    await stat(path);
+    return true;
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "ENOENT"
+    ) {
+      return false;
+    }
+    throw error;
+  }
 }
 
 function runCommand(command, args, extraEnvironment = {}) {

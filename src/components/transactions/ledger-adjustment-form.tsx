@@ -602,7 +602,7 @@ function AmountField({
       >
         {currencyName}
       </label>
-      <div className="mt-2 grid grid-cols-5 gap-2">
+      <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-5">
         {presets.map((preset) => (
           <button
             className={`rounded-md border px-3 py-2 text-sm font-semibold transition ${

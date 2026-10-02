@@ -35,11 +35,13 @@ import {
   FileUpIcon,
   KeyIcon,
   SlidersHorizontalIcon,
+  TrashIcon,
   UsersIcon,
   WalletIcon,
 } from "@/components/ui/icons";
 import { ApiKeySettings } from "@/components/admin/settings/api-key-settings";
 import { BackupManagementSettings } from "@/components/admin/settings/backup-management-settings";
+import { OrganisationDeletionSettings } from "@/components/admin/settings/organisation-deletion-settings";
 import { TassSyncSettingsPanel } from "@/components/admin/settings/tass-sync-settings";
 import { FixedNotification } from "@/components/ui/fixed-notification";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
@@ -682,6 +684,13 @@ export function AdminSettingsPanel({
           <div className="mt-4">
             <SettingsMessages error={exportError} message={exportMessage} />
           </div>
+        </SettingsPanel>
+        <SettingsPanel
+          icon={<TrashIcon />}
+          info="This sends an email to Myntix support. Nothing is scheduled or deleted automatically; a platform owner must review and action it manually."
+          title="Organisation Deletion"
+        >
+          <OrganisationDeletionSettings organisationName={form.name} />
         </SettingsPanel>
       </SettingsGroup>
     </section>

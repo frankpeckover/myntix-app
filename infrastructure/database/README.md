@@ -29,6 +29,7 @@ infrastructure/database/tenant/05-sso.sql
 infrastructure/database/tenant/06-api-clients.sql
 infrastructure/database/tenant/07-notifications.sql
 infrastructure/database/tenant/09-directory-sync.sql
+infrastructure/database/tenant/10-timetable-cycles.sql
 infrastructure/database/tenant/99-access.sql
 ```
 

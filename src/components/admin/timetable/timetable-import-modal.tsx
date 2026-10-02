@@ -27,7 +27,7 @@ type ParseResult =
       ok: false;
     };
 
-const csvHeaders = "teacher_username,group_name,day,start_time,end_time";
+const csvHeaders = "teacher_username,group_name,day,start_time,end_time,cycle_week_optional";
 const csvHeaderColumns = csvHeaders.split(",");
 const csvColumns = [
   { name: "teacher_username" },
@@ -35,10 +35,11 @@ const csvColumns = [
   { name: "day" },
   { name: "start_time" },
   { name: "end_time" },
+  { name: "cycle_week_optional", optional: true },
 ];
 const timetableTemplateRows = [
-  ["teacher.demo", "Grade 4", "Monday", "09:00", "10:00"],
-  ["teacher.demo", "Music", "Wednesday", "11:30", "12:15"],
+  ["teacher.demo", "Grade 4", "Monday", "09:00", "10:00", "Week A"],
+  ["teacher.demo", "Music", "Wednesday", "11:30", "12:15", "every"],
 ];
 
 export function TimetableImportModal({
@@ -129,7 +130,7 @@ export function TimetableImportModal({
     >
         <CsvColumnGuide
           columns={csvColumns}
-          note="All timetable columns are required. Times should use 24-hour format, for example 09:00."
+          note="Cycle week is optional: use A, B, Week A, Week B, or every. Times use 24-hour format, for example 09:00."
         />
 
         <CsvFileInput
@@ -206,6 +207,7 @@ function parseTimetableCsv(text: string): ParseResult {
       groupName: values.groupname?.trim() ?? "",
       startTime: values.starttime?.trim() ?? "",
       teacherUsername: values.teacherusername?.trim() ?? "",
+      cycleWeek: parseCycleWeek(values.cycleweekoptional ?? ""),
     };
 
     if (
@@ -232,4 +234,12 @@ function parseTimetableCsv(text: string): ParseResult {
   }
 
   return { entries, ok: true };
+}
+
+function parseCycleWeek(value: string) {
+  const normalised = value.trim().toLowerCase().replace(/^week\s*/, "");
+  if (!normalised || normalised === "every" || normalised === "all") return null;
+  if (/^[a-f]$/.test(normalised)) return normalised.charCodeAt(0) - 96;
+  const numeric = Number(normalised);
+  return Number.isInteger(numeric) && numeric >= 1 && numeric <= 6 ? numeric : null;
 }

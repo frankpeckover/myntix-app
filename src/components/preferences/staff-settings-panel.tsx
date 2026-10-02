@@ -18,6 +18,7 @@ import {
   TrashIcon,
 } from "@/components/ui/icons";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 
 const defaultQuickAdjustments = getDefaultQuickAdjustments(
   defaultTransactionPresets,
@@ -120,7 +121,7 @@ export function StaffSettingsPanel() {
     <>
       <form className="theme-panel p-5" onSubmit={handleSubmit}>
         {isLoading ? (
-          <p className="text-sm text-text-muted">Loading preferences...</p>
+          <LoadingSkeleton className="px-0 py-0" lines={5} />
         ) : (
           <>
             <QuickAdjustmentDefaults

@@ -9,6 +9,7 @@ import {
 import type { ApiScope } from "@/lib/api/api-types";
 import type { ApiClientSummary } from "@/domains/integrations/api-client-service";
 import { FixedNotification } from "@/components/ui/fixed-notification";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 
 const scopeOptions: Array<{
   label: string;
@@ -164,7 +165,7 @@ export function ApiKeySettings() {
 
       <div className="overflow-hidden rounded-md bg-surface">
         {isLoading ? (
-          <p className="p-4 text-sm text-text-muted">Loading API keys...</p>
+          <LoadingSkeleton lines={4} />
         ) : clients.length === 0 ? (
           <p className="p-4 text-sm text-text-muted">No API keys have been created.</p>
         ) : (

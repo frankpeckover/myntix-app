@@ -12,6 +12,7 @@ export function downloadTimetableEntries(entries: TimetableEntry[]) {
       "day",
       "start_time",
       "end_time",
+      "cycle_week_optional",
       "status",
     ],
     entries.map((entry) => [
@@ -21,6 +22,7 @@ export function downloadTimetableEntries(entries: TimetableEntry[]) {
       weekDays[entry.dayOfWeek],
       entry.startTime,
       entry.endTime,
+      entry.cycleWeek === null ? "every" : `Week ${String.fromCharCode(64 + entry.cycleWeek)}`,
       entry.isActive ? "active" : "archived",
     ]),
   );

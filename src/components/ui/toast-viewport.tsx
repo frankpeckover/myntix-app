@@ -6,12 +6,17 @@ import { XIcon } from "@/components/ui/icons";
 export type ToastTone = "error" | "success" | "warning";
 
 export type ToastInput = {
+  action?: {
+    label: string;
+    onSelect: () => void | Promise<void>;
+  };
   text: string;
   tone?: ToastTone;
 };
 
-type ToastItem = Required<ToastInput> & {
+type ToastItem = ToastInput & {
   id: number;
+  tone: ToastTone;
 };
 
 const successToastDurationMs = 4500;
@@ -19,7 +24,7 @@ const warningToastDurationMs = 6500;
 const toastEventName = "myntix:toast";
 let nextToastId = 1;
 
-export function showToast({ text, tone = "success" }: ToastInput) {
+export function showToast({ action, text, tone = "success" }: ToastInput) {
   if (!text.trim() || typeof window === "undefined") {
     return;
   }
@@ -28,6 +33,7 @@ export function showToast({ text, tone = "success" }: ToastInput) {
     new CustomEvent<ToastItem>(toastEventName, {
       detail: {
         id: nextToastId,
+        action,
         text: text.trim(),
         tone,
       },
@@ -113,6 +119,18 @@ function ToastCard({
       role={role}
     >
       <p className="min-w-0 break-words font-medium">{toast.text}</p>
+      {toast.action && (
+        <button
+          className="shrink-0 rounded-md border border-current/25 px-2.5 py-1 font-semibold transition hover:bg-black/5 dark:hover:bg-white/10"
+          onClick={() => {
+            void toast.action?.onSelect();
+            onDismiss();
+          }}
+          type="button"
+        >
+          {toast.action.label}
+        </button>
+      )}
       <button
         aria-label="Dismiss notification"
         className="shrink-0 rounded-md p-1 text-current opacity-70 transition hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10"

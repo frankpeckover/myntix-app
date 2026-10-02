@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { ReactNode } from "react";
 import { FilterIcon } from "@/components/ui/icons";
 
@@ -10,6 +11,8 @@ type TableHeaderFilterProps = {
   label: string;
   onClear?: () => void;
 };
+
+const TableFilterCloseContext = createContext<() => void>(() => undefined);
 
 export function TableHeaderFilter({
   children,
@@ -21,7 +24,30 @@ export function TableHeaderFilter({
   const filterPanelRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [panelPosition, setPanelPosition] = useState({ left: 0, top: 0 });
   const panelId = useId();
+
+  const updatePanelPosition = useCallback(() => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+
+    const gap = 8;
+    const viewportPadding = 12;
+    const panelWidth = filterPanelRef.current?.offsetWidth ?? 224;
+    const panelHeight = filterPanelRef.current?.offsetHeight ?? 220;
+    const triggerRect = trigger.getBoundingClientRect();
+    const left = Math.min(
+      Math.max(triggerRect.left, viewportPadding),
+      window.innerWidth - panelWidth - viewportPadding,
+    );
+    const spaceBelow = window.innerHeight - triggerRect.bottom - viewportPadding;
+    const top =
+      spaceBelow >= panelHeight + gap
+        ? triggerRect.bottom + gap
+        : Math.max(viewportPadding, triggerRect.top - panelHeight - gap);
+
+    setPanelPosition({ left, top });
+  }, []);
 
   useEffect(() => {
     if (!isOpen) {
@@ -29,7 +55,10 @@ export function TableHeaderFilter({
     }
 
     function handlePointerDown(event: PointerEvent) {
-      if (!filterRef.current?.contains(event.target as Node)) {
+      if (
+        !filterRef.current?.contains(event.target as Node) &&
+        !filterPanelRef.current?.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     }
@@ -49,6 +78,21 @@ export function TableHeaderFilter({
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    updatePanelPosition();
+    const animationFrame = window.requestAnimationFrame(updatePanelPosition);
+    window.addEventListener("resize", updatePanelPosition);
+    window.addEventListener("scroll", updatePanelPosition, true);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      window.removeEventListener("resize", updatePanelPosition);
+      window.removeEventListener("scroll", updatePanelPosition, true);
+    };
+  }, [isOpen, updatePanelPosition]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -84,15 +128,18 @@ export function TableHeaderFilter({
         <FilterIcon className="h-3.5 w-3.5" />
       </button>
 
-      {isOpen && (
+      {isOpen && createPortal(
         <div
           aria-label={`Filter ${label}`}
-          className="motion-pop absolute left-0 top-8 z-[130] min-w-56 rounded-md border border-border bg-surface p-3 text-sm normal-case tracking-normal shadow-lg"
+          className="motion-pop fixed z-[300] min-w-56 rounded-md border border-border bg-surface p-3 text-sm normal-case tracking-normal shadow-lg"
           id={panelId}
           ref={filterPanelRef}
           role="dialog"
+          style={panelPosition}
         >
-          {children}
+          <TableFilterCloseContext.Provider value={() => setIsOpen(false)}>
+            {children}
+          </TableFilterCloseContext.Provider>
           {onClear && (
             <button
               className="mt-3 w-full rounded-md border border-button-border px-3 py-2 text-sm font-normal text-text-control transition hover:bg-panel-soft disabled:cursor-not-allowed disabled:opacity-50"
@@ -103,7 +150,8 @@ export function TableHeaderFilter({
               Clear
             </button>
           )}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
@@ -146,12 +194,17 @@ export function TableHeaderFilterSelect({
   options: Array<{ label: string; value: string }>;
   value: string;
 }) {
+  const closeFilter = useContext(TableFilterCloseContext);
+
   return (
     <label className="block text-xs font-normal text-text-muted">
       <span>{label}</span>
       <select
         className="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm font-normal text-text-control outline-none ring-brand transition focus:ring-2"
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => {
+          onChange(event.target.value);
+          closeFilter();
+        }}
         value={value}
       >
         {options.map((option) => (

@@ -48,11 +48,14 @@ import {
 } from "@/components/ui/table-header-filter";
 import { TableToolbar } from "@/components/ui/table-toolbar";
 import { TextReasonModal } from "@/components/ui/text-reason-modal";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 
 type TransactionLogPanelProps = {
   className?: string;
   currencyName: string;
   currentUser: SessionUser;
+  onViewAll?: () => void;
+  previewLimit?: number;
 };
 
 const transactionTypeOptions = [
@@ -92,6 +95,8 @@ export function TransactionLogPanel({
   className = "",
   currencyName,
   currentUser,
+  onViewAll,
+  previewLimit,
 }: TransactionLogPanelProps) {
   const canViewAllTransactionsForUser = canViewAllTransactions(currentUser);
   const canVoidTransactionsForUser = canVoidTransactions(currentUser);
@@ -187,12 +192,17 @@ export function TransactionLogPanel({
     setFilters(emptyTransactionFilters);
   }
 
+  const isPreview = previewLimit !== undefined;
+  const displayedTransactions = isPreview
+    ? transactions.slice(0, previewLimit)
+    : visibleTransactions;
+
   return (
     <section className={`theme-panel motion-panel mt-5 min-w-0 overflow-hidden p-0 ${className}`}>
       <FixedNotification error={error} message={message} />
       <div>
         {isLoading && (
-          <p className="text-sm text-text-muted">Loading transactions...</p>
+          <LoadingSkeleton lines={isPreview ? 5 : 7} />
         )}
         {!isLoading && error && transactions.length === 0 && (
           <LoadFailure
@@ -214,38 +224,51 @@ export function TransactionLogPanel({
               canViewAllTransactions={canViewAllTransactionsForUser}
               canVoidTransactions={canVoidTransactionsForUser}
               filters={filters}
+              isPreview={isPreview}
               onDetailsClick={setViewingTransaction}
               onFiltersChange={setFilters}
               onVoidClick={setVoidingTransaction}
               toolbar={
                 <TableToolbar
                   actions={
-                    <TableActionMenu
-                      label="Open transaction log tools"
-                      items={[
-                        {
-                          disabled:
-                            isLoading || filteredTransactions.length === 0,
-                          icon: <FileDownIcon />,
-                          label: "Export transactions: CSV",
-                          onSelect: () =>
-                            downloadTransactions(
-                              filteredTransactions,
-                              currencyName,
-                            ),
-                        },
-                      ]}
-                    />
+                    isPreview && onViewAll ? (
+                      <IconButton
+                        label="View all transactions"
+                        onClick={onViewAll}
+                        text="View all"
+                      >
+                        <ListIcon />
+                      </IconButton>
+                    ) : (
+                      <TableActionMenu
+                        label="Open transaction log tools"
+                        items={[
+                          {
+                            disabled:
+                              isLoading || filteredTransactions.length === 0,
+                            icon: <FileDownIcon />,
+                            label: "Export transactions: CSV",
+                            onSelect: () =>
+                              downloadTransactions(
+                                filteredTransactions,
+                                currencyName,
+                              ),
+                          },
+                        ]}
+                      />
+                    )
                   }
                 >
                   <p className="text-sm font-semibold text-text-muted">
-                    Showing {visibleTransactions.length} of {filteredTransactions.length} transactions.
+                    {isPreview
+                      ? `Latest ${displayedTransactions.length} transactions`
+                      : `Showing ${visibleTransactions.length} of ${filteredTransactions.length} transactions.`}
                   </p>
                 </TableToolbar>
               }
-              transactions={visibleTransactions}
+              transactions={displayedTransactions}
             />
-            {filteredTransactions.length === 0 && (
+            {!isPreview && filteredTransactions.length === 0 && (
               <EmptyState
                 action={
                   <IconButton
@@ -261,7 +284,7 @@ export function TransactionLogPanel({
                 title="No matching transactions"
               />
             )}
-            {filteredTransactions.length > 0 && (
+            {!isPreview && filteredTransactions.length > 0 && (
               <ListPagination
                 onPageChange={setPage}
                 page={page}
@@ -299,6 +322,7 @@ function TransactionList({
   canViewAllTransactions,
   canVoidTransactions,
   filters,
+  isPreview,
   onDetailsClick,
   onFiltersChange,
   onVoidClick,
@@ -308,6 +332,7 @@ function TransactionList({
   canViewAllTransactions: boolean;
   canVoidTransactions: boolean;
   filters: TransactionFilters;
+  isPreview: boolean;
   onDetailsClick: (transaction: TransactionLogItem) => void;
   onFiltersChange: (filters: TransactionFilters) => void;
   onVoidClick: (transaction: TransactionLogItem) => void;
@@ -339,11 +364,12 @@ function TransactionList({
         <table aria-label="Transaction log" className="transaction-log-table w-full min-w-0 table-fixed border-collapse text-left text-sm">
           <TransactionTableColumnGroup
             canViewAllTransactions={canViewAllTransactions}
+            isPreview={isPreview}
           />
           <thead>
             <tr className="border-b border-border-subtle text-text-muted">
-              <th scope="col" className="py-2 pr-4 font-semibold">
-                <TableHeaderFilter
+              {!isPreview && <th scope="col" className="py-2 pr-4 font-semibold">
+                {isPreview ? "Description" : <TableHeaderFilter
                   isActive={Boolean(filters.reason)}
                   label="Description"
                   onClear={() => updateFilter("reason", "")}
@@ -353,11 +379,11 @@ function TransactionList({
                     onChange={(value) => updateFilter("reason", value)}
                     value={filters.reason}
                   />
-                </TableHeaderFilter>
-              </th>
+                </TableHeaderFilter>}
+              </th>}
               {canViewAllTransactions && (
                 <th scope="col" className="py-2 pr-4 font-semibold">
-                  <TableHeaderFilter
+                  {isPreview ? "Account" : <TableHeaderFilter
                     isActive={Boolean(filters.student)}
                     label="Account"
                     onClear={() => updateFilter("student", "")}
@@ -367,11 +393,11 @@ function TransactionList({
                       onChange={(value) => updateFilter("student", value)}
                       value={filters.student}
                     />
-                  </TableHeaderFilter>
+                  </TableHeaderFilter>}
                 </th>
               )}
               <th scope="col" className="py-2 pr-4 font-semibold">
-                <TableHeaderFilter
+                {isPreview ? "Type" : <TableHeaderFilter
                   isActive={Boolean(filters.type)}
                   label="Type"
                   onClear={() => updateFilter("type", "")}
@@ -384,11 +410,11 @@ function TransactionList({
                     options={transactionTypeOptions}
                     value={filters.type}
                   />
-                </TableHeaderFilter>
+                </TableHeaderFilter>}
               </th>
               <th scope="col" className="py-2 pr-4 font-semibold">Time</th>
               <th scope="col" className="py-2 pr-4 font-semibold">
-                <TableHeaderFilter
+                {isPreview ? "Status" : <TableHeaderFilter
                   isActive={Boolean(
                     filters.purchaseStatus || filters.voidedStatus !== "active",
                   )}
@@ -425,10 +451,10 @@ function TransactionList({
                       value={filters.purchaseStatus}
                     />
                   </div>
-                </TableHeaderFilter>
+                </TableHeaderFilter>}
               </th>
               <th scope="col" className="py-2 pr-4 text-right font-semibold">
-                <TableHeaderFilter
+                {isPreview ? "Amount" : <TableHeaderFilter
                   isActive={Boolean(
                     filters.amountDirection ||
                       filters.amountMin ||
@@ -469,11 +495,11 @@ function TransactionList({
                       value={filters.amountMax}
                     />
                   </div>
-                </TableHeaderFilter>
+                </TableHeaderFilter>}
               </th>
-              <th scope="col" className="py-2 text-right font-semibold">
+              {!isPreview && <th scope="col" className="py-2 text-right font-semibold">
                 <span className="sr-only">Actions</span>
-              </th>
+              </th>}
             </tr>
           </thead>
           <tbody>
@@ -493,9 +519,9 @@ function TransactionList({
                     </span>
                   </td>
                 )}
-                <td className="py-2 pr-4 text-text-muted">
+                {!isPreview && <td className="py-2 pr-4 text-text-muted">
                   {formatTransactionType(transaction.type)}
-                </td>
+                </td>}
                 <td className="py-2 pr-4 text-text-muted">
                   {formatDateTime(transaction.createdAt)}
                 </td>
@@ -505,14 +531,14 @@ function TransactionList({
                 <td className="py-2 pr-4 text-right">
                   <TransactionAmount amount={transaction.amount} />
                 </td>
-                <td className="py-2 text-right">
+                {!isPreview && <td className="py-2 text-right">
                   <TransactionActions
                     canVoidTransactions={canVoidTransactions}
                     onDetailsClick={onDetailsClick}
                     onVoidClick={onVoidClick}
                     transaction={transaction}
                   />
-                </td>
+                </td>}
               </tr>
             ))}
           </tbody>
@@ -524,9 +550,21 @@ function TransactionList({
 
 function TransactionTableColumnGroup({
   canViewAllTransactions,
+  isPreview,
 }: {
   canViewAllTransactions: boolean;
+  isPreview: boolean;
 }) {
+  if (isPreview) {
+    return (
+      <colgroup>
+        <col className="w-[44%]" />
+        <col className="w-[22%]" />
+        <col className="w-[18%]" />
+        <col className="w-[16%]" />
+      </colgroup>
+    );
+  }
   if (canViewAllTransactions) {
     return (
       <colgroup>

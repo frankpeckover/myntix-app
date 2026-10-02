@@ -177,6 +177,7 @@ export function TimetableEntryTable({
               <td className="py-3 pr-4 text-text-muted">{entry.teacherName}</td>
               <td className="py-3 pr-4 text-text-muted">
                 {weekDays[entry.dayOfWeek]}
+                <span className="mt-0.5 block text-xs">{formatCycleWeek(entry.cycleWeek)}</span>
               </td>
               <td className="py-3 pr-4 text-text-muted">
                 {formatTimeRange(entry)}
@@ -243,7 +244,7 @@ function TimetableEntryMobileRow({
           />
         </div>
         <div className="mt-3 grid gap-2 text-sm text-text-muted">
-          <p>{weekDays[entry.dayOfWeek]}</p>
+          <p>{weekDays[entry.dayOfWeek]} · {formatCycleWeek(entry.cycleWeek)}</p>
           <p>{formatTimeRange(entry)}</p>
           <TimetableStatusBadge isActive={entry.isActive} />
         </div>
@@ -299,4 +300,8 @@ function TimetableStatusBadge({ isActive }: { isActive: boolean }) {
 
 export function formatTimeRange(entry: TimetableEntry) {
   return `${entry.startTime} - ${entry.endTime}`;
+}
+
+function formatCycleWeek(cycleWeek: number | null) {
+  return cycleWeek === null ? "Every week" : `Week ${String.fromCharCode(64 + cycleWeek)}`;
 }

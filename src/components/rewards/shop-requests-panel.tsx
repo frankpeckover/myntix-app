@@ -13,6 +13,7 @@ import { FixedNotification } from "@/components/ui/fixed-notification";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { IconButton } from "@/components/ui/icon-button";
 import { LoadFailure } from "@/components/ui/load-failure";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { CheckIcon, ShoppingBagIcon, XIcon } from "@/components/ui/icons";
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
 import { TableActionMenu } from "@/components/ui/table-action-menu";
@@ -238,7 +239,7 @@ export function ShopRequestsPanel({
 
       <div className="relative z-10 mt-4">
         {isLoading && (
-          <p className="text-sm text-text-muted">Loading requests...</p>
+          <LoadingSkeleton className="px-0" lines={4} />
         )}
         {!isLoading && error && requests.length === 0 && (
           <LoadFailure
@@ -579,7 +580,7 @@ function ShopRequestActions({
           icon: <CheckIcon />,
           label: "Approve",
           onSelect: () => onApprove(request.id),
-          tone: "primary",
+          tone: "success",
         },
         {
           icon: <XIcon />,

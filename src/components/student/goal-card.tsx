@@ -11,6 +11,7 @@ import type { StudentGoal } from "@/domains/analytics/student-goal-service";
 import { PencilIcon, TargetIcon } from "@/components/ui/icons";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { TableActionMenu } from "@/components/ui/table-action-menu";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 
 type StudentGoalCardProps = {
   balance: number;
@@ -184,9 +185,7 @@ export function StudentGoalCard({
       </div>
 
       {isLoading && (
-        <div className="flex min-h-48 items-center justify-center">
-          <p className="text-sm text-text-muted">Loading savings goal...</p>
-        </div>
+        <LoadingSkeleton className="min-h-48 px-0" lines={3} />
       )}
 
       {!isLoading && !isEditing && goal && (

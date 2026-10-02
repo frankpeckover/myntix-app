@@ -18,6 +18,8 @@ ProtectHome=read-only
 ProtectSystem=strict
 ReadOnlyPaths=/opt/myntix/app /etc/myntix
 ReadWritePaths=/var/lib/myntix-backup-worker
+RuntimeDirectory=myntix-backup-worker
+RuntimeDirectoryMode=0750
 
 [Install]
 WantedBy=multi-user.target

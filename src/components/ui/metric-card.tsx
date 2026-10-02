@@ -31,9 +31,9 @@ export function MetricCard({
   }
 
   return (
-    <article className="metric-card theme-card flex min-h-32 min-w-0 flex-col p-4">
-      <div className="flex items-start justify-between gap-3">
-        <p className="min-w-0 truncate text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-text-kicker">
+    <article className="metric-card theme-card flex min-h-28 min-w-0 flex-col p-3 sm:min-h-32 sm:p-4">
+      <div className="flex min-h-9 items-start justify-between gap-2">
+        <p className="min-w-0 text-[0.68rem] font-semibold uppercase leading-4 tracking-[0.06em] text-text-kicker sm:text-[0.7rem] sm:tracking-[0.08em]">
           {label}
         </p>
         {icon && (
@@ -44,7 +44,7 @@ export function MetricCard({
           </span>
         )}
       </div>
-      <div className="mt-auto pt-5">
+      <div className="mt-auto pt-3 sm:pt-5">
         <div className="min-w-0">
           <p className="break-words text-2xl font-semibold leading-none text-foreground sm:text-[1.75rem]">
             {value}

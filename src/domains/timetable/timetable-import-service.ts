@@ -8,6 +8,7 @@ export type ImportTimetableEntryInput = {
   groupName: string;
   startTime: string;
   teacherUsername: string;
+  cycleWeek: number | null;
 };
 
 export type ImportTimetableEntriesInput = {
@@ -62,6 +63,7 @@ export class TimetableImportService {
         const dayOfWeek = parseDayOfWeek(entry.day);
         const startTime = normaliseTime(entry.startTime);
         const endTime = normaliseTime(entry.endTime);
+        const cycleWeek = entry.cycleWeek;
 
         if (!teacherUsername || !groupName) {
           errors.push(createImportError(rowNumber, groupName, teacherUsername, "Teacher username and group name are required."));
@@ -114,6 +116,7 @@ export class TimetableImportService {
           groupId: group.id,
           startTime,
           teacherUserId: teacher.id,
+          cycleWeek,
         });
 
         if (wasCreated) {
@@ -201,6 +204,7 @@ async function createTimetableEntryIfMissing({
   groupId,
   startTime,
   teacherUserId,
+  cycleWeek,
 }: {
   client: import("pg").PoolClient;
   dayOfWeek: number;
@@ -208,6 +212,7 @@ async function createTimetableEntryIfMissing({
   groupId: string;
   startTime: string;
   teacherUserId: string;
+  cycleWeek: number | null;
 }) {
   const result = await client.query(
     `
@@ -216,9 +221,10 @@ async function createTimetableEntryIfMissing({
         group_id,
         day_of_week,
         start_time,
-        end_time
+        end_time,
+        cycle_week
       )
-      select $1, $2, $3, $4::time, $5::time
+      select $1, $2, $3, $4::time, $5::time, $6
       where not exists (
         select 1
         from timetable_entries
@@ -227,10 +233,11 @@ async function createTimetableEntryIfMissing({
           and day_of_week = $3
           and start_time = $4::time
           and end_time = $5::time
+          and cycle_week is not distinct from $6
           and is_active = true
       )
     `,
-    [teacherUserId, groupId, dayOfWeek, startTime, endTime],
+    [teacherUserId, groupId, dayOfWeek, startTime, endTime, cycleWeek],
   );
 
   return (result.rowCount ?? 0) > 0;

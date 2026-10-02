@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { FixedNotification } from "@/components/ui/fixed-notification";
 import { IconButton } from "@/components/ui/icon-button";
 import { LoadFailure } from "@/components/ui/load-failure";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { EyeIcon, XIcon } from "@/components/ui/icons";
 import {
   ListPagination,
@@ -89,7 +90,7 @@ export function AdminErrorLogPanel() {
       <FixedNotification error={error} />
       <div>
         {isLoading && (
-          <p className="text-sm text-text-muted">Loading error log...</p>
+          <LoadingSkeleton className="px-0" lines={5} />
         )}
         {!isLoading && error && entries.length === 0 && (
           <LoadFailure

@@ -40,6 +40,7 @@ import {
 import { FixedNotification } from "@/components/ui/fixed-notification";
 import { InlineSelectMenu } from "@/components/ui/inline-select-menu";
 import { LoadFailure } from "@/components/ui/load-failure";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { MetricCard } from "@/components/ui/metric-card";
 import { SearchInput } from "@/components/ui/search-input";
 import {
@@ -447,7 +448,7 @@ function NetMovementCard({
 
       {!error && isLoading && (
         <div className="flex h-52 items-center justify-center">
-          <p className="text-sm text-text-muted">Loading analytics...</p>
+          <LoadingSkeleton className="px-0" lines={4} />
         </div>
       )}
 
@@ -594,7 +595,7 @@ function BalanceHistoryCard({
 
       {!error && isLoading && (
         <div className="flex h-64 items-center justify-center">
-          <p className="text-sm text-text-muted">Loading analytics...</p>
+          <LoadingSkeleton className="px-0" lines={4} />
         </div>
       )}
 
@@ -861,7 +862,7 @@ function BalanceDistributionCard({
 
       {!error && isLoading && (
         <div className="flex h-64 items-center justify-center">
-          <p className="text-sm text-text-muted">Loading analytics...</p>
+          <LoadingSkeleton className="px-0" lines={4} />
         </div>
       )}
 
@@ -1052,7 +1053,7 @@ function PurchaseTrendCard({
 
       {!error && isLoading && (
         <div className="flex h-64 items-center justify-center">
-          <p className="text-sm text-text-muted">Loading analytics...</p>
+          <LoadingSkeleton className="px-0" lines={4} />
         </div>
       )}
 

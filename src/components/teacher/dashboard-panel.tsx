@@ -23,6 +23,7 @@ import {
 import { CreditActionControl } from "@/components/ui/credit-action-control";
 import { SearchInput } from "@/components/ui/search-input";
 import { LoadFailure } from "@/components/ui/load-failure";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { useDialogFocus } from "@/components/ui/use-dialog-focus";
 import {
   createLedgerAdjustment,
@@ -392,7 +393,7 @@ export function TeacherDashboardPanel({
       <FixedNotification error={error} message={message} />
     <section className="motion-panel mt-2">
         {isLoading && (
-          <p className="mt-4 text-sm text-text-muted">Loading students...</p>
+          <LoadingSkeleton className="mt-4 px-0" lines={6} variant="cards" />
         )}
 
         {!isLoading && error && (
@@ -426,13 +427,18 @@ export function TeacherDashboardPanel({
                   value={search}
                 />
                 <button
-                  className="inline-flex h-[46px] min-w-0 shrink-0 items-center justify-center rounded-md border border-button-border px-3 text-sm font-semibold text-text-control transition hover:bg-panel-soft sm:px-4"
+                  className="inline-flex h-[46px] min-w-0 shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-button-border px-3 text-sm font-semibold text-text-control transition hover:bg-panel-soft sm:px-4"
                   onClick={toggleStudentDisplayScope}
                   type="button"
                 >
-                  {studentDisplayScope === "current-class"
-                    ? "Show all students"
-                    : "Show current class"}
+                  <span className="sm:hidden">
+                    {studentDisplayScope === "current-class" ? "All students" : "Current class"}
+                  </span>
+                  <span className="hidden sm:inline">
+                    {studentDisplayScope === "current-class"
+                      ? "Show all students"
+                      : "Show current class"}
+                  </span>
                 </button>
                 <div className="flex min-w-0 shrink-0 items-center gap-2">
                   <button

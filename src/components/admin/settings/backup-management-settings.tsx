@@ -12,6 +12,7 @@ import type {
 import { FileDownIcon, RefreshCwIcon } from "@/components/ui/icons";
 import { FixedNotification } from "@/components/ui/fixed-notification";
 import { ModalShell } from "@/components/ui/modal-shell";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { notifySessionExpired } from "@/lib/auth/session-expiry-event";
 
 const refreshIntervalMilliseconds = 10_000;
@@ -135,7 +136,7 @@ export function BackupManagementSettings() {
   }
 
   if (isLoading) {
-    return <p className="text-sm text-text-muted">Loading backup history...</p>;
+    return <LoadingSkeleton className="px-0 py-0" lines={4} />;
   }
 
   if (!overview?.configured) {

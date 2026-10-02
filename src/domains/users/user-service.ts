@@ -297,10 +297,10 @@ export class UserService {
     const cardNumber = input.cardNumber.trim();
     const password = input.password;
 
-    if (!username || !firstName || !lastName || !password) {
+    if (!username || !firstName || !lastName || !email || !password) {
       return {
         ok: false,
-        message: "Complete all user fields.",
+        message: "Complete all required user fields.",
       };
     }
 
@@ -709,10 +709,10 @@ export class UserService {
     const profileImageUrl = input.profileImageUrl.trim();
     const cardNumber = input.cardNumber.trim();
 
-    if (!input.id || !username || !firstName || !lastName) {
+    if (!input.id || !username || !firstName || !lastName || !email) {
       return {
         ok: false,
-        message: "Complete all user fields.",
+        message: "Complete all required user fields.",
       };
     }
 
@@ -1117,7 +1117,12 @@ async function prepareImportUsers(
       const temporaryPassword = generateTemporaryPassword();
       const username = user.username.trim().toLowerCase();
 
-      if (!username || !firstName || !lastName) {
+      if (
+        !username ||
+        !firstName ||
+        !lastName ||
+        !email
+      ) {
         errors.push({
           message: "Missing a required value.",
           rowNumber,
@@ -1178,6 +1183,7 @@ function normaliseImportRows(users: ImportUserInput[]) {
       Boolean(username) &&
       Boolean(firstName) &&
       Boolean(lastName) &&
+      Boolean(email) &&
       !isDuplicate;
 
     if (username) {

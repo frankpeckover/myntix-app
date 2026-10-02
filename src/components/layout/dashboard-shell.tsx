@@ -148,17 +148,17 @@ export function DashboardShell({
         />
 
         <main
-          className="mx-auto flex min-w-0 flex-1 flex-col px-4 py-2 sm:px-6 lg:max-w-[calc(96rem-17rem)] lg:px-8"
+          className="mx-auto flex min-w-0 flex-1 flex-col px-3 py-1.5 sm:px-6 sm:py-2 lg:max-w-[calc(96rem-17rem)] lg:px-8"
           id="main-content"
           tabIndex={-1}
         >
           <h1 className="sr-only">{getCurrentPageHeading(activeNavItem, user)}</h1>
-          <header className="relative z-50 pb-2 pt-4">
+          <header className="relative z-50 pb-1.5 pt-3 sm:pb-2 sm:pt-4">
             <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 sm:gap-3 lg:flex-nowrap">
               <div className="lg:hidden">
                 <AppBrand />
               </div>
-              <p className="order-3 w-full min-w-0 flex-1 truncate pt-1 text-left text-lg font-medium text-text-control sm:text-xl lg:order-none lg:w-auto lg:pt-0 lg:text-left lg:text-2xl">
+              <p className="order-3 w-full min-w-0 basis-full truncate pt-0.5 text-left text-base font-medium text-text-control sm:pt-1 sm:text-xl lg:order-none lg:w-auto lg:basis-auto lg:flex-1 lg:pt-0 lg:text-left lg:text-2xl">
                 {greeting}, {getGreetingName(user)}!
               </p>
               <div className="hidden min-w-0 items-center gap-2 md:flex">
@@ -171,18 +171,20 @@ export function DashboardShell({
                   {schoolName}
                 </span>
               </div>
-              <NotificationCentre
-                onNavigate={(target) => setActiveNavItem(target)}
-              />
-              <HeaderNavMenu
-                activeItem={activeNavItem}
-                onItemChange={setActiveNavItem}
-                onLogout={onLogout}
-                onPasswordChange={() => setIsPasswordModalOpen(true)}
-                profileImageUrl={user.profileImageUrl}
-                role={user.role}
-                userDisplayName={user.displayName}
-              />
+              <div className="order-2 ml-auto flex shrink-0 items-center gap-2 lg:order-none lg:ml-0">
+                <NotificationCentre
+                  onNavigate={(target) => setActiveNavItem(target)}
+                />
+                <HeaderNavMenu
+                  activeItem={activeNavItem}
+                  onItemChange={setActiveNavItem}
+                  onLogout={onLogout}
+                  onPasswordChange={() => setIsPasswordModalOpen(true)}
+                  profileImageUrl={user.profileImageUrl}
+                  role={user.role}
+                  userDisplayName={user.displayName}
+                />
+              </div>
             </div>
           </header>
 
@@ -226,6 +228,8 @@ export function DashboardShell({
           <StudentDashboardPanel
             currencyName={schoolInfo.currencyName}
             currentUser={user}
+            onBrowseRewards={() => setActiveNavItem("Rewards")}
+            onOpenTransactionHistory={() => setActiveNavItem("Transaction History")}
             schoolLogoUrl={schoolInfo.logoUrl}
             schoolName={schoolName}
           />

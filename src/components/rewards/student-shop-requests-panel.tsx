@@ -3,21 +3,24 @@
 import { useEffect, useState } from "react";
 import { listStudentShopRequests } from "@/lib/actions";
 import type { StudentShopRequest } from "@/domains/rewards/shop-service";
-import { formatCurrencyAmount, formatDateTime } from "@/lib/presentation/formatters";
+import { formatDateTime } from "@/lib/presentation/formatters";
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
 import { FixedNotification } from "@/components/ui/fixed-notification";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { LoadFailure } from "@/components/ui/load-failure";
-import { ClockIcon, PackageIcon, ShoppingBagIcon } from "@/components/ui/icons";
+import { PackageIcon, ShoppingBagIcon, TrophyIcon } from "@/components/ui/icons";
+import { EmptyState } from "@/components/ui/empty-state";
+import { IconButton } from "@/components/ui/icon-button";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 
 type StudentShopRequestsPanelProps = {
   className?: string;
-  currencyName: string;
+  onBrowseRewards: () => void;
 };
 
 export function StudentShopRequestsPanel({
   className = "",
-  currencyName,
+  onBrowseRewards,
 }: StudentShopRequestsPanelProps) {
   const [requests, setRequests] = useState<StudentShopRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -72,7 +75,7 @@ export function StudentShopRequestsPanel({
 
       <div className="mt-4">
         {isLoading && (
-          <p className="text-sm text-text-muted">Loading requests...</p>
+          <LoadingSkeleton className="px-0 py-0" lines={3} />
         )}
         {!isLoading && error && requests.length === 0 && (
           <LoadFailure
@@ -82,12 +85,24 @@ export function StudentShopRequestsPanel({
           />
         )}
         {!isLoading && !error && requests.length === 0 && (
-          <p className="theme-subpanel px-3 py-4 text-sm text-text-muted">
-            No reward requests yet.
-          </p>
+          <EmptyState
+            action={
+              <IconButton
+                label="Browse rewards"
+                onClick={onBrowseRewards}
+                text="Browse rewards"
+                tone="primary"
+              >
+                <TrophyIcon />
+              </IconButton>
+            }
+            description="Choose a reward when you are ready to use your credits."
+            icon={<ShoppingBagIcon />}
+            title="Your cart is empty"
+          />
         )}
         {!isLoading && requests.length > 0 && (
-          <StudentRequestList currencyName={currencyName} requests={requests} />
+          <StudentRequestList requests={requests} />
         )}
       </div>
     </section>
@@ -95,17 +110,14 @@ export function StudentShopRequestsPanel({
 }
 
 function StudentRequestList({
-  currencyName,
   requests,
 }: {
-  currencyName: string;
   requests: StudentShopRequest[];
 }) {
   return (
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {requests.map((request) => (
           <StudentRequestCard
-            currencyName={currencyName}
             key={request.id}
             request={request}
           />
@@ -115,37 +127,28 @@ function StudentRequestList({
 }
 
 function StudentRequestCard({
-  currencyName,
   request,
 }: {
-  currencyName: string;
   request: StudentShopRequest;
 }) {
   return (
-    <article className="reward-shine rounded-md border border-transparent p-3 transition hover:bg-surface-hover">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface text-brand">
+    <article className="reward-shine rounded-md border border-border-subtle p-3 shadow-sm transition hover:border-border hover:bg-surface">
+      <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-panel-soft text-brand">
             <PackageIcon />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h3 className="truncate text-sm font-semibold">{request.itemName}</h3>
-            <p className="text-xs text-text-muted">Reward request</p>
+            <p className="mt-0.5 truncate text-xs text-text-muted">
+              {formatDateTime(request.purchasedAt)}
+            </p>
           </div>
-        </div>
-        <span className="shrink-0 text-right text-sm font-semibold">
-          {formatCurrencyAmount(request.price, currencyName)}
-        </span>
-      </div>
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <StudentRequestStatusBadge request={request} />
-        <span className="inline-flex items-center gap-1 text-xs font-semibold text-text-muted">
-          <ClockIcon className="h-3.5 w-3.5" />
-          {formatDateTime(request.purchasedAt)}
-        </span>
+          <StudentRequestStatusBadge request={request} />
       </div>
       {request.decisionNote && (
-        <p className="mt-2 text-sm text-text-muted">{request.decisionNote}</p>
+        <p className="mt-3 border-t border-border-muted pt-2.5 text-sm text-text-muted">
+          {request.decisionNote}
+        </p>
       )}
     </article>
   );

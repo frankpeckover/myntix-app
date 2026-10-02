@@ -39,6 +39,8 @@ import type { UnseenTransaction } from "@/domains/ledger/transaction-notificatio
 type StudentDashboardPanelProps = {
   currencyName: string;
   currentUser: SessionUser;
+  onBrowseRewards: () => void;
+  onOpenTransactionHistory: () => void;
   schoolLogoUrl: string;
   schoolName: string;
 };
@@ -76,6 +78,8 @@ type StudentMetricTimeframeDays =
 export function StudentDashboardPanel({
   currencyName,
   currentUser,
+  onBrowseRewards,
+  onOpenTransactionHistory,
   schoolLogoUrl,
   schoolName,
 }: StudentDashboardPanelProps) {
@@ -244,7 +248,7 @@ export function StudentDashboardPanel({
       <section className="student-dashboard-section dashboard-grid mt-5">
         <StudentShopRequestsPanel
           className="dashboard-unit-3"
-          currencyName={currencyName}
+          onBrowseRewards={onBrowseRewards}
         />
         <StudentMetricStrip
           className="student-dashboard-card student-metric-strip dashboard-unit-1"
@@ -257,6 +261,8 @@ export function StudentDashboardPanel({
         className="student-dashboard-card student-dashboard-transaction-log"
         currencyName={currencyName}
         currentUser={currentUser}
+        onViewAll={onOpenTransactionHistory}
+        previewLimit={5}
       />
 
       {unseenTransactions.length > 0 && (
@@ -311,15 +317,15 @@ function StudentWalletCard({
                 </span>
               )}
             </div>
-            <p className="max-w-56 truncate text-right text-xs font-medium uppercase tracking-[0.08em] text-[color:var(--student-card-muted)]">
+            <p className="max-w-28 truncate text-right text-xs font-medium uppercase tracking-[0.08em] text-[color:var(--student-card-muted)] sm:max-w-56">
               {schoolName}
             </p>
           </div>
 
-          <div className="grid flex-1 grid-cols-[minmax(0,1.35fr)_minmax(7rem,0.65fr)] items-center gap-4 py-4">
+          <div className="grid flex-1 grid-cols-[minmax(0,1.35fr)_minmax(7rem,0.65fr)] items-center gap-4 py-4 max-[360px]:grid-cols-[minmax(0,1fr)_5rem] max-[360px]:gap-2">
             <div className="min-w-0">
               <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1 break-words text-[color:var(--student-card-text)]">
-                <span className="wallet-balance-number text-6xl leading-none sm:text-7xl">
+                <span className="wallet-balance-number text-6xl leading-none max-[360px]:text-5xl sm:text-7xl">
                   {formatAmount(balanceAmount)}
                 </span>
                 <span className="text-base font-medium text-[color:var(--student-card-accent)] sm:text-lg">
@@ -329,7 +335,7 @@ function StudentWalletCard({
             </div>
             <p
               aria-label={cardDate ? `Today's date ${cardDate}` : undefined}
-              className="min-h-5 text-right font-number text-lg font-medium tracking-[0.18em] text-[color:var(--student-card-muted)] sm:text-xl"
+              className="min-h-5 text-right font-number text-lg font-medium tracking-[0.18em] text-[color:var(--student-card-muted)] max-[360px]:text-base max-[360px]:tracking-[0.12em] sm:text-xl"
             >
               {cardDate}
             </p>

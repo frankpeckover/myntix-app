@@ -9,6 +9,7 @@ import {
 } from "@/lib/actions";
 import { FixedNotification } from "@/components/ui/fixed-notification";
 import { RefreshCwIcon } from "@/components/ui/icons";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import type { TassSyncSettings } from "@/domains/integrations/directory-sync-types";
 
 const currentYear = new Date().getFullYear();
@@ -156,7 +157,7 @@ export function TassSyncSettingsPanel() {
   }
 
   if (isLoading) {
-    return <p className="text-sm text-text-muted">Loading TASS settings...</p>;
+    return <LoadingSkeleton className="px-0 py-0" lines={4} />;
   }
 
   return (

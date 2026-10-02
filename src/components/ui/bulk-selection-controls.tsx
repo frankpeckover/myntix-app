@@ -80,7 +80,7 @@ export function MobileSelectionShell({
   children: ReactNode;
 }) {
   return (
-    <div className="flex items-start gap-3">
+    <div className="flex min-w-0 max-w-full items-start gap-2 sm:gap-3">
       <div className="pt-1">{checkbox}</div>
       <div className="min-w-0 flex-1">{children}</div>
     </div>

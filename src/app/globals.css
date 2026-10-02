@@ -512,6 +512,17 @@ button:disabled {
   animation: pop-enter var(--motion-standard) var(--motion-ease);
 }
 
+.loading-skeleton-row {
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+  background: linear-gradient(
+    90deg,
+    var(--panel-soft) 0%,
+    color-mix(in srgb, var(--panel-soft) 58%, var(--surface)) 50%,
+    var(--panel-soft) 100%
+  );
+  background-size: 200% 100%;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -635,6 +646,7 @@ html[data-theme="dark"] .professional-shell {
 
 .student-dashboard-card {
   animation: student-dashboard-enter 460ms var(--motion-ease) both;
+  border-radius: 1.5rem;
 }
 
 .student-dashboard-section > .student-dashboard-card:nth-child(1) {
@@ -973,6 +985,7 @@ html[data-theme="dark"] .professional-shell {
 .app-modal-backdrop {
   background: color-mix(in srgb, var(--foreground) 28%, transparent);
   backdrop-filter: blur(4px);
+  overscroll-behavior: contain;
 }
 
 .app-modal.theme-panel {
@@ -980,6 +993,7 @@ html[data-theme="dark"] .professional-shell {
   border-color: var(--border);
   border-radius: 12px;
   box-shadow: 0 24px 64px color-mix(in srgb, var(--shadow-panel) 86%, transparent);
+  scrollbar-gutter: stable;
 }
 
 .app-modal-header {
@@ -1007,6 +1021,23 @@ html[data-theme="dark"] .app-modal.theme-panel {
 }
 
 @media (max-width: 639px) {
+  .app-shell-surface .table-toolbar-band {
+    align-items: stretch;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.55rem 0.75rem;
+  }
+
+  .app-shell-surface .table-toolbar-content {
+    flex-basis: 100%;
+  }
+
+  .app-shell-surface .table-toolbar-actions {
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
   .app-modal-backdrop {
     align-items: flex-end;
     padding: 0;
@@ -1018,29 +1049,30 @@ html[data-theme="dark"] .app-modal.theme-panel {
     border-radius: 12px 12px 0 0;
     border-right: 0;
     max-height: calc(100dvh - env(safe-area-inset-top));
-    padding: 1rem;
-    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+    padding: 0.875rem;
+    padding-bottom: calc(0.875rem + env(safe-area-inset-bottom));
+    width: 100%;
   }
 
   .app-modal.theme-panel:not(.flex) .app-modal-header {
     background: var(--surface);
-    margin-left: -1rem;
-    margin-right: -1rem;
-    margin-top: -1rem;
-    padding: 1rem;
+    margin-left: -0.875rem;
+    margin-right: -0.875rem;
+    margin-top: -0.875rem;
+    padding: 0.875rem;
     position: sticky;
-    top: -1rem;
+    top: -0.875rem;
     z-index: 10;
   }
 
   .app-modal.theme-panel:not(.flex) .app-modal-footer {
     background: var(--surface);
-    bottom: calc(-1rem - env(safe-area-inset-bottom));
-    margin-bottom: calc(-1rem - env(safe-area-inset-bottom));
-    margin-left: -1rem;
-    margin-right: -1rem;
-    padding: 1rem;
-    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+    bottom: calc(-0.875rem - env(safe-area-inset-bottom));
+    margin-bottom: calc(-0.875rem - env(safe-area-inset-bottom));
+    margin-left: -0.875rem;
+    margin-right: -0.875rem;
+    padding: 0.875rem;
+    padding-bottom: calc(0.875rem + env(safe-area-inset-bottom));
     position: sticky;
     z-index: 10;
   }
@@ -1476,6 +1508,16 @@ html[data-theme="dark"] .professional-shell .app-modal.theme-panel {
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+@keyframes skeleton-pulse {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
   }
 }
 

@@ -7,8 +7,3 @@ region = auto
 endpoint = https://<account-id>.r2.cloudflarestorage.com
 access_key_id = change_me
 secret_access_key = change_me
-
-[encrypted-r2]
-type = crypt
-remote = cloudflareR2:myntix-backup/encrypted
-password = change_me

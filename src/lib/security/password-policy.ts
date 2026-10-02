@@ -7,8 +7,11 @@ export type PasswordPolicyResult =
       message: string;
     };
 
-const minimumPasswordLength = 8;
-const maximumPasswordLength = 256;
+export const minimumPasswordLength = 8;
+export const maximumPasswordLength = 256;
+
+export const passwordRequirementsText =
+  `Use ${minimumPasswordLength}-${maximumPasswordLength} characters. A longer, unique passphrase is recommended.`;
 
 export function validateNewPassword(password: string): PasswordPolicyResult {
   if (!password) {

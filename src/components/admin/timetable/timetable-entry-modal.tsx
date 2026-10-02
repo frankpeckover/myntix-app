@@ -8,6 +8,7 @@ import { XIcon } from "@/components/ui/icons";
 import type { GroupListItem } from "@/domains/groups/group-service";
 import type {
   CreateTimetableEntryInput,
+  TimetableCycleSettings,
   TimetableTeacher,
 } from "@/domains/timetable/timetable-service";
 
@@ -20,6 +21,7 @@ export function TimetableEntryModal({
   onChange,
   onSubmit,
   teachers,
+  cycleSettings,
 }: {
   form: CreateTimetableEntryInput;
   groups: GroupListItem[];
@@ -29,6 +31,7 @@ export function TimetableEntryModal({
   onChange: (form: CreateTimetableEntryInput) => void;
   onSubmit: () => void;
   teachers: TimetableTeacher[];
+  cycleSettings: TimetableCycleSettings;
 }) {
   return (
     <ModalShell
@@ -52,6 +55,7 @@ export function TimetableEntryModal({
         onChange={onChange}
         onSubmit={onSubmit}
         teachers={teachers}
+        cycleSettings={cycleSettings}
       />
     </ModalShell>
   );
@@ -66,6 +70,7 @@ function TimetableEntryForm({
   onChange,
   onSubmit,
   teachers,
+  cycleSettings,
 }: {
   form: CreateTimetableEntryInput;
   groups: GroupListItem[];
@@ -75,6 +80,7 @@ function TimetableEntryForm({
   onChange: (form: CreateTimetableEntryInput) => void;
   onSubmit: () => void;
   teachers: TimetableTeacher[];
+  cycleSettings: TimetableCycleSettings;
 }) {
   return (
     <form
@@ -123,6 +129,19 @@ function TimetableEntryForm({
           </option>
         ))}
       </SelectField>
+
+      {cycleSettings.cycleLength > 1 && (
+        <SelectField
+          label="Timetable week"
+          onChange={(value) => onChange({ ...form, cycleWeek: value ? Number(value) : null })}
+          value={form.cycleWeek === null ? "" : String(form.cycleWeek)}
+        >
+          <option value="">Every week</option>
+          {Array.from({ length: cycleSettings.cycleLength }, (_, index) => (
+            <option key={index + 1} value={index + 1}>Week {String.fromCharCode(65 + index)}</option>
+          ))}
+        </SelectField>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <TimeField

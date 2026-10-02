@@ -12,8 +12,12 @@ export function TableToolbar({ actions, children }: TableToolbarProps) {
 
   return (
     <div className="table-toolbar-band flex min-w-0 items-center justify-between gap-3">
-      <div className="min-w-0 flex-1">{children}</div>
-      {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+      <div className="table-toolbar-content min-w-0 flex-1">{children}</div>
+      {actions && (
+        <div className="table-toolbar-actions flex shrink-0 items-center gap-2">
+          {actions}
+        </div>
+      )}
     </div>
   );
 }

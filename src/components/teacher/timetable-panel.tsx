@@ -4,8 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { ClockIcon } from "@/components/ui/icons";
 import { LoadFailure } from "@/components/ui/load-failure";
-import { listMyTimetableEntries } from "@/lib/actions";
-import type { TimetableEntry } from "@/domains/timetable/timetable-service";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { getTimetableCycleSettings, listMyTimetableEntries } from "@/lib/actions";
+import type { TimetableCycleSettings, TimetableEntry } from "@/domains/timetable/timetable-service";
 
 const calendarDays = [
   { dayOfWeek: 1, label: "Monday", shortLabel: "Mon" },
@@ -38,6 +39,8 @@ export function TeacherTimetablePanel({
   onOpenGroup: (groupId: string, groupName: string) => void;
 }) {
   const [entries, setEntries] = useState<TimetableEntry[]>([]);
+  const [cycleSettings, setCycleSettings] = useState<TimetableCycleSettings | null>(null);
+  const [selectedCycleWeek, setSelectedCycleWeek] = useState(1);
   const [currentMoment, setCurrentMoment] = useState<CurrentMoment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,22 +48,27 @@ export function TeacherTimetablePanel({
 
   useEffect(() => {
     window.queueMicrotask(() => {
-      const now = new Date();
+      const now = getCurrentMoment(cycleSettings?.timezone);
       setCurrentMoment({
-        dayOfWeek: now.getDay(),
-        minuteOfDay: now.getHours() * minutesPerHour + now.getMinutes(),
+        dayOfWeek: now.dayOfWeek,
+        minuteOfDay: now.minuteOfDay,
       });
     });
-  }, [reloadKey]);
+  }, [cycleSettings?.timezone, reloadKey]);
 
   useEffect(() => {
     let isMounted = true;
 
     async function loadTimetable() {
       try {
-        const loadedEntries = await listMyTimetableEntries();
+        const [loadedEntries, loadedCycleSettings] = await Promise.all([
+          listMyTimetableEntries(),
+          getTimetableCycleSettings(),
+        ]);
         if (isMounted) {
           setEntries(loadedEntries);
+          setCycleSettings(loadedCycleSettings);
+          setSelectedCycleWeek(loadedCycleSettings.activeCycleWeek);
           setError(null);
         }
       } catch {
@@ -74,7 +82,11 @@ export function TeacherTimetablePanel({
     return () => { isMounted = false; };
   }, []);
 
-  const entriesByDay = useMemo(() => groupEntriesByDay(entries), [entries]);
+  const visibleEntries = useMemo(
+    () => entries.filter((entry) => entry.cycleWeek === null || entry.cycleWeek === selectedCycleWeek),
+    [entries, selectedCycleWeek],
+  );
+  const entriesByDay = useMemo(() => groupEntriesByDay(visibleEntries), [visibleEntries]);
 
   return (
     <section className="motion-panel mt-2 min-w-0">
@@ -83,14 +95,28 @@ export function TeacherTimetablePanel({
           <span className="text-brand"><ClockIcon /></span>
           <h2 className="truncate text-lg font-semibold text-foreground">Weekly timetable</h2>
         </div>
-        {!isLoading && !error && (
-          <span className="text-sm text-text-muted">
-            {entries.length} {entries.length === 1 ? "class" : "classes"}
-          </span>
-        )}
+        {!isLoading && !error && cycleSettings && cycleSettings.cycleLength > 1 ? (
+          <label className="flex items-center gap-2 text-sm text-text-muted">
+            <span className="hidden sm:inline">View</span>
+            <select
+              aria-label="Timetable week"
+              className="theme-input h-9 px-2 text-sm"
+              onChange={(event) => setSelectedCycleWeek(Number(event.target.value))}
+              value={selectedCycleWeek}
+            >
+              {Array.from({ length: cycleSettings.cycleLength }, (_, index) => (
+                <option key={index + 1} value={index + 1}>
+                  Week {String.fromCharCode(65 + index)}{cycleSettings.activeCycleWeek === index + 1 ? " (current)" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : !isLoading && !error ? (
+          <span className="text-sm text-text-muted">{visibleEntries.length} {visibleEntries.length === 1 ? "class" : "classes"}</span>
+        ) : null}
       </div>
 
-      {isLoading && <p className="text-sm text-text-muted">Loading timetable...</p>}
+      {isLoading && <LoadingSkeleton className="px-0" lines={5} />}
       {error && (
         <LoadFailure
           description="Your classes could not be retrieved."
@@ -339,4 +365,25 @@ function formatCompactTime(value: string) {
 function formatHour(hour: number) {
   const normalisedHour = hour % fullDayCalendarEndHour;
   return `${normalisedHour % 12 || 12} ${normalisedHour >= 12 ? "pm" : "am"}`;
+}
+
+function getCurrentMoment(timezone?: string): CurrentMoment {
+  if (!timezone) {
+    const now = new Date();
+    return { dayOfWeek: now.getDay(), minuteOfDay: now.getHours() * minutesPerHour + now.getMinutes() };
+  }
+
+  const parts = new Intl.DateTimeFormat("en-AU", {
+    hour: "2-digit",
+    hourCycle: "h23",
+    minute: "2-digit",
+    timeZone: timezone,
+    weekday: "short",
+  }).formatToParts(new Date());
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? "";
+  const dayOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(part("weekday"));
+  return {
+    dayOfWeek: Math.max(0, dayOfWeek),
+    minuteOfDay: Number(part("hour")) * minutesPerHour + Number(part("minute")),
+  };
 }

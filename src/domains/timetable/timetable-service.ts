@@ -12,6 +12,7 @@ export type TimetableEntry = {
   dayOfWeek: number;
   startTime: string;
   endTime: string;
+  cycleWeek: number | null;
   isActive: boolean;
   createdAt: string;
 };
@@ -47,6 +48,14 @@ export type CreateTimetableEntryInput = {
   dayOfWeek: number;
   startTime: string;
   endTime: string;
+  cycleWeek: number | null;
+};
+
+export type TimetableCycleSettings = {
+  cycleLength: number;
+  cycleStartDate: string;
+  activeCycleWeek: number;
+  timezone: string;
 };
 
 export type UpdateTimetableEntryInput = CreateTimetableEntryInput & {
@@ -62,6 +71,7 @@ type TimetableEntryRow = {
   day_of_week: number;
   start_time: string;
   end_time: string;
+  cycle_week: number | null;
   is_active: boolean;
   created_at: Date;
 };
@@ -95,6 +105,70 @@ type CurrentClassStudentRow = {
 const auditService = new AuditService();
 
 export class TimetableService {
+  async getCycleSettings(): Promise<TimetableCycleSettings> {
+    const result = await db.query<{
+      cycle_length: number;
+      cycle_start_date: string;
+      active_cycle_week: number;
+      timezone: string;
+    }>(`
+      with school_clock as (
+        select
+          school_info.*,
+          (now() at time zone coalesce(nullif(timezone, ''), 'UTC'))::date as local_date
+        from school_info
+        where id = 1
+      )
+      select
+        greatest(1, least(6, timetable_cycle_length))::integer as cycle_length,
+        coalesce(timetable_cycle_start_date, local_date)::text as cycle_start_date,
+        case
+          when timetable_cycle_length <= 1 or timetable_cycle_start_date is null then 1
+          else 1 + (((local_date - timetable_cycle_start_date) / 7) % timetable_cycle_length + timetable_cycle_length) % timetable_cycle_length
+        end::integer as active_cycle_week,
+        coalesce(nullif(timezone, ''), 'UTC') as timezone
+      from school_clock
+    `);
+
+    const row = result.rows[0];
+    return row ? {
+      activeCycleWeek: row.active_cycle_week,
+      cycleLength: row.cycle_length,
+      cycleStartDate: row.cycle_start_date,
+      timezone: row.timezone,
+    } : { activeCycleWeek: 1, cycleLength: 1, cycleStartDate: "", timezone: "UTC" };
+  }
+
+  async updateCycleSettings(
+    input: Pick<TimetableCycleSettings, "cycleLength" | "cycleStartDate">,
+    currentUser: SessionUser,
+  ): Promise<ActionResult> {
+    if (!Number.isInteger(input.cycleLength) || input.cycleLength < 1 || input.cycleLength > 6) {
+      return { ok: false, message: "Cycle length must be between 1 and 6 weeks." };
+    }
+    if (input.cycleLength > 1 && !/^\d{4}-\d{2}-\d{2}$/.test(input.cycleStartDate)) {
+      return { ok: false, message: "Choose the date when Week A begins." };
+    }
+    const incompatibleEntries = await db.query<{ count: number }>(
+      `select count(*)::integer as count from timetable_entries where cycle_week > $1`,
+      [input.cycleLength],
+    );
+    if ((incompatibleEntries.rows[0]?.count ?? 0) > 0) {
+      return { ok: false, message: `Move classes from later cycle weeks before reducing the cycle to ${input.cycleLength}.` };
+    }
+    await db.query(
+      `update school_info set timetable_cycle_length = $1, timetable_cycle_start_date = $2::date, updated_at = now() where id = 1`,
+      [input.cycleLength, input.cycleLength > 1 ? input.cycleStartDate : null],
+    );
+    await auditService.log({
+      action: "timetable_cycle.updated",
+      actorUserId: currentUser.id,
+      details: input,
+      entityType: "school_info",
+    });
+    return { ok: true };
+  }
+
   async listTeacherEntries(currentUser: SessionUser): Promise<TimetableEntry[]> {
     const result = await db.query<TimetableEntryRow>(
       `
@@ -107,6 +181,7 @@ export class TimetableService {
           timetable_entries.day_of_week,
           timetable_entries.start_time::text as start_time,
           timetable_entries.end_time::text as end_time,
+          timetable_entries.cycle_week,
           timetable_entries.is_active,
           timetable_entries.created_at
         from timetable_entries
@@ -135,6 +210,7 @@ export class TimetableService {
           timetable_entries.day_of_week,
           timetable_entries.start_time::text as start_time,
           timetable_entries.end_time::text as end_time,
+          timetable_entries.cycle_week,
           timetable_entries.is_active,
           timetable_entries.created_at
         from timetable_entries
@@ -193,6 +269,11 @@ export class TimetableService {
       };
     }
 
+    const cycleSettings = await this.getCycleSettings();
+    if (input.cycleWeek !== null && input.cycleWeek > cycleSettings.cycleLength) {
+      return { ok: false, message: "That week is outside the organisation's timetable cycle." };
+    }
+
     try {
       const result = await db.query<{ id: string }>(
         `
@@ -202,8 +283,9 @@ export class TimetableService {
             day_of_week,
             start_time,
             end_time
+            , cycle_week
           )
-          select $1, $2, $3, $4::time, $5::time
+          select $1, $2, $3, $4::time, $5::time, $6
           from users teachers
           join roles teacher_roles on teacher_roles.id = teachers.role_id
           join student_groups on student_groups.id = $2
@@ -219,6 +301,7 @@ export class TimetableService {
           input.dayOfWeek,
           input.startTime,
           input.endTime,
+          input.cycleWeek,
         ],
       );
 
@@ -276,6 +359,11 @@ export class TimetableService {
       };
     }
 
+    const cycleSettings = await this.getCycleSettings();
+    if (input.cycleWeek !== null && input.cycleWeek > cycleSettings.cycleLength) {
+      return { ok: false, message: "That week is outside the organisation's timetable cycle." };
+    }
+
     try {
       const result = await db.query(
         `
@@ -285,8 +373,9 @@ export class TimetableService {
               day_of_week = $3,
               start_time = $4::time,
               end_time = $5::time,
+              cycle_week = $6,
               updated_at = now()
-          where id = $6
+          where id = $7
             and exists (
               select 1
               from users teachers
@@ -308,6 +397,7 @@ export class TimetableService {
           input.dayOfWeek,
           input.startTime,
           input.endTime,
+          input.cycleWeek,
           input.id,
         ],
       );
@@ -412,6 +502,17 @@ export class TimetableService {
           and timetable_entries.end_time > school_clock.local_now::time
           and timetable_entries.is_active = true
           and student_groups.is_active = true
+          and (
+            timetable_entries.cycle_week is null
+            or timetable_entries.cycle_week = case
+              when coalesce((select timetable_cycle_length from school_info where id = 1), 1) <= 1
+                or (select timetable_cycle_start_date from school_info where id = 1) is null then 1
+              else 1 + ((((school_clock.local_now::date - (select timetable_cycle_start_date from school_info where id = 1)) / 7)
+                % (select timetable_cycle_length from school_info where id = 1)
+                + (select timetable_cycle_length from school_info where id = 1))
+                % (select timetable_cycle_length from school_info where id = 1))
+            end
+          )
         order by timetable_entries.start_time desc
         limit 1
       `,
@@ -509,6 +610,10 @@ function validateTimetableEntry(input: CreateTimetableEntryInput) {
     return "End time must be after start time.";
   }
 
+  if (input.cycleWeek !== null && (!Number.isInteger(input.cycleWeek) || input.cycleWeek < 1 || input.cycleWeek > 6)) {
+    return "Select a valid timetable week.";
+  }
+
   return null;
 }
 
@@ -530,6 +635,7 @@ function mapTimetableEntryRow(row: TimetableEntryRow): TimetableEntry {
     dayOfWeek: row.day_of_week,
     startTime: formatTime(row.start_time),
     endTime: formatTime(row.end_time),
+    cycleWeek: row.cycle_week,
     isActive: row.is_active,
     createdAt: row.created_at.toISOString(),
   };

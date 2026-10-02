@@ -18,6 +18,7 @@ import { BulkSelectionControls } from "@/components/ui/bulk-selection-controls";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { IconButton } from "@/components/ui/icon-button";
 import { LoadFailure } from "@/components/ui/load-failure";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import {
   CheckIcon,
   FileDownIcon,
@@ -32,6 +33,7 @@ import {
 } from "@/components/ui/list-pagination";
 import { TableActionMenu } from "@/components/ui/table-action-menu";
 import { TableToolbar } from "@/components/ui/table-toolbar";
+import { showToast } from "@/components/ui/toast-viewport";
 import { downloadCsv } from "@/lib/csv/client";
 import { formatDateTime } from "@/lib/presentation/formatters";
 import type { UserListItem } from "@/domains/users/user-service";
@@ -63,6 +65,7 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isChangingUserStatus, setIsChangingUserStatus] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -167,6 +170,7 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
 
     setError(null);
     setMessage(null);
+    setIsChangingUserStatus(true);
 
     const result = await setUserActive(
       pendingUserStatusChange.user.id,
@@ -175,13 +179,33 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
 
     if (!result.ok) {
       setError(result.message);
+      setIsChangingUserStatus(false);
       return;
     }
 
-    setMessage(
-      pendingUserStatusChange.isActive ? "User enabled." : "User disabled.",
-    );
+    if (pendingUserStatusChange.isActive) {
+      setMessage("User enabled.");
+    } else {
+      const disabledUser = pendingUserStatusChange.user;
+      setMessage(null);
+      showToast({
+        action: {
+          label: "Undo",
+          onSelect: async () => {
+            const undoResult = await setUserActive(disabledUser.id, true);
+            if (!undoResult.ok) {
+              showToast({ text: undoResult.message, tone: "error" });
+              return;
+            }
+            await refreshUsers();
+            showToast({ text: "User restored." });
+          },
+        },
+        text: "User disabled.",
+      });
+    }
     setPendingUserStatusChange(null);
+    setIsChangingUserStatus(false);
     await refreshUsers();
   }
 
@@ -239,7 +263,7 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
     <AdminPageSection ariaLabel={`${schoolName} users`} isFlush>
       <FixedNotification error={error} message={message} />
       <div>
-        {isLoading && <p className="text-sm text-text-muted">Loading users...</p>}
+        {isLoading && <LoadingSkeleton className="px-0" lines={5} />}
         {!isLoading && error && users.length === 0 && (
           <LoadFailure
             description="The user directory is temporarily unavailable."
@@ -308,7 +332,7 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
                               isActive: true,
                               userIds: selectedUserIds,
                             }),
-                          tone: "primary",
+                          tone: "success",
                         },
                         {
                           icon: <XIcon />,
@@ -438,6 +462,7 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
             pendingUserStatusChange.isActive ? "Enable User" : "Disable User"
           }
           description={`${pendingUserStatusChange.isActive ? "Enable" : "Disable"} ${pendingUserStatusChange.user.displayName}?`}
+          isConfirming={isChangingUserStatus}
           onCancel={() => setPendingUserStatusChange(null)}
           onConfirm={confirmSetUserActive}
           title={
@@ -445,7 +470,7 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
               ? "Enable user account"
               : "Disable user account"
           }
-          tone={pendingUserStatusChange.isActive ? "primary" : "danger"}
+          tone={pendingUserStatusChange.isActive ? "success" : "danger"}
         />
       )}
 
@@ -464,7 +489,7 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
               ? "Enable selected users"
               : "Disable selected users"
           }
-          tone={pendingBulkUserStatusChange.isActive ? "primary" : "danger"}
+          tone={pendingBulkUserStatusChange.isActive ? "success" : "danger"}
         />
       )}
     </AdminPageSection>

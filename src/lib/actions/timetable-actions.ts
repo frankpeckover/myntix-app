@@ -17,6 +17,16 @@ export async function listTimetableEntries(includeInactive = false) {
   return timetableService.listEntries(includeInactive);
 }
 
+export async function getTimetableCycleSettings() {
+  await requireLedgerAdjuster();
+  return timetableService.getCycleSettings();
+}
+
+export async function updateTimetableCycleSettings(input: { cycleLength: number; cycleStartDate: string }) {
+  const currentUser = await requireAdmin();
+  return timetableService.updateCycleSettings(input, currentUser);
+}
+
 export async function listTimetableTeachers() {
   await requireAdmin();
   return timetableService.listTeachers();

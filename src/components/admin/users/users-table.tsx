@@ -357,7 +357,7 @@ function UserActions({
           icon: user.isActive ? <XIcon /> : <CheckIcon />,
           label: user.isActive ? "Disable" : "Enable",
           onSelect: () => onUserActiveChange(user, !user.isActive),
-          tone: user.isActive ? "danger" : "primary",
+          tone: user.isActive ? "danger" : "success",
         },
       ]}
     />

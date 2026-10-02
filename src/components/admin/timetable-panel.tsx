@@ -20,9 +20,11 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { FixedNotification } from "@/components/ui/fixed-notification";
 import { IconButton } from "@/components/ui/icon-button";
 import { LoadFailure } from "@/components/ui/load-failure";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import {
   FileDownIcon,
   FileUpIcon,
+  ClockIcon,
   PlusIcon,
   TrashIcon,
   XIcon,
@@ -39,6 +41,8 @@ import {
   listGroups,
   listTimetableEntries,
   listTimetableTeachers,
+  getTimetableCycleSettings,
+  updateTimetableCycleSettings,
   updateTimetableEntry,
 } from "@/lib/actions";
 import type { GroupListItem } from "@/domains/groups/group-service";
@@ -46,6 +50,7 @@ import type {
   CreateTimetableEntryInput,
   TimetableEntry,
   TimetableTeacher,
+  TimetableCycleSettings,
 } from "@/domains/timetable/timetable-service";
 
 const emptyEntryForm: CreateTimetableEntryInput = {
@@ -54,12 +59,22 @@ const emptyEntryForm: CreateTimetableEntryInput = {
   groupId: "",
   startTime: "",
   teacherUserId: "",
+  cycleWeek: null,
+};
+
+const defaultCycleSettings: TimetableCycleSettings = {
+  activeCycleWeek: 1,
+  cycleLength: 1,
+  cycleStartDate: "",
+  timezone: "UTC",
 };
 
 export function AdminTimetablePanel() {
   const [entries, setEntries] = useState<TimetableEntry[]>([]);
   const [teachers, setTeachers] = useState<TimetableTeacher[]>([]);
   const [groups, setGroups] = useState<GroupListItem[]>([]);
+  const [cycleSettings, setCycleSettings] = useState(defaultCycleSettings);
+  const [isCycleSettingsOpen, setIsCycleSettingsOpen] = useState(false);
   const [form, setForm] =
     useState<CreateTimetableEntryInput>(emptyEntryForm);
   const [filters, setFilters] =
@@ -98,15 +113,17 @@ export function AdminTimetablePanel() {
     setIsLoading(true);
 
     try {
-      const [loadedEntries, loadedTeachers, loadedGroups] = await Promise.all([
+      const [loadedEntries, loadedTeachers, loadedGroups, loadedCycleSettings] = await Promise.all([
         listTimetableEntries(false),
         listTimetableTeachers(),
         listGroups(false),
+        getTimetableCycleSettings(),
       ]);
 
       setEntries(loadedEntries);
       setTeachers(loadedTeachers);
       setGroups(loadedGroups);
+      setCycleSettings(loadedCycleSettings);
       setError(null);
     } catch {
       setError("Could not load timetable.");
@@ -234,6 +251,7 @@ export function AdminTimetablePanel() {
       groupId: entry.groupId,
       startTime: entry.startTime,
       teacherUserId: entry.teacherUserId,
+      cycleWeek: entry.cycleWeek,
     });
     setMessage(null);
     setError(null);
@@ -247,6 +265,7 @@ export function AdminTimetablePanel() {
       groupId: entry.groupId,
       startTime: entry.startTime,
       teacherUserId: entry.teacherUserId,
+      cycleWeek: entry.cycleWeek,
     });
     setIsCreateModalOpen(true);
     setMessage(null);
@@ -292,6 +311,7 @@ export function AdminTimetablePanel() {
           onChange={setForm}
           onSubmit={editingEntry ? handleUpdateEntry : handleCreateEntry}
           teachers={teachers}
+          cycleSettings={cycleSettings}
         />
       )}
 
@@ -305,7 +325,43 @@ export function AdminTimetablePanel() {
           onChange={setForm}
           onSubmit={handleUpdateEntry}
           teachers={teachers}
+          cycleSettings={cycleSettings}
         />
+      )}
+
+      {isCycleSettingsOpen && (
+        <ConfirmationModal
+          confirmLabel="Save cycle"
+          description="Choose one week for a standard timetable, or an alternating cycle. The start date is a known Monday in Week A. Existing entries continue to run every week."
+          onCancel={() => setIsCycleSettingsOpen(false)}
+          onConfirm={async () => {
+            const result = await updateTimetableCycleSettings(cycleSettings);
+            if (!result.ok) { setError(result.message); return; }
+            setIsCycleSettingsOpen(false);
+            setMessage("Timetable cycle updated.");
+            await refreshTimetable();
+          }}
+          title="Timetable cycle"
+          tone="primary"
+        >
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <label className="grid gap-1.5 text-sm font-semibold text-text-control">
+              Cycle length
+              <select className="theme-input h-11 px-3" value={cycleSettings.cycleLength} onChange={(event) => setCycleSettings((current) => ({ ...current, cycleLength: Number(event.target.value) }))}>
+                <option value={1}>Every week</option>
+                <option value={2}>2 weeks</option>
+                <option value={3}>3 weeks</option>
+                <option value={4}>4 weeks</option>
+              </select>
+            </label>
+            {cycleSettings.cycleLength > 1 && (
+              <label className="grid gap-1.5 text-sm font-semibold text-text-control">
+                Week A starts
+                <input className="theme-input h-11 px-3" type="date" value={cycleSettings.cycleStartDate} onChange={(event) => setCycleSettings((current) => ({ ...current, cycleStartDate: event.target.value }))} />
+              </label>
+            )}
+          </div>
+        </ConfirmationModal>
       )}
 
       {isImportModalOpen && (
@@ -338,7 +394,7 @@ export function AdminTimetablePanel() {
 
       <div>
         {isLoading && (
-          <p className="text-sm text-text-muted">Loading timetable...</p>
+          <LoadingSkeleton className="px-0" lines={5} />
         )}
         {!isLoading && error && entries.length === 0 && (
           <LoadFailure
@@ -366,6 +422,13 @@ export function AdminTimetablePanel() {
                   text="Import Timetable: CSV"
                 >
                   <FileUpIcon />
+                </IconButton>
+                <IconButton
+                  label="Configure timetable cycle"
+                  onClick={() => setIsCycleSettingsOpen(true)}
+                  text="Cycle Settings"
+                >
+                  <ClockIcon />
                 </IconButton>
               </div>
             }
@@ -413,6 +476,11 @@ export function AdminTimetablePanel() {
                             icon: <FileUpIcon />,
                             label: "Import timetable: CSV",
                             onSelect: () => setIsImportModalOpen(true),
+                          },
+                          {
+                            icon: <ClockIcon />,
+                            label: "Timetable cycle settings",
+                            onSelect: () => setIsCycleSettingsOpen(true),
                           },
                         ]}
                       />

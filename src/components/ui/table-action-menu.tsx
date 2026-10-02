@@ -10,7 +10,7 @@ export type TableActionMenuItem = {
   icon?: ReactNode;
   label: string;
   onSelect: () => void;
-  tone?: "default" | "danger" | "primary";
+  tone?: "default" | "danger" | "primary" | "success";
 };
 
 type TableActionMenuProps = {
@@ -25,6 +25,7 @@ const itemToneClassNames: Record<
   danger: "text-danger-strong hover:bg-danger-soft",
   default: "text-text-control hover:bg-panel-soft",
   primary: "text-brand-ink hover:bg-brand-soft",
+  success: "text-success hover:bg-success-soft",
 };
 
 export function TableActionMenu({

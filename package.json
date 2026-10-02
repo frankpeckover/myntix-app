@@ -11,6 +11,7 @@
     "db:check": "node scripts/check-database-connections.mjs",
     "db:configure-access": "node scripts/configure-database-access.mjs",
     "maintenance": "node scripts/manage-platform-announcement.mjs",
+    "organisation:offboard": "node scripts/offboard-organisation.mjs",
     "start": "node scripts/start-production.mjs",
     "lint": "eslint"
   },

@@ -55,6 +55,9 @@ export {
   uploadSchoolLogo,
 } from "@/lib/actions/school-actions";
 export {
+  requestOrganisationDeletion,
+} from "@/lib/actions/organisation-deletion-actions";
+export {
   completeSetupChecklistStep,
   getSetupChecklist,
   setSetupChecklistDismissed,
@@ -79,6 +82,7 @@ export {
 } from "@/lib/actions/transaction-preset-actions";
 export {
   createTimetableEntry,
+  getTimetableCycleSettings,
   deleteTimetableEntry,
   getCurrentTeacherClass,
   listMyTimetableEntries,
@@ -86,6 +90,7 @@ export {
   listTimetableEntries,
   listTimetableTeachers,
   updateTimetableEntry,
+  updateTimetableCycleSettings,
 } from "@/lib/actions/timetable-actions";
 export {
   approveShopRequest,

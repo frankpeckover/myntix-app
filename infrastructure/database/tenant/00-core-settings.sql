@@ -16,6 +16,8 @@ create table if not exists school_info (
   timezone text not null default '',
   currency_name text not null default 'credits',
   balance_cap integer check (balance_cap is null or balance_cap > 0),
+  timetable_cycle_length integer not null default 1 check (timetable_cycle_length between 1 and 6),
+  timetable_cycle_start_date date,
   logo_url text not null default '',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -23,6 +25,10 @@ create table if not exists school_info (
 
 alter table school_info
   add column if not exists balance_cap integer check (balance_cap is null or balance_cap > 0);
+
+alter table school_info
+  add column if not exists timetable_cycle_length integer not null default 1,
+  add column if not exists timetable_cycle_start_date date;
 
 create table if not exists audit_log (
   id uuid primary key default gen_random_uuid(),

@@ -24,6 +24,7 @@ const schemaTenantVariables = [
 
 const recommendedVariables = [
   "EMAIL_FROM",
+  "ORGANISATION_DELETION_REQUEST_EMAIL",
   "INTERNAL_JOB_SECRET",
   "RESEND_API_KEY",
 ];
