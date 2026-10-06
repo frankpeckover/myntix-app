@@ -14,7 +14,7 @@ import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { IconButton } from "@/components/ui/icon-button";
 import { LoadFailure } from "@/components/ui/load-failure";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
-import { CheckIcon, ShoppingBagIcon, XIcon } from "@/components/ui/icons";
+import { CheckIcon, ShoppingCartIcon, XIcon } from "@/components/ui/icons";
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
 import { TableActionMenu } from "@/components/ui/table-action-menu";
 import {
@@ -50,6 +50,7 @@ type ShopRequestsPanelProps = {
 export function ShopRequestsPanel({
   className = "mt-5",
   compact = false,
+  currencyName,
   helpText,
   maxVisibleRequests,
   onRequestActioned,
@@ -203,7 +204,7 @@ export function ShopRequestsPanel({
       <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-panel-soft text-text-muted">
-            <ShoppingBagIcon />
+            <ShoppingCartIcon />
           </span>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -258,6 +259,7 @@ export function ShopRequestsPanel({
         {!isLoading && visibleRequests.length > 0 && (
           <ShopRequestList
             compact={compact}
+            currencyName={currencyName}
             onApprove={handleApprove}
             onDeny={setDenyingRequestId}
             requests={visibleRequests}
@@ -281,11 +283,13 @@ export function ShopRequestsPanel({
 
 function ShopRequestList({
   compact,
+  currencyName,
   onApprove,
   onDeny,
   requests,
 }: {
   compact: boolean;
+  currencyName: string;
   onApprove: (purchaseId: string) => void;
   onDeny: (purchaseId: string) => void;
   requests: ShopPurchaseRequest[];
@@ -293,6 +297,7 @@ function ShopRequestList({
   if (compact) {
     return (
       <CompactShopRequestList
+        currencyName={currencyName}
         onApprove={onApprove}
         onDeny={onDeny}
         requests={requests}
@@ -304,6 +309,7 @@ function ShopRequestList({
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
       {requests.map((request) => (
         <ShopRequestCard
+          currencyName={currencyName}
           key={request.id}
           onApprove={onApprove}
           onDeny={onDeny}
@@ -315,10 +321,12 @@ function ShopRequestList({
 }
 
 function CompactShopRequestList({
+  currencyName,
   onApprove,
   onDeny,
   requests,
 }: {
+  currencyName: string;
   onApprove: (purchaseId: string) => void;
   onDeny: (purchaseId: string) => void;
   requests: ShopPurchaseRequest[];
@@ -346,6 +354,7 @@ function CompactShopRequestList({
       <div className="grid gap-2 md:hidden">
         {filteredRequests.map((request) => (
           <CompactShopRequestMobileRow
+            currencyName={currencyName}
             key={request.id}
             onApprove={onApprove}
             onDeny={onDeny}
@@ -442,7 +451,7 @@ function CompactShopRequestList({
                 </td>
                 <td className="py-2 pr-4">
                   <span className="text-sm font-semibold">
-                    {formatAmount(request.price)}
+                    {formatAmount(request.price)} {currencyName}
                   </span>
                 </td>
                 <td className="py-2 pr-4">
@@ -472,7 +481,7 @@ function CompactShopRequestList({
             </IconButton>
           }
           description="Try changing or clearing the filters to see more reward requests."
-          icon={<ShoppingBagIcon />}
+          icon={<ShoppingCartIcon />}
           title="No matching reward requests"
         />
       )}
@@ -481,10 +490,12 @@ function CompactShopRequestList({
 }
 
 function CompactShopRequestMobileRow({
+  currencyName,
   onApprove,
   onDeny,
   request,
 }: {
+  currencyName: string;
   onApprove: (purchaseId: string) => void;
   onDeny: (purchaseId: string) => void;
   request: ShopPurchaseRequest;
@@ -501,7 +512,7 @@ function CompactShopRequestMobileRow({
         </p>
         <p className="mt-1">
           <span className="text-sm font-semibold">
-            {formatAmount(request.price)}
+            {formatAmount(request.price)} {currencyName}
           </span>
         </p>
       </div>
@@ -515,10 +526,12 @@ function CompactShopRequestMobileRow({
 }
 
 function ShopRequestCard({
+  currencyName,
   onApprove,
   onDeny,
   request,
 }: {
+  currencyName: string;
   onApprove: (purchaseId: string) => void;
   onDeny: (purchaseId: string) => void;
   request: ShopPurchaseRequest;
@@ -528,7 +541,7 @@ function ShopRequestCard({
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent-soft text-accent">
-            <ShoppingBagIcon />
+            <ShoppingCartIcon />
           </span>
           <div className="min-w-0">
             <h4 className="truncate text-sm font-semibold">{request.itemName}</h4>
@@ -537,25 +550,58 @@ function ShopRequestCard({
             </p>
           </div>
         </div>
-        <ShopRequestActions
-          onApprove={onApprove}
-          onDeny={onDeny}
-          request={request}
-        />
       </div>
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className="mt-3 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 border-t border-border-subtle pt-3">
         <ShopRequestStatusBadge request={request} />
-        <span className="shrink-0 text-right text-sm font-semibold">
-          {formatAmount(request.price)}
-        </span>
+        <p className="truncate text-center text-xs text-text-muted">
+          {formatDateTime(request.purchasedAt)}
+        </p>
+        <p className="inline-flex items-baseline gap-1 whitespace-nowrap rounded-md bg-brand-soft px-2.5 py-1.5 text-right text-xs text-text-muted">
+          <span className="font-number text-sm font-semibold text-brand-ink">
+            {formatAmount(request.price)}
+          </span>
+          <span>{currencyName}</span>
+        </p>
       </div>
-      <p className="mt-2 text-xs text-text-muted">
-        {formatDateTime(request.purchasedAt)}
-      </p>
       {request.decisionNote && (
         <p className="mt-2 text-sm text-text-muted">{request.decisionNote}</p>
       )}
+      {request.status === "pending" && (
+        <ShopRequestDecisionButtons
+          onApprove={() => onApprove(request.id)}
+          onDeny={() => onDeny(request.id)}
+        />
+      )}
     </article>
+  );
+}
+
+function ShopRequestDecisionButtons({
+  onApprove,
+  onDeny,
+}: {
+  onApprove: () => void;
+  onDeny: () => void;
+}) {
+  return (
+    <div className="mt-4 flex justify-end gap-2 border-t border-border-subtle pt-3">
+      <button
+        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-danger-action px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
+        onClick={onDeny}
+        type="button"
+      >
+        <XIcon />
+        Deny
+      </button>
+      <button
+        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-success-action px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
+        onClick={onApprove}
+        type="button"
+      >
+        <CheckIcon />
+        Approve
+      </button>
+    </div>
   );
 }
 

@@ -31,7 +31,7 @@ export function ConfirmationModal({
   const confirmClassName = tone === "danger"
     ? "bg-danger-strong text-white hover:bg-danger"
     : tone === "success"
-      ? "bg-success-fill text-white hover:bg-success-hover"
+      ? "bg-success-fill text-success-foreground hover:bg-success-hover"
       : "bg-brand text-white hover:bg-brand-hover";
 
   return (

@@ -12,6 +12,7 @@ export type SchoolInfo = {
   name: string;
   address: string;
   balanceCap: number | null;
+  transactionCap: number | null;
   contactEmail: string;
   currencyName: string;
   logoUrl: string;
@@ -36,6 +37,7 @@ type SchoolInfoRow = {
   name: string;
   address: string;
   balance_cap: number | null;
+  transaction_cap: number | null;
   contact_email: string;
   currency_name: string;
   logo_url: string;
@@ -66,6 +68,7 @@ export class SchoolService {
         name,
         address,
         balance_cap,
+        transaction_cap,
         contact_email,
         currency_name,
         logo_url,
@@ -84,6 +87,7 @@ export class SchoolService {
         name: appConfig.defaultSchoolName,
         address: "",
         balanceCap: null,
+        transactionCap: null,
         contactEmail: "",
         currencyName: defaultCurrencyName,
         logoUrl: "",
@@ -103,6 +107,7 @@ export class SchoolService {
     const name = input.name.trim();
     const address = input.address.trim();
     const balanceCap = input.balanceCap;
+    const transactionCap = input.transactionCap;
     const contactEmail = input.contactEmail.trim().toLowerCase();
     const currencyName = input.currencyName.trim();
     const logoUrl = input.logoUrl.trim();
@@ -134,6 +139,16 @@ export class SchoolService {
       };
     }
 
+    if (
+      transactionCap !== null &&
+      (!Number.isInteger(transactionCap) || transactionCap <= 0)
+    ) {
+      return {
+        ok: false,
+        message: "Transaction cap must be a positive whole number, or blank.",
+      };
+    }
+
     const client = await db.connect();
 
     try {
@@ -146,6 +161,7 @@ export class SchoolService {
             name,
             address,
             balance_cap,
+            transaction_cap,
             contact_email,
             currency_name,
             logo_url,
@@ -153,11 +169,12 @@ export class SchoolService {
             website,
             timezone
           )
-          values (1, $1, $2, $3, $4, $5, $6, $7, $8, $9)
+          values (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
           on conflict (id) do update
           set name = excluded.name,
               address = excluded.address,
               balance_cap = excluded.balance_cap,
+              transaction_cap = excluded.transaction_cap,
               contact_email = excluded.contact_email,
               currency_name = excluded.currency_name,
               logo_url = excluded.logo_url,
@@ -170,6 +187,7 @@ export class SchoolService {
           name,
           address,
           balanceCap,
+          transactionCap,
           contactEmail,
           currencyName,
           logoUrl,
@@ -185,6 +203,7 @@ export class SchoolService {
         details: {
           contactEmail,
           balanceCap,
+          transactionCap,
           currencyName,
           hasLogo: Boolean(logoUrl),
           name,
@@ -261,6 +280,8 @@ export class SchoolService {
       name: row.name,
       address: row.address,
       balanceCap: row.balance_cap === null ? null : Number(row.balance_cap),
+      transactionCap:
+        row.transaction_cap === null ? null : Number(row.transaction_cap),
       contactEmail: row.contact_email,
       currencyName: row.currency_name,
       logoUrl: row.logo_url,

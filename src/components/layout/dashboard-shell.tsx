@@ -16,9 +16,11 @@ import {
 } from "@/components/layout/app-nav";
 import { ChangePasswordModal } from "@/components/auth/change-password-modal";
 import { ShopPanel } from "@/components/rewards/shop-panel";
+import { StaffRewardRequestsPage } from "@/components/rewards/staff-reward-requests-page";
 import { PreferencesPanel } from "@/components/preferences/preferences-panel";
 import { StudentDashboardPanel } from "@/components/student/dashboard-panel";
 import { TeacherDashboardPanel } from "@/components/teacher/dashboard-panel";
+import { TeacherHomePanel } from "@/components/teacher/home-panel";
 import { TeacherTimetablePanel } from "@/components/teacher/timetable-panel";
 import { TransactionLogPanel } from "@/components/transactions/transaction-log-panel";
 import { NotificationCentre } from "@/components/notifications/notification-centre";
@@ -69,6 +71,7 @@ export function DashboardShell({
     name: appConfig.defaultSchoolName,
     address: "",
     balanceCap: null,
+    transactionCap: null,
     contactEmail: "",
     currencyName: defaultCurrencyName,
     logoUrl: "",
@@ -210,11 +213,18 @@ export function DashboardShell({
         )}
 
         {isTeacher(user) && activeNavItem === "Dashboard" && (
-          <TeacherDashboardPanel
-            currencyName={schoolInfo.currencyName}
-            groupNavigation={teacherGroupNavigation}
-            onGroupNavigationConsumed={clearTeacherGroupNavigation}
-            schoolName={schoolName}
+          <TeacherHomePanel
+            onNavigateToCredits={() => setActiveNavItem("Credit Management")}
+            onNavigateToRequests={() => setActiveNavItem("Reward Requests")}
+            onNavigateToTimetable={() => setActiveNavItem("Timetable")}
+            onOpenCurrentClass={(groupId, groupName) => {
+              setTeacherGroupNavigation((current) => ({
+                groupId,
+                groupName,
+                version: (current?.version ?? 0) + 1,
+              }));
+              setActiveNavItem("Credit Management");
+            }}
           />
         )}
 
@@ -235,14 +245,18 @@ export function DashboardShell({
           />
         )}
 
-        {isAdmin(user) && activeNavItem === "Credit Management" && (
+        {!isStudent(user) && activeNavItem === "Credit Management" && (
           <TeacherDashboardPanel
             currencyName={schoolInfo.currencyName}
             groupNavigation={teacherGroupNavigation}
             onGroupNavigationConsumed={clearTeacherGroupNavigation}
-            schoolName={schoolName}
-            showAllStudentsByDefault
+            showAllStudentsByDefault={isAdmin(user)}
+            transactionCap={schoolInfo.transactionCap}
           />
+        )}
+
+        {!isStudent(user) && activeNavItem === "Reward Requests" && (
+          <StaffRewardRequestsPage currencyName={schoolInfo.currencyName} />
         )}
 
         {isTeacher(user) && activeNavItem === "Timetable" && (
@@ -253,7 +267,7 @@ export function DashboardShell({
                 groupName,
                 version: (current?.version ?? 0) + 1,
               }));
-              setActiveNavItem("Dashboard");
+              setActiveNavItem("Credit Management");
             }}
           />
         )}

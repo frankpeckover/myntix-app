@@ -305,6 +305,16 @@ export function TrophyIcon(props: IconProps) {
   );
 }
 
+export function CrownIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="m3 7 4.5 4L12 5l4.5 6L21 7l-2 10H5L3 7Z" />
+      <path d="M5 17h14" />
+      <path d="M7 21h10" />
+    </IconBase>
+  );
+}
+
 export function PlusIcon(props: IconProps) {
   return (
     <IconBase {...props}>
@@ -322,11 +332,12 @@ export function MinusIcon(props: IconProps) {
   );
 }
 
-export function ShoppingBagIcon(props: IconProps) {
+export function ShoppingCartIcon(props: IconProps) {
   return (
     <IconBase {...props}>
-      <path d="M6 8h12l-1 13H7L6 8Z" />
-      <path d="M9 8a3 3 0 0 1 6 0" />
+      <circle cx="9" cy="20" r="1" />
+      <circle cx="19" cy="20" r="1" />
+      <path d="M3 3h2l2.4 11.4a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L21 7H6" />
     </IconBase>
   );
 }

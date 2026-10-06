@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { ClockIcon } from "@/components/ui/icons";
+import { PanelTitle } from "@/components/ui/panel-title";
 import { LoadFailure } from "@/components/ui/load-failure";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { getTimetableCycleSettings, listMyTimetableEntries } from "@/lib/actions";
@@ -93,7 +94,7 @@ export function TeacherTimetablePanel({
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <span className="text-brand"><ClockIcon /></span>
-          <h2 className="truncate text-lg font-semibold text-foreground">Weekly timetable</h2>
+          <PanelTitle title="Weekly timetable" />
         </div>
         {!isLoading && !error && cycleSettings && cycleSettings.cycleLength > 1 ? (
           <label className="flex items-center gap-2 text-sm text-text-muted">

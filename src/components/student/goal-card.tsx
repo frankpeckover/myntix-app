@@ -10,6 +10,7 @@ import { formatAmount } from "@/lib/presentation/formatters";
 import type { StudentGoal } from "@/domains/analytics/student-goal-service";
 import { PencilIcon, TargetIcon } from "@/components/ui/icons";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
+import { PanelTitle } from "@/components/ui/panel-title";
 import { TableActionMenu } from "@/components/ui/table-action-menu";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 
@@ -161,13 +162,13 @@ export function StudentGoalCard({
 
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand">
-            <TargetIcon />
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand-soft text-brand">
+            <TargetIcon className="h-4 w-4" />
           </span>
-          <h2 className="truncate text-base font-semibold text-foreground">
-            Savings Goal
-          </h2>
-          <InfoTooltip label="Your savings goal is a personal tracker. It does not set credits aside, so you can still use your balance on rewards." />
+          <PanelTitle
+            accessory={<InfoTooltip label="Your savings goal is a personal tracker. It does not set credits aside, so you can still use your balance on rewards." />}
+            title="Savings Goal"
+          />
         </div>
 
         {goal && !isEditing && (

@@ -8,10 +8,10 @@ import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
 import { FixedNotification } from "@/components/ui/fixed-notification";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { LoadFailure } from "@/components/ui/load-failure";
-import { PackageIcon, ShoppingBagIcon, TrophyIcon } from "@/components/ui/icons";
-import { EmptyState } from "@/components/ui/empty-state";
+import { PackageIcon, ShoppingCartIcon, TrophyIcon } from "@/components/ui/icons";
 import { IconButton } from "@/components/ui/icon-button";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { PanelTitle } from "@/components/ui/panel-title";
 
 type StudentShopRequestsPanelProps = {
   className?: string;
@@ -61,15 +61,20 @@ export function StudentShopRequestsPanel({
       className={`student-dashboard-card student-cart-card rounded-3xl border border-transparent bg-surface p-4 sm:p-5 ${className}`}
     >
       <FixedNotification error={error} />
-      <div className="flex items-start gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent-soft text-accent">
-          <ShoppingBagIcon />
+      <div className="flex items-center gap-3">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand-soft text-brand">
+          <ShoppingCartIcon />
         </span>
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-semibold">My Cart</h2>
-            <InfoTooltip label="Adding a reward reserves its cost from your balance while a staff member reviews the request. A denied request returns the reserved credits." />
-          </div>
+          <PanelTitle
+            accessory={<InfoTooltip label="Adding a reward reserves its cost from your balance while a staff member reviews the request. A denied request returns the reserved credits." />}
+            title="My Cart"
+          />
+          <p className="mt-0.5 text-xs text-text-muted">
+            {isLoading
+              ? "Loading requests"
+              : `${requests.length} ${requests.length === 1 ? "request" : "requests"}`}
+          </p>
         </div>
       </div>
 
@@ -85,21 +90,22 @@ export function StudentShopRequestsPanel({
           />
         )}
         {!isLoading && !error && requests.length === 0 && (
-          <EmptyState
-            action={
-              <IconButton
-                label="Browse rewards"
-                onClick={onBrowseRewards}
-                text="Browse rewards"
-                tone="primary"
-              >
-                <TrophyIcon />
-              </IconButton>
-            }
-            description="Choose a reward when you are ready to use your credits."
-            icon={<ShoppingBagIcon />}
-            title="Your cart is empty"
-          />
+          <div className="flex min-h-24 flex-col justify-between gap-3 rounded-xl bg-panel-soft px-4 py-3 sm:flex-row sm:items-center">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground">Nothing waiting</p>
+              <p className="mt-1 text-xs text-text-muted">
+                Rewards you request will appear here.
+              </p>
+            </div>
+            <IconButton
+              label="Browse rewards"
+              onClick={onBrowseRewards}
+              text="Browse rewards"
+              tone="primary"
+            >
+              <TrophyIcon />
+            </IconButton>
+          </div>
         )}
         {!isLoading && requests.length > 0 && (
           <StudentRequestList requests={requests} />
@@ -115,7 +121,7 @@ function StudentRequestList({
   requests: StudentShopRequest[];
 }) {
   return (
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+    <div className="grid gap-3 sm:grid-cols-2">
         {requests.map((request) => (
           <StudentRequestCard
             key={request.id}

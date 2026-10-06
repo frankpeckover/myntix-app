@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { formatCurrencyAmount } from "@/lib/presentation/formatters";
 import type { ShopItem } from "@/domains/rewards/shop-service";
-import { CheckIcon, PencilIcon, ShoppingBagIcon, TicketIcon } from "@/components/ui/icons";
+import { CheckIcon, PencilIcon, ShoppingCartIcon, TicketIcon } from "@/components/ui/icons";
 import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import { useDialogFocus } from "@/components/ui/use-dialog-focus";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -97,7 +97,7 @@ export function ShopItemDetailsModal({
                 </>
               ) : (
                 <>
-                  <ShoppingBagIcon />
+                  <ShoppingCartIcon />
                   Add to Cart
                 </>
               )}

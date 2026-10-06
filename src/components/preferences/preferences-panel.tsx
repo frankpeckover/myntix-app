@@ -12,8 +12,13 @@ import { defaultCustomAccentColor, type AccentTheme } from "@/lib/theme/accent-t
 import { isStaff, isStudent } from "@/lib/auth/permissions";
 import type { SessionUser } from "@/lib/auth/session";
 import { useAccentTheme } from "@/lib/theme/use-accent-theme";
+import { useDashboardTheme } from "@/lib/theme/use-dashboard-theme";
 import { useThemeMode } from "@/lib/theme/use-theme-mode";
 import { useWalletStyle } from "@/lib/theme/use-wallet-style";
+import {
+  walletPatternBackgrounds,
+  walletStyleBackgrounds,
+} from "@/lib/theme/wallet-style-config";
 
 type PreferencesPanelProps = {
   user: SessionUser;
@@ -177,6 +182,8 @@ function WalletAppearancePreferences() {
     walletStyle,
     walletStyleOptions,
   } = useWalletStyle();
+  const { dashboardTheme, dashboardThemeOptions, setDashboardTheme } =
+    useDashboardTheme();
 
   return (
     <div className="mt-5 border-t border-border-subtle pt-4">
@@ -184,40 +191,82 @@ function WalletAppearancePreferences() {
       <p className="mt-0.5 text-xs text-text-muted">
         Personalise the balance card on your dashboard.
       </p>
-      <div className="mt-3 flex flex-wrap items-center gap-3">
+      <p className="mt-4 text-xs font-medium uppercase text-text-muted">Finish</p>
+      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
         {walletStyleOptions.map((option) => (
           <button
             aria-label={`${option.label} wallet`}
             aria-pressed={walletStyle === option.value}
-            className={`h-9 w-16 rounded-md border transition hover:scale-105 ${
+            className={`group flex min-h-18 min-w-0 flex-col gap-1.5 rounded-md border bg-surface p-1.5 text-left transition hover:border-border-strong ${
               walletStyle === option.value
                 ? "border-foreground ring-2 ring-brand-soft-strong"
                 : "border-border-subtle"
             }`}
             key={option.value}
             onClick={() => setWalletStyle(option.value)}
-            style={{ background: option.preview }}
             title={option.label}
             type="button"
-          />
+          >
+            <span className="h-9 w-full shrink-0 rounded-sm" style={{ background: option.preview }} />
+            <span className="truncate px-0.5 text-xs text-text-control">{option.label}</span>
+          </button>
         ))}
       </div>
-      <div className="mt-3 flex flex-wrap items-center gap-3">
+      <p className="mt-4 text-xs font-medium uppercase text-text-muted">Pattern</p>
+      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
         {walletPatternOptions.map((option) => (
           <button
             aria-label={`${option.label} wallet pattern`}
             aria-pressed={walletPattern === option.value}
-            className={`h-9 w-12 rounded-md border bg-brand bg-[length:8px_8px] transition hover:scale-105 ${
+            className={`flex min-h-18 min-w-0 flex-col gap-1.5 rounded-md border bg-surface p-1.5 text-left transition hover:border-border-strong ${
               walletPattern === option.value
                 ? "border-foreground ring-2 ring-brand-soft-strong"
                 : "border-border-subtle"
             }`}
             key={option.value}
             onClick={() => setWalletPattern(option.value)}
-            style={{ backgroundImage: option.preview }}
             title={option.label}
             type="button"
-          />
+          >
+            <span
+              className="h-9 w-full shrink-0 rounded-sm"
+              style={{
+                background:
+                  option.value === "none"
+                    ? walletStyleBackgrounds[walletStyle]
+                    : `${walletPatternBackgrounds[option.value]}, ${walletStyleBackgrounds[walletStyle]}`,
+                backgroundSize: option.value === "dots" ? "18px 18px, auto" : "auto",
+              }}
+            />
+            <span className="truncate px-0.5 text-xs text-text-control">{option.label}</span>
+          </button>
+        ))}
+      </div>
+
+      <p className="mt-5 text-sm font-medium text-text-control">Dashboard background</p>
+      <p className="mt-0.5 text-xs text-text-muted">
+        Add a subtle pattern behind your dashboard cards.
+      </p>
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {dashboardThemeOptions.map((option) => (
+          <button
+            aria-label={`${option.label} dashboard background`}
+            aria-pressed={dashboardTheme === option.value}
+            className={`flex min-h-22 min-w-0 flex-col gap-2 rounded-md border bg-surface p-2 text-left transition hover:border-border-strong ${
+              dashboardTheme === option.value
+                ? "border-foreground ring-2 ring-brand-soft-strong"
+                : "border-border-subtle"
+            }`}
+            key={option.value}
+            onClick={() => setDashboardTheme(option.value)}
+            type="button"
+          >
+            <span
+              className="h-12 w-full shrink-0 rounded-sm border border-border-muted bg-[length:12px_12px]"
+              style={{ background: option.preview }}
+            />
+            <span className="truncate text-xs text-text-control">{option.label}</span>
+          </button>
         ))}
       </div>
     </div>

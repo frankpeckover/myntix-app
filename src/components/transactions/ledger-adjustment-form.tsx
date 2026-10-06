@@ -33,14 +33,13 @@ type LedgerAdjustmentFormProps = {
   preferredStudent?: StudentListItem | null;
   preferredStudents?: StudentListItem[];
   preferredStudentSelectionVersion?: number;
+  transactionCap: number | null;
 };
 
 const studentSearchDebounceMs = 250;
 const studentSearchMinChars = 2;
 const emptyStudentResults: StudentListItem[] = [];
 const emptyGroupResults: GroupListItem[] = [];
-type AdjustmentStep = "recipient" | "amount" | "reason";
-
 export function LedgerAdjustmentForm({
   currencyName,
   onCreated,
@@ -52,6 +51,7 @@ export function LedgerAdjustmentForm({
   preferredStudent = null,
   preferredStudents = [],
   preferredStudentSelectionVersion = 0,
+  transactionCap,
 }: LedgerAdjustmentFormProps) {
   const [amount, setAmount] = useState("");
   const initialStudents = getPreferredStudents(preferredStudents, preferredStudent);
@@ -62,7 +62,8 @@ export function LedgerAdjustmentForm({
   const [target, setTarget] = useState<AdjustmentTarget>(
     preferredGroupId ? "group" : "student",
   );
-  const [reason, setReason] = useState("");
+  const [presetReason, setPresetReason] = useState("");
+  const [customReason, setCustomReason] = useState("");
   const [groups, setGroups] = useState<GroupListItem[]>(emptyGroupResults);
   const [selectedGroupId, setSelectedGroupId] = useState(preferredGroupId);
   const [studentQuery, setStudentQuery] = useState("");
@@ -71,9 +72,6 @@ export function LedgerAdjustmentForm({
   );
   const [presets, setPresets] = useState<TransactionPresets>(
     defaultTransactionPresets,
-  );
-  const [step, setStep] = useState<AdjustmentStep>(
-    hasPreferredRecipient ? "amount" : "recipient",
   );
   const [selectedStudents, setSelectedStudents] = useState<StudentListItem[]>(
     initialStudents,
@@ -89,12 +87,16 @@ export function LedgerAdjustmentForm({
       ? preferredGroup
       : groups.find((group) => group.id === selectedGroupId) ?? null;
   const selectedAmount = Number(amount);
+  const reason = customReason.trim() || presetReason;
   const hasTarget =
     target === "student" ? selectedStudents.length > 0 : Boolean(selectedGroup);
   const hasAmount = Number.isInteger(selectedAmount) && selectedAmount > 0;
+  const exceedsTransactionCap =
+    transactionCap !== null && hasAmount && selectedAmount > transactionCap;
   const canSubmit =
     hasTarget &&
     hasAmount &&
+    !exceedsTransactionCap &&
     Boolean(reason.trim()) &&
     !isSaving;
   const recipientLabel = getRecipientLabel(
@@ -108,7 +110,7 @@ export function LedgerAdjustmentForm({
   useEffect(() => {
     let isActive = true;
 
-    if (!shouldLoadGroups(step, target, selectedGroupId, selectedGroup)) {
+    if (!shouldLoadGroups(target, selectedGroupId, selectedGroup)) {
       return () => {
         isActive = false;
       };
@@ -141,7 +143,7 @@ export function LedgerAdjustmentForm({
     return () => {
       isActive = false;
     };
-  }, [onError, selectedGroup, selectedGroupId, step, target]);
+  }, [onError, selectedGroup, selectedGroupId, target]);
 
   useEffect(() => {
     let isActive = true;
@@ -179,7 +181,6 @@ export function LedgerAdjustmentForm({
       setSelectedStudents([]);
       setStudentQuery("");
       setStudentResults(emptyStudentResults);
-      setStep("amount");
     }, 0);
 
     return () => {
@@ -206,7 +207,6 @@ export function LedgerAdjustmentForm({
       setSelectedGroupId("");
       setStudentQuery("");
       setStudentResults(emptyStudentResults);
-      setStep("amount");
     }, 0);
 
     return () => {
@@ -320,11 +320,11 @@ export function LedgerAdjustmentForm({
     await onCreated(result.message ?? successMessage);
     setAmount("");
     setDirection("add");
-    setReason("");
+    setPresetReason("");
+    setCustomReason("");
     setSelectedStudents([]);
     setSelectedGroupId("");
     setStudentQuery("");
-    setStep("recipient");
     requestIdRef.current = "";
     submissionPendingRef.current = false;
     setIsSaving(false);
@@ -362,100 +362,56 @@ export function LedgerAdjustmentForm({
     );
   }
 
-  function goToNextStep() {
-    onError(null);
-
-    if (step === "recipient") {
-      if (!hasTarget) {
-        onError("Choose a student or group.");
-        return;
-      }
-
-      setStep("amount");
-      return;
-    }
-
-    if (step === "amount") {
-      if (!hasAmount) {
-        onError("Enter a whole number amount greater than zero.");
-        return;
-      }
-
-      setStep("reason");
-    }
-  }
-
-  function goToPreviousStep() {
-    onError(null);
-
-    if (step === "amount") {
-      setStep("recipient");
-      return;
-    }
-
-    if (step === "reason") {
-      setStep("amount");
-    }
-  }
-
   return (
     <form
-      className="theme-subpanel mt-4 p-3"
-      onSubmit={(event) => event.preventDefault()}
+      className="mt-5 space-y-5"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void handleSubmit();
+      }}
     >
-      <div>
-        {step === "recipient" && (
-          <AdjustmentRecipientPanel
-            groups={groups}
-            isLoadingGroups={isLoadingGroups}
-            isSearching={isSearching}
-            onGroupChange={setSelectedGroupId}
-            onStudentQueryChange={handleStudentQueryChange}
-            onStudentRemove={removeSelectedStudent}
-            onStudentSelect={selectStudent}
-            onTargetChange={handleTargetChange}
-            searchMinChars={studentSearchMinChars}
-            selectedGroup={selectedGroup}
-            selectedGroupId={selectedGroupId}
-            selectedStudents={selectedStudents}
-            studentQuery={studentQuery}
-            studentResults={studentResults}
-            target={target}
-          />
-        )}
+      {!hasPreferredRecipient && (
+        <AdjustmentRecipientPanel
+          groups={groups}
+          isLoadingGroups={isLoadingGroups}
+          isSearching={isSearching}
+          onGroupChange={setSelectedGroupId}
+          onStudentQueryChange={handleStudentQueryChange}
+          onStudentRemove={removeSelectedStudent}
+          onStudentSelect={selectStudent}
+          onTargetChange={handleTargetChange}
+          searchMinChars={studentSearchMinChars}
+          selectedGroup={selectedGroup}
+          selectedGroupId={selectedGroupId}
+          selectedStudents={selectedStudents}
+          studentQuery={studentQuery}
+          studentResults={studentResults}
+          target={target}
+        />
+      )}
 
-        {step === "amount" && (
-          <AdjustmentAmountStep
-            amount={amount}
-            currencyName={currencyName}
-            direction={direction}
-            onAmountChange={setAmount}
-            onDirectionChange={setDirection}
-            presets={presets.amounts}
-          />
-        )}
+      <AdjustmentAmountStep
+        amount={amount}
+        currencyName={currencyName}
+        direction={direction}
+        onAmountChange={setAmount}
+        onDirectionChange={setDirection}
+        presets={presets.amounts}
+        transactionCap={transactionCap}
+      />
 
-        {step === "reason" && (
-          <AdjustmentReasonStep
-            amount={selectedAmount}
-            currencyName={currencyName}
-            direction={direction}
-            onReasonChange={setReason}
-            reason={reason}
-            reasonPresets={presets.reasons}
-            recipientLabel={recipientLabel}
-          />
-        )}
-      </div>
+      <AdjustmentReasonStep
+        customReason={customReason}
+        onCustomReasonChange={setCustomReason}
+        onPresetReasonChange={setPresetReason}
+        presetReason={presetReason}
+        reasonPresets={presets.reasons}
+      />
 
-      <AdjustmentStepActions
-        canGoBack={step !== "recipient"}
+      <AdjustmentFormActions
         canSubmit={canSubmit}
+        direction={direction}
         isSaving={isSaving}
-        onBack={goToPreviousStep}
-        onNext={goToNextStep}
-        onSubmit={handleSubmit}
-        step={step}
         submitLabel={submitLabel}
       />
     </form>
@@ -469,6 +425,7 @@ function AdjustmentAmountStep({
   onAmountChange,
   onDirectionChange,
   presets,
+  transactionCap,
 }: {
   amount: string;
   currencyName: string;
@@ -476,14 +433,11 @@ function AdjustmentAmountStep({
   onAmountChange: (value: string) => void;
   onDirectionChange: (direction: AdjustmentDirection) => void;
   presets: number[];
+  transactionCap: number | null;
 }) {
   return (
-    <section className="theme-card p-3">
-      <div>
-        <h3 className="text-base font-semibold">Action and Amount</h3>
-      </div>
-
-      <div className="mt-4 grid gap-4 md:grid-cols-[minmax(12rem,0.7fr)_1fr]">
+    <section>
+      <div className="grid gap-4 md:grid-cols-[minmax(11rem,0.65fr)_1fr]">
         <DirectionToggle
           direction={direction}
           onChange={onDirectionChange}
@@ -494,6 +448,7 @@ function AdjustmentAmountStep({
           currencyName={currencyName}
           onAmountChange={onAmountChange}
           presets={presets}
+          transactionCap={transactionCap}
         />
       </div>
     </section>
@@ -501,43 +456,26 @@ function AdjustmentAmountStep({
 }
 
 function AdjustmentReasonStep({
-  amount,
-  currencyName,
-  direction,
-  onReasonChange,
-  reason,
+  customReason,
+  onCustomReasonChange,
+  onPresetReasonChange,
+  presetReason,
   reasonPresets,
-  recipientLabel,
 }: {
-  amount: number;
-  currencyName: string;
-  direction: AdjustmentDirection;
-  onReasonChange: (value: string) => void;
-  reason: string;
+  customReason: string;
+  onCustomReasonChange: (value: string) => void;
+  onPresetReasonChange: (value: string) => void;
+  presetReason: string;
   reasonPresets: string[];
-  recipientLabel: string;
 }) {
-  const actionLabel = direction === "add" ? "Add" : "Take";
-
   return (
-    <section className="theme-card p-3">
-      <div>
-        <h3 className="text-base font-semibold">Reason</h3>
-      </div>
-
-      <div className="theme-subpanel mt-4 p-3">
-        <p className="text-sm font-semibold text-text-control">
-          {actionLabel} {formatAmount(amount)} {currencyName}
-        </p>
-        <p className="mt-1 text-sm text-text-muted">
-          {recipientLabel || "No recipient selected"}
-        </p>
-      </div>
-
+    <section className="border-t border-border-subtle pt-4">
       <ReasonField
-        onReasonChange={onReasonChange}
+        customReason={customReason}
+        onCustomReasonChange={onCustomReasonChange}
+        onPresetReasonChange={onPresetReasonChange}
+        presetReason={presetReason}
         presets={reasonPresets}
-        reason={reason}
       />
     </section>
   );
@@ -557,7 +495,7 @@ function DirectionToggle({
         <button
           className={`inline-flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition ${
             direction === "add"
-              ? "bg-success-fill text-white"
+              ? "bg-success-fill text-success-foreground"
               : "bg-surface text-text-control hover:bg-panel-soft"
           }`}
           onClick={() => onChange("add")}
@@ -569,7 +507,7 @@ function DirectionToggle({
         <button
           className={`inline-flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition ${
             direction === "remove"
-              ? "bg-danger text-white"
+              ? "bg-danger text-danger-foreground"
               : "bg-surface text-text-control hover:bg-panel-soft"
           }`}
           onClick={() => onChange("remove")}
@@ -588,19 +526,27 @@ function AmountField({
   currencyName,
   onAmountChange,
   presets,
+  transactionCap,
 }: {
   amount: string;
   currencyName: string;
   onAmountChange: (value: string) => void;
   presets: number[];
+  transactionCap: number | null;
 }) {
+  const numericAmount = Number(amount);
+  const exceedsTransactionCap =
+    transactionCap !== null &&
+    Number.isFinite(numericAmount) &&
+    numericAmount > transactionCap;
+
   return (
     <div>
       <label
         className="text-sm font-semibold text-text-control"
         htmlFor="amount"
       >
-        {currencyName}
+        Amount <span className="font-normal text-text-muted">({currencyName})</span>
       </label>
       <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-5">
         {presets.map((preset) => (
@@ -619,7 +565,13 @@ function AmountField({
         ))}
       </div>
       <input
-        className="mt-2 w-full rounded-md border border-border bg-surface px-3 py-3 text-sm outline-none ring-brand transition focus:ring-2"
+        aria-describedby={exceedsTransactionCap ? "amount-limit-warning" : undefined}
+        aria-invalid={exceedsTransactionCap}
+        className={`mt-2 w-full rounded-md border bg-surface px-3 py-3 text-sm outline-none transition focus:ring-2 ${
+          exceedsTransactionCap
+            ? "border-danger-border ring-danger"
+            : "border-border ring-brand"
+        }`}
         id="amount"
         min="1"
         onChange={(event) => onAmountChange(event.target.value)}
@@ -627,103 +579,101 @@ function AmountField({
         type="number"
         value={amount}
       />
+      {exceedsTransactionCap && (
+        <p
+          className="mt-2 text-sm font-semibold text-danger-strong"
+          id="amount-limit-warning"
+          role="alert"
+        >
+          The organisation transaction limit is {formatAmount(transactionCap)} {currencyName}. Enter {formatAmount(transactionCap)} or less.
+        </p>
+      )}
     </div>
   );
 }
 
 function ReasonField({
-  onReasonChange,
+  customReason,
+  onCustomReasonChange,
+  onPresetReasonChange,
+  presetReason,
   presets,
-  reason,
 }: {
-  onReasonChange: (value: string) => void;
+  customReason: string;
+  onCustomReasonChange: (value: string) => void;
+  onPresetReasonChange: (value: string) => void;
+  presetReason: string;
   presets: string[];
-  reason: string;
 }) {
   return (
-    <div className="mt-4">
+    <div>
       <label
         className="text-sm font-semibold text-text-control"
-        htmlFor="reason"
+        htmlFor="reason-preset"
       >
-        Reason
+        Preset reason
       </label>
-      <div className="mt-2 flex flex-wrap gap-2">
+      <select
+        className="mt-2 h-11 w-full rounded-md border border-border-strong bg-surface px-3 text-sm text-text-control outline-none ring-brand transition focus:ring-2"
+        id="reason-preset"
+        onChange={(event) => onPresetReasonChange(event.target.value)}
+        value={presetReason}
+      >
+        <option value="">Choose a preset</option>
         {presets.map((preset) => (
-          <button
-            className={`rounded-md border px-3 py-2 text-sm font-semibold transition ${
-              reason === preset
-                ? "border-brand bg-brand text-white"
-                : "border-button-border text-text-control hover:bg-panel-soft"
-            }`}
-            key={preset}
-            onClick={() => onReasonChange(preset)}
-            type="button"
-          >
+          <option key={preset} value={preset}>
             {preset}
-          </button>
+          </option>
         ))}
+      </select>
+      <div className="my-3 flex items-center gap-3" aria-hidden="true">
+        <span className="h-px flex-1 bg-border-subtle" />
+        <span className="text-xs font-medium text-text-muted">or write a custom reason</span>
+        <span className="h-px flex-1 bg-border-subtle" />
       </div>
+      <label className="block text-sm font-semibold text-text-control" htmlFor="custom-reason">
+        Custom reason <span className="font-normal text-text-muted">(optional)</span>
+      </label>
+      <p className="mt-1 text-xs text-text-muted">
+        Type below to use a custom reason instead of the selected preset.
+      </p>
       <input
-        className="mt-2 w-full rounded-md border border-border bg-surface px-3 py-3 text-sm outline-none ring-brand transition focus:ring-2"
-        id="reason"
-        onChange={(event) => onReasonChange(event.target.value)}
-        value={reason}
+        className="mt-2 w-full rounded-md border border-border-strong bg-surface px-3 py-3 text-sm outline-none ring-brand transition focus:ring-2"
+        id="custom-reason"
+        maxLength={250}
+        onChange={(event) => onCustomReasonChange(event.target.value)}
+        placeholder="Type a custom reason"
+        value={customReason}
       />
     </div>
   );
 }
 
-function AdjustmentStepActions({
-  canGoBack,
+function AdjustmentFormActions({
   canSubmit,
+  direction,
   isSaving,
-  onBack,
-  onNext,
-  onSubmit,
-  step,
   submitLabel,
 }: {
-  canGoBack: boolean;
   canSubmit: boolean;
+  direction: AdjustmentDirection;
   isSaving: boolean;
-  onBack: () => void;
-  onNext: () => void;
-  onSubmit: () => void;
-  step: AdjustmentStep;
   submitLabel: string;
 }) {
-  const isFinalStep = step === "reason";
-
   return (
-    <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+    <div className="flex justify-end border-t border-border-subtle pt-3">
       <button
-        className="rounded-md border border-button-border px-4 py-3 text-sm font-semibold text-text-control transition hover:bg-panel-soft disabled:cursor-not-allowed disabled:opacity-50"
-        disabled={!canGoBack || isSaving}
-        onClick={onBack}
-        type="button"
+        className={`inline-flex w-full items-center justify-center gap-2 rounded-md px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto ${
+          direction === "add"
+            ? "bg-success-fill text-success-foreground hover:brightness-95"
+            : "bg-danger text-danger-foreground hover:brightness-95"
+        }`}
+        disabled={!canSubmit}
+        type="submit"
       >
-        Back
+        {direction === "add" ? <PlusIcon /> : <MinusIcon />}
+        {isSaving ? "Saving..." : submitLabel}
       </button>
-
-      {isFinalStep ? (
-        <button
-          className="rounded-md bg-brand px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-70"
-          disabled={!canSubmit}
-          onClick={onSubmit}
-          type="button"
-        >
-          {isSaving ? "Saving..." : submitLabel}
-        </button>
-      ) : (
-        <button
-          className="rounded-md bg-brand px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-hover"
-          onClick={onNext}
-          type="button"
-        >
-          Continue
-        </button>
-      )}
     </div>
   );
 }
@@ -761,7 +711,6 @@ function getPreferredStudents(
 }
 
 function shouldLoadGroups(
-  step: AdjustmentStep,
   target: AdjustmentTarget,
   selectedGroupId: string,
   selectedGroup: GroupListItem | null,
@@ -774,7 +723,7 @@ function shouldLoadGroups(
     return true;
   }
 
-  return step === "recipient";
+  return true;
 }
 
 function getAdjustmentSuccessMessage({

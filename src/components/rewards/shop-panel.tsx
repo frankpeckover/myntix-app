@@ -35,7 +35,7 @@ import {
   PackageIcon,
   PencilIcon,
   PlusIcon,
-  ShoppingBagIcon,
+  ShoppingCartIcon,
   TrashIcon,
   WalletIcon,
   XIcon,
@@ -953,7 +953,7 @@ function StudentShopWallet({
           </p>
         </div>
       </div>
-      <ShoppingBagIcon className="relative hidden h-8 w-8 shrink-0 text-brand sm:block" />
+      <ShoppingCartIcon className="relative hidden h-8 w-8 shrink-0 text-brand sm:block" />
     </div>
   );
 }
@@ -1051,7 +1051,7 @@ function ShopEmptyState({
             : "Rewards will appear here once staff add them."
           : "Try changing the reward filters."
       }
-      icon={<ShoppingBagIcon />}
+      icon={<ShoppingCartIcon />}
       title={totalItemCount === 0 ? "No rewards yet" : "No matching rewards"}
     />
   );

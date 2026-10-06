@@ -1,14 +1,21 @@
 "use client";
 
-import type { ReactNode } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { SparkleIcon } from "@/components/ui/icons";
+import { PanelTitle } from "@/components/ui/panel-title";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import type { TransactionLogItem } from "@/domains/ledger/transaction-service";
 import { formatAmount } from "@/lib/presentation/formatters";
-import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  ListIcon,
-  SparkleIcon,
-} from "@/components/ui/icons";
 
 type StudentActivityRecapProps = {
   currencyName: string;
@@ -16,155 +23,259 @@ type StudentActivityRecapProps = {
   transactions: TransactionLogItem[];
 };
 
+type WeekdayMovement = {
+  day: string;
+  earned: number;
+  isFuture: boolean;
+  net: number;
+  outgoing: number;
+  timestamp: number;
+};
+
+type MovementTooltipProps = {
+  active?: boolean;
+  currencyName: string;
+  payload?: { payload: WeekdayMovement }[];
+};
+
+const millisecondsPerDay = 24 * 60 * 60 * 1000;
+
 export function StudentActivityRecap({
   currencyName,
   isLoading,
   transactions,
 }: StudentActivityRecapProps) {
-  const recap = getWeeklyRecap(transactions);
+  const movement = buildWeekdayMovement(transactions, 0);
+  const previousMovement = buildWeekdayMovement(transactions, -7);
+  const elapsedWeekdayCount = movement.filter((day) => !day.isFuture).length;
+  const weeklyNet = movement
+    .slice(0, elapsedWeekdayCount)
+    .reduce((total, day) => total + day.net, 0);
+  const previousWeeklyNet = previousMovement
+    .slice(0, elapsedWeekdayCount)
+    .reduce(
+      (total, day) => total + day.net,
+      0,
+    );
+  const comparison = weeklyNet - previousWeeklyNet;
 
   return (
-    <section className="student-dashboard-card student-activity-recap dashboard-unit-4 overflow-hidden rounded-3xl bg-surface px-4 py-3 sm:px-5">
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+    <section className="student-dashboard-card student-activity-recap dashboard-unit-4 overflow-hidden rounded-3xl bg-surface px-4 py-4 sm:px-5">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-soft text-brand">
-              <SparkleIcon className="h-3.5 w-3.5" />
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand-soft text-brand">
+              <SparkleIcon className="h-4 w-4" />
             </span>
-            <h2 className="text-base font-semibold text-foreground">This week</h2>
+            <PanelTitle title="Daily movement" />
           </div>
-          <p className="mt-1 text-sm text-text-muted">
-            {isLoading ? "Loading your activity..." : getRecapMessage(recap, currencyName)}
-          </p>
+          <p className="mt-1 text-xs text-text-muted">Monday to Friday</p>
         </div>
-        <p className="text-xs font-medium text-text-muted">Since Monday</p>
+
+        {!isLoading && (
+          <div className="sm:text-right">
+            <p
+              className={`font-number text-2xl font-semibold leading-none ${
+                weeklyNet > 0
+                  ? "text-success-text"
+                  : weeklyNet < 0
+                    ? "text-danger-strong"
+                    : "text-text-control"
+              }`}
+            >
+              {weeklyNet > 0 ? "+" : ""}
+              {formatAmount(weeklyNet)}
+            </p>
+            <p className="mt-1 text-xs text-text-muted">
+              {formatComparison(comparison, currencyName)}
+            </p>
+          </div>
+        )}
       </div>
 
-      <div className="mt-3 grid grid-cols-2 border-t border-border-subtle sm:grid-cols-4">
-        <RecapMetric
-          icon={<ArrowUpIcon />}
-          label="Earned"
-          tone="positive"
-          value={isLoading ? "-" : formatAmount(recap.earned)}
-          valueSuffix={currencyName}
+      {isLoading ? (
+        <LoadingSkeleton className="mt-3 min-h-40 px-0" lines={3} />
+      ) : (
+        <WeekdayMovementChart
+          currencyName={currencyName}
+          movement={movement}
         />
-        <RecapMetric
-          icon={<ArrowDownIcon />}
-          label="Outgoing"
-          tone="negative"
-          value={isLoading ? "-" : formatAmount(recap.outgoing)}
-          valueSuffix={currencyName}
-        />
-        <RecapMetric
-          icon={<SparkleIcon />}
-          label="Net change"
-          tone={recap.net > 0 ? "positive" : recap.net < 0 ? "negative" : "neutral"}
-          value={isLoading ? "-" : `${recap.net > 0 ? "+" : ""}${formatAmount(recap.net)}`}
-          valueSuffix={currencyName}
-        />
-        <RecapMetric
-          icon={<ListIcon />}
-          label="Account entries"
-          tone="neutral"
-          value={isLoading ? "-" : formatAmount(recap.entryCount)}
-          valueSuffix={recap.entryCount === 1 ? "entry" : "entries"}
-        />
-      </div>
+      )}
     </section>
   );
 }
 
-function RecapMetric({
-  icon,
-  label,
-  tone,
-  value,
-  valueSuffix,
+function WeekdayMovementChart({
+  currencyName,
+  movement,
 }: {
-  icon: ReactNode;
-  label: string;
-  tone: "negative" | "neutral" | "positive";
-  value: string;
-  valueSuffix: string;
+  currencyName: string;
+  movement: WeekdayMovement[];
 }) {
-  const toneClassName =
-    tone === "positive"
-      ? "text-success"
-      : tone === "negative"
-        ? "text-danger-strong"
-        : "text-text-control";
+  const maximumMovement = Math.max(
+    ...movement.map((day) => Math.abs(day.net)),
+    1,
+  );
+  const axisMaximum = getRoundedAxisMaximum(maximumMovement);
+  const ticks = [-axisMaximum, 0, axisMaximum];
 
   return (
-    <article className="student-recap-item flex min-w-0 gap-2.5 border-b border-border-subtle py-2 even:pl-4 odd:pr-4 sm:border-b-0 sm:border-r sm:px-4 sm:first:pl-0 sm:last:border-r-0 sm:last:pr-0">
-      <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-panel-soft ${toneClassName}`}>
-        <span className="[&>svg]:h-3.5 [&>svg]:w-3.5">{icon}</span>
-      </span>
-      <div className="min-w-0">
-        <p className={`font-number truncate text-xl font-semibold leading-none ${toneClassName}`}>
-          {value}
-        </p>
-        <p className="mt-1 truncate text-[11px] font-normal text-text-muted">
-          {valueSuffix}
-        </p>
-        <p className="mt-1.5 truncate text-xs font-medium text-text-control">
-          {label}
-        </p>
-      </div>
-    </article>
+    <div className="mt-2 h-44 w-full sm:h-48">
+      <ResponsiveContainer height="100%" width="100%">
+        <BarChart
+          data={movement}
+          margin={{ bottom: 0, left: 0, right: 4, top: 12 }}
+        >
+          <CartesianGrid horizontal={false} vertical={false} />
+          <XAxis
+            axisLine={false}
+            dataKey="day"
+            tick={{ fill: "var(--text-muted)", fontSize: 11 }}
+            tickLine={false}
+          />
+          <YAxis
+            axisLine={false}
+            domain={[-axisMaximum, axisMaximum]}
+            tick={{ fill: "var(--text-muted)", fontSize: 10 }}
+            tickLine={false}
+            ticks={ticks}
+            width={34}
+          />
+          {ticks.map((tick) => (
+            <ReferenceLine
+              key={tick}
+              stroke={tick === 0 ? "var(--border-strong)" : "var(--border-subtle)"}
+              strokeOpacity={tick === 0 ? 0.75 : 0.45}
+              y={tick}
+            />
+          ))}
+          <Tooltip
+            content={<MovementTooltip currencyName={currencyName} />}
+            cursor={{ fill: "var(--panel-soft)", opacity: 0.55 }}
+          />
+          <Bar dataKey="net" maxBarSize={52} radius={[6, 6, 6, 6]}>
+            {movement.map((day) => (
+              <Cell
+                fill={
+                  day.isFuture
+                    ? "var(--border-muted)"
+                    : day.net >= 0
+                      ? "var(--success)"
+                      : "var(--danger)"
+                }
+                fillOpacity={day.isFuture ? 0.6 : 1}
+                key={day.timestamp}
+              />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
 
-function getWeeklyRecap(transactions: TransactionLogItem[]) {
-  const weekStart = startOfCurrentWeek().getTime();
-  const activity = transactions.filter((transaction) => {
-    const createdAt = new Date(transaction.createdAt).getTime();
-    return (
-      Number.isFinite(createdAt) &&
-      createdAt >= weekStart &&
-      !transaction.isVoided &&
-      transaction.entryStatus === "posted"
-    );
-  });
-  const earned = activity.reduce(
-    (total, transaction) =>
-      transaction.amount > 0 ? total + transaction.amount : total,
-    0,
+function MovementTooltip({
+  active,
+  currencyName,
+  payload,
+}: MovementTooltipProps) {
+  const day = payload?.[0]?.payload;
+
+  if (!active || !day || day.isFuture) {
+    return null;
+  }
+
+  return (
+    <div className="rounded-md border border-border bg-surface px-3 py-2 text-xs shadow-md">
+      <p className="font-semibold text-text-control">{day.day}</p>
+      <div className="mt-2 grid grid-cols-[auto_auto] gap-x-4 gap-y-1">
+        <span className="text-text-muted">Earned</span>
+        <span className="text-right font-medium text-success-text">
+          +{formatAmount(day.earned)}
+        </span>
+        <span className="text-text-muted">Outgoing</span>
+        <span className="text-right font-medium text-danger-strong">
+          -{formatAmount(day.outgoing)}
+        </span>
+        <span className="border-t border-border-subtle pt-1 text-text-control">
+          Net
+        </span>
+        <span className="border-t border-border-subtle pt-1 text-right font-semibold text-text-control">
+          {day.net > 0 ? "+" : ""}
+          {formatAmount(day.net)} {currencyName}
+        </span>
+      </div>
+    </div>
   );
-  const outgoing = activity.reduce(
-    (total, transaction) =>
-      transaction.amount < 0 ? total + Math.abs(transaction.amount) : total,
-    0,
+}
+
+function buildWeekdayMovement(
+  transactions: TransactionLogItem[],
+  weekOffsetDays: number,
+) {
+  const currentWeekStart = startOfCurrentWeek();
+  const weekStart = new Date(
+    currentWeekStart.getTime() + weekOffsetDays * millisecondsPerDay,
+  );
+  const now = new Date();
+  const postedTransactions = transactions.filter(
+    (transaction) =>
+      !transaction.isVoided && transaction.entryStatus === "posted",
   );
 
-  return {
-    earned,
-    entryCount: activity.length,
-    net: earned - outgoing,
-    outgoing,
-  };
+  return Array.from({ length: 5 }, (_, dayIndex): WeekdayMovement => {
+    const dayStart = new Date(
+      weekStart.getTime() + dayIndex * millisecondsPerDay,
+    );
+    const dayEnd = new Date(dayStart.getTime() + millisecondsPerDay);
+    const dailyTransactions = postedTransactions.filter((transaction) => {
+      const createdAt = new Date(transaction.createdAt);
+      return createdAt >= dayStart && createdAt < dayEnd;
+    });
+    const earned = dailyTransactions.reduce(
+      (total, transaction) =>
+        transaction.amount > 0 ? total + transaction.amount : total,
+      0,
+    );
+    const outgoing = dailyTransactions.reduce(
+      (total, transaction) =>
+        transaction.amount < 0
+          ? total + Math.abs(transaction.amount)
+          : total,
+      0,
+    );
+
+    return {
+      day: new Intl.DateTimeFormat("en-AU", { weekday: "short" }).format(
+        dayStart,
+      ),
+      earned,
+      isFuture: weekOffsetDays === 0 && dayStart > now,
+      net: earned - outgoing,
+      outgoing,
+      timestamp: dayStart.getTime(),
+    };
+  });
 }
 
 function startOfCurrentWeek() {
   const start = new Date();
-  const daysSinceMonday = (start.getDay() + 6) % 7;
-  start.setDate(start.getDate() - daysSinceMonday);
+  start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
   start.setHours(0, 0, 0, 0);
   return start;
 }
 
-function getRecapMessage(
-  recap: ReturnType<typeof getWeeklyRecap>,
-  currencyName: string,
-) {
-  if (recap.entryCount === 0) {
-    return "Your weekly activity will appear here.";
-  }
-  if (recap.net > 0) {
-    return `You're ${formatAmount(recap.net)} ${currencyName} ahead this week.`;
-  }
-  if (recap.net < 0) {
-    return `${formatAmount(Math.abs(recap.net))} ${currencyName} moved out this week.`;
+function getRoundedAxisMaximum(value: number) {
+  const magnitude = 10 ** Math.floor(Math.log10(value));
+  return Math.ceil(value / magnitude) * magnitude;
+}
+
+function formatComparison(comparison: number, currencyName: string) {
+  if (comparison === 0) {
+    return "Same net movement as last week";
   }
 
-  return "Your incoming and outgoing credits are balanced this week.";
+  return `${formatAmount(Math.abs(comparison))} ${currencyName} ${
+    comparison > 0 ? "ahead of" : "behind"
+  } last week`;
 }

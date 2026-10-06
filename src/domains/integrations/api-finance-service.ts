@@ -302,7 +302,7 @@ export class ApiFinanceService {
 
       const balances = await getBalances(client, entry.account_id);
       const reversalAmount = -Number(entry.amount);
-      await validateMovement(client, balances, reversalAmount);
+      await validateMovement(client, balances, reversalAmount, false);
       const reversalId = await ledgerService.createEntry(client, {
         amount: reversalAmount,
         description: `Reversal: ${entry.description} (${reason})`,
@@ -564,7 +564,19 @@ async function validateMovement(
   client: PoolClient,
   balances: Balances,
   amount: number,
+  enforceTransactionCap = true,
 ) {
+  if (enforceTransactionCap) {
+    const transactionCap = await ledgerService.getTransactionCap(client);
+    if (transactionCap !== null && Math.abs(amount) > transactionCap) {
+      throw new ApiFinanceError(
+        "transaction_cap_exceeded",
+        `The transaction exceeds the organisation limit of ${transactionCap}.`,
+        409,
+      );
+    }
+  }
+
   if (amount < 0 && balances.availableBalance + amount < 0) {
     throw new ApiFinanceError(
       "insufficient_funds",

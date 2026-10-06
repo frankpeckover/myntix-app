@@ -4,7 +4,7 @@ import {
   CopyIcon,
   EyeIcon,
   PencilIcon,
-  ShoppingBagIcon,
+  ShoppingCartIcon,
   TicketIcon,
   TrashIcon,
 } from "@/components/ui/icons";
@@ -147,7 +147,7 @@ function ShopItemActions({
             </>
           ) : (
             <>
-              <ShoppingBagIcon />
+              <ShoppingCartIcon />
               Add to Cart
             </>
           )}

@@ -77,18 +77,22 @@
   --section-highlight: var(--accent-primary);
   --accent: var(--accent-secondary);
   --accent-soft: color-mix(in srgb, var(--accent-secondary) 12%, white);
-  --success: rgb(89, 188, 146);
-  --success-text: #247456;
-  --success-hover: rgb(76, 171, 131);
-  --success-soft: #e9fbf6;
-  --success-soft-hover: #d8f6ee;
-  --success-border: #a7eadb;
-  --danger: rgb(246, 155, 99);
-  --danger-strong: #98451b;
-  --danger-border: #ffd5bd;
-  --danger-button-border: rgb(246, 155, 99);
-  --danger-soft: #fff3ec;
-  --danger-soft-hover: #ffe8dc;
+  --success: #10b981;
+  --success-action: #047857;
+  --success-text: #047857;
+  --success-foreground: #052e24;
+  --success-hover: #34d399;
+  --success-soft: #ecfdf5;
+  --success-soft-hover: #d1fae5;
+  --success-border: #6ee7b7;
+  --danger: #ef4444;
+  --danger-action: #b91c1c;
+  --danger-strong: #b91c1c;
+  --danger-foreground: #3f0909;
+  --danger-border: #fca5a5;
+  --danger-button-border: #ef4444;
+  --danger-soft: #fef2f2;
+  --danger-soft-hover: #fee2e2;
   --warning: #9a6700;
   --warning-border: #f4d27a;
   --warning-soft: #fff8df;
@@ -164,18 +168,22 @@ html[data-theme="dark"] {
   --section-highlight: color-mix(in srgb, var(--accent-primary) 72%, white);
   --accent: color-mix(in srgb, var(--accent-secondary) 72%, white);
   --accent-soft: color-mix(in srgb, var(--accent-secondary) 20%, #101216);
-  --success: rgb(89, 188, 146);
-  --success-text: #75d7ad;
-  --success-hover: rgb(113, 207, 168);
-  --success-soft: #183a34;
-  --success-soft-hover: #204d44;
-  --success-border: #3f7f73;
-  --danger: rgb(246, 155, 99);
-  --danger-strong: rgb(255, 184, 139);
-  --danger-border: #85543a;
-  --danger-button-border: rgb(246, 155, 99);
-  --danger-soft: #442e22;
-  --danger-soft-hover: #583b2b;
+  --success: #34d399;
+  --success-action: #087f5b;
+  --success-text: #6ee7b7;
+  --success-foreground: #052e24;
+  --success-hover: #10b981;
+  --success-soft: #123a2e;
+  --success-soft-hover: #174c3b;
+  --success-border: #2c8064;
+  --danger: #f87171;
+  --danger-action: #c83232;
+  --danger-strong: #fca5a5;
+  --danger-foreground: #450a0a;
+  --danger-border: #8f4545;
+  --danger-button-border: #f87171;
+  --danger-soft: #451f24;
+  --danger-soft-hover: #5c282d;
   --warning: #f5c451;
   --warning-border: #80632a;
   --warning-soft: #3b311c;
@@ -265,13 +273,17 @@ html[data-accent="custom"] {
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
   --color-success: var(--success-text);
+  --color-success-action: var(--success-action);
   --color-success-fill: var(--success);
+  --color-success-foreground: var(--success-foreground);
   --color-success-hover: var(--success-hover);
   --color-success-soft: var(--success-soft);
   --color-success-soft-hover: var(--success-soft-hover);
   --color-success-border: var(--success-border);
   --color-danger: var(--danger);
+  --color-danger-action: var(--danger-action);
   --color-danger-strong: var(--danger-strong);
+  --color-danger-foreground: var(--danger-foreground);
   --color-danger-border: var(--danger-border);
   --color-danger-button-border: var(--danger-button-border);
   --color-danger-soft: var(--danger-soft);
@@ -317,6 +329,23 @@ html[data-wallet-style="graphite"] {
     linear-gradient(135deg, #1b2226 0%, #293238 58%, #414d52 100%);
 }
 
+html[data-wallet-style="accent"] {
+  --student-card-background:
+    linear-gradient(145deg, color-mix(in srgb, var(--accent-primary) 88%, #102a2d), color-mix(in srgb, var(--accent-secondary) 72%, #173b40));
+}
+
+html[data-wallet-style="ocean"] {
+  --student-card-background:
+    radial-gradient(circle at 84% 18%, rgba(122, 228, 183, 0.16) 0%, transparent 30%),
+    linear-gradient(135deg, #123b52 0%, #175465 52%, #247b7b 100%);
+}
+
+html[data-wallet-style="berry"] {
+  --student-card-background:
+    radial-gradient(circle at 86% 18%, color-mix(in srgb, var(--accent-highlight) 16%, transparent) 0%, transparent 28%),
+    linear-gradient(135deg, #36243f 0%, #553651 56%, #875878 100%);
+}
+
 html[data-wallet-pattern="pinstripe"] {
   --student-card-pattern: repeating-linear-gradient(
     120deg,
@@ -344,6 +373,14 @@ html[data-wallet-pattern="orbit"] {
   --student-card-pattern:
     radial-gradient(circle at 88% 24%, transparent 0 34px, color-mix(in srgb, var(--accent-highlight) 28%, transparent) 35px 36px, transparent 37px 59px, color-mix(in srgb, var(--accent-primary) 28%, transparent) 60px 61px, transparent 62px),
     radial-gradient(circle at 8% 108%, transparent 0 46px, color-mix(in srgb, var(--accent-highlight) 20%, transparent) 47px 48px, transparent 49px);
+}
+
+html[data-wallet-pattern="contour"] {
+  --student-card-pattern: repeating-radial-gradient(
+    ellipse at 12% 112%,
+    transparent 0 24px,
+    color-mix(in srgb, var(--accent-highlight) 22%, transparent) 25px 26px
+  );
 }
 
 .bg-brand.text-white {
@@ -546,10 +583,41 @@ button:disabled {
   min-height: 100dvh;
 }
 
+.student-shell.app-shell-surface {
+  background: var(--student-dashboard-background, linear-gradient(135deg, var(--shell-gradient-accent), transparent 34%), linear-gradient(180deg, var(--shell-gradient-surface), transparent 18rem), var(--background));
+  background-size: var(--student-dashboard-background-size, auto);
+}
+
 .professional-shell.app-shell-surface {
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--surface) 54%, transparent) 0, transparent 20rem),
     var(--background);
+}
+
+html[data-dashboard-theme="soft-grid"] {
+  --student-dashboard-background:
+    repeating-linear-gradient(90deg, transparent 0 31px, color-mix(in srgb, var(--accent-primary) 7%, transparent) 31px 32px),
+    repeating-linear-gradient(0deg, transparent 0 31px, color-mix(in srgb, var(--accent-primary) 6%, transparent) 31px 32px),
+    linear-gradient(180deg, var(--shell-gradient-surface), transparent 18rem),
+    var(--background);
+}
+
+html[data-dashboard-theme="notebook"] {
+  --student-dashboard-background:
+    repeating-linear-gradient(0deg, transparent 0 35px, color-mix(in srgb, var(--accent-secondary) 10%, transparent) 35px 36px),
+    linear-gradient(180deg, var(--shell-gradient-surface), transparent 18rem),
+    var(--background);
+}
+
+html[data-dashboard-theme="confetti"] {
+  --student-dashboard-background:
+    radial-gradient(circle at 8% 14%, color-mix(in srgb, var(--accent-primary) 15%, transparent) 0 2px, transparent 3px),
+    radial-gradient(circle at 24% 42%, color-mix(in srgb, var(--accent-secondary) 17%, transparent) 0 2px, transparent 3px),
+    radial-gradient(circle at 74% 18%, color-mix(in srgb, var(--accent-highlight) 20%, transparent) 0 2px, transparent 3px),
+    radial-gradient(circle at 92% 54%, color-mix(in srgb, var(--accent-primary) 12%, transparent) 0 2px, transparent 3px),
+    linear-gradient(180deg, var(--shell-gradient-surface), transparent 18rem),
+    var(--background);
+  --student-dashboard-background-size: 180px 180px, 230px 230px, 210px 210px, 260px 260px, auto, auto;
 }
 
 .professional-shell {

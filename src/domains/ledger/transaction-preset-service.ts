@@ -61,6 +61,11 @@ export class TransactionPresetService {
       return validation;
     }
 
+    const transactionCapValidation = await validateTransactionCap(presets);
+    if (!transactionCapValidation.ok) {
+      return transactionCapValidation;
+    }
+
     const client = await db.connect();
 
     try {
@@ -165,6 +170,13 @@ export class TransactionPresetService {
 
     if (!validation.ok) {
       return validation;
+    }
+
+    const transactionCapValidation = await validateTransactionCap(
+      personalPresets,
+    );
+    if (!transactionCapValidation.ok) {
+      return transactionCapValidation;
     }
 
     try {
@@ -390,6 +402,36 @@ function validatePersonalPresets(
   }
 
   return { ok: true };
+}
+
+async function validateTransactionCap(
+  presets: TransactionPresets | PersonalTransactionPresets,
+): Promise<ActionResult> {
+  const result = await db.query<{ transaction_cap: number | null }>(`
+    select transaction_cap
+    from school_info
+    where id = 1
+    limit 1
+  `);
+  const transactionCap = result.rows[0]?.transaction_cap;
+
+  if (transactionCap === null || transactionCap === undefined) {
+    return { ok: true };
+  }
+
+  const cap = Number(transactionCap);
+  const amounts = [...presets.amounts];
+
+  if ("quickAdd" in presets) {
+    amounts.push(presets.quickAdd.amount, presets.quickRemove.amount);
+  }
+
+  return amounts.some((amount) => amount > cap)
+    ? {
+        ok: false,
+        message: `Quick transaction amounts cannot exceed the organisation limit of ${cap}.`,
+      }
+    : { ok: true };
 }
 
 function isMissingTableError(error: unknown) {

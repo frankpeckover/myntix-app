@@ -15,6 +15,7 @@ import {
   LogOutIcon,
   SidebarCollapseIcon,
   SidebarExpandIcon,
+  ShoppingCartIcon,
   SlidersHorizontalIcon,
   TrendingUpIcon,
   TrophyIcon,
@@ -27,6 +28,8 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 
 const defaultNavigationItems = [
   "Dashboard",
+  "Credit Management",
+  "Reward Requests",
   "Timetable",
   "Analytics",
   "Rewards",
@@ -40,6 +43,7 @@ const studentNavigationItems = [
 const adminNavigationItems = [
   "Dashboard",
   "Credit Management",
+  "Reward Requests",
   "Users",
   "Groups",
   "Timetable",
@@ -659,6 +663,8 @@ function NavigationItemIcon({ item }: { item: NavigationItem }) {
       return <WalletIcon className={className} />;
     case "Credit Management":
       return <CoinStackIcon className={className} />;
+    case "Reward Requests":
+      return <ShoppingCartIcon className={className} />;
     case "Analytics":
       return <TrendingUpIcon className={className} />;
     case "Rewards":

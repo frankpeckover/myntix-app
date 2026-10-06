@@ -7,38 +7,44 @@ type CreditActionControlProps = {
   addAriaLabel?: string;
   addLabel?: string;
   amountLabels?: boolean;
+  fullWidth?: boolean;
   onAdd?: () => void;
   onRemove?: () => void;
   removeAriaLabel?: string;
   removeLabel?: string;
+  solid?: boolean;
 };
 
 export function CreditActionControl({
   addAriaLabel,
   addLabel = "Add",
   amountLabels = false,
+  fullWidth = false,
   onAdd,
   onRemove,
   removeAriaLabel,
   removeLabel = "Remove",
+  solid = false,
 }: CreditActionControlProps) {
   return (
-    <div className="inline-flex shrink-0 overflow-hidden rounded-md border border-border-subtle bg-surface shadow-sm">
+    <div className={`${fullWidth ? "flex w-full" : "inline-flex shrink-0"} ${solid ? "gap-2" : "overflow-hidden rounded-md border border-border-subtle bg-surface shadow-sm"}`}>
       <CreditActionButton
         ariaLabel={addAriaLabel ?? addLabel}
         isAmountLabel={amountLabels}
         label={addLabel}
         onClick={onAdd}
+        solid={solid}
         tone="positive"
       >
         {!amountLabels && <PlusIcon className="h-3.5 w-3.5 shrink-0" />}
       </CreditActionButton>
-      <span className="w-px bg-border-subtle" />
+      {!solid && <span className="w-px bg-border-subtle" />}
       <CreditActionButton
         ariaLabel={removeAriaLabel ?? removeLabel}
         isAmountLabel={amountLabels}
         label={removeLabel}
         onClick={onRemove}
+        solid={solid}
         tone="negative"
       >
         {!amountLabels && <MinusIcon className="h-3.5 w-3.5 shrink-0" />}
@@ -53,6 +59,7 @@ function CreditActionButton({
   isAmountLabel,
   label,
   onClick,
+  solid,
   tone,
 }: {
   ariaLabel: string;
@@ -60,12 +67,16 @@ function CreditActionButton({
   isAmountLabel: boolean;
   label: string;
   onClick?: () => void;
+  solid: boolean;
   tone: "negative" | "positive";
 }) {
-  const toneClassName =
-    tone === "positive"
-      ? "text-success hover:bg-success-fill hover:text-white"
-      : "text-danger hover:bg-danger hover:text-white";
+  const toneClassName = solid
+    ? tone === "positive"
+      ? "rounded-md bg-success-action text-white shadow-sm hover:brightness-110"
+      : "rounded-md bg-danger-action text-white shadow-sm hover:brightness-110"
+    : tone === "positive"
+      ? "text-success hover:bg-success-fill hover:text-success-foreground"
+      : "text-danger hover:bg-danger hover:text-danger-foreground";
   const displayLabel = isAmountLabel
     ? `${tone === "positive" ? "+" : "-"}${label}`
     : label;
@@ -73,7 +84,7 @@ function CreditActionButton({
   return (
     <button
       aria-label={ariaLabel}
-      className={`inline-flex h-8 min-w-8 items-center justify-center gap-1.5 px-2 text-xs font-semibold leading-none transition disabled:cursor-not-allowed disabled:opacity-50 sm:px-2.5 ${toneClassName}`}
+      className={`inline-flex h-9 min-w-8 flex-1 items-center justify-center gap-1.5 px-2 text-xs font-semibold leading-none transition disabled:cursor-not-allowed disabled:opacity-50 sm:px-2.5 ${toneClassName}`}
       disabled={!onClick}
       onClick={onClick}
       title={ariaLabel}
@@ -83,7 +94,7 @@ function CreditActionButton({
       <span
         className={`items-center leading-none ${
           isAmountLabel
-            ? "inline-flex font-number text-sm tabular-nums"
+            ? "inline-flex font-number text-[15px] font-bold tabular-nums"
             : "hidden sm:inline-flex"
         }`}
       >

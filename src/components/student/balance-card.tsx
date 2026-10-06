@@ -43,8 +43,8 @@ export function StudentBalanceCard({
   const hasActions = Boolean(onAdjust || onQuickAdd || onQuickRemove);
 
   return (
-    <article className="theme-card min-w-0 p-2.5 sm:p-3">
-      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+    <article className="group min-w-0 rounded-xl border border-border-subtle bg-surface p-3 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md sm:p-4">
+      <div className="flex min-w-0 items-start gap-2.5 sm:gap-3">
         <UserAvatar
           displayName={student.displayName}
           imageUrl={student.profileImageUrl}
@@ -56,35 +56,24 @@ export function StudentBalanceCard({
             {student.displayName}
           </h3>
           <p className="truncate text-xs text-text-muted">@{student.username}</p>
-          <RecentTrend amount={student.recentChange ?? 0} />
         </div>
+        <RecentTrend amount={student.recentChange ?? 0} />
       </div>
 
-      <div className="mt-3">
+      <div className="mt-4">
         <BalanceAmount
           amount={student.balance}
           currencyName={currencyName}
         />
 
         {hasActions && (
-          <div className="mt-3 flex items-center gap-2">
-            {onAdjust && (
-              <button
-                aria-label={`Custom adjustment for ${student.displayName}`}
-                className="inline-flex h-8 w-8 shrink-0 items-center justify-center gap-1.5 rounded-md border border-button-border bg-surface px-0 text-xs font-semibold text-text-control transition hover:bg-panel-soft sm:w-auto sm:min-w-0 sm:flex-1 sm:px-3"
-                onClick={() => onAdjust(student)}
-                title={`Custom adjustment for ${student.displayName}`}
-                type="button"
-              >
-                <PencilIcon className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Custom</span>
-              </button>
-            )}
+          <div className="mt-4 space-y-2">
             {(onQuickAdd || onQuickRemove) && (
               <CreditActionControl
                 addAriaLabel={`Quick add ${quickAddAmount ?? "credits"} to ${student.displayName}`}
                 addLabel={quickAddAmount ? formatAmount(quickAddAmount) : "Add"}
                 amountLabels
+                fullWidth
                 onAdd={
                   onQuickAdd && !isQuickActionPending
                     ? () => onQuickAdd(student)
@@ -101,7 +90,20 @@ export function StudentBalanceCard({
                     ? formatAmount(quickRemoveAmount)
                     : "Remove"
                 }
+                solid
               />
+            )}
+            {onAdjust && (
+              <button
+                aria-label={`Adjust credits for ${student.displayName}`}
+                className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-button-border bg-surface px-3 text-xs font-semibold text-text-control transition hover:border-border-strong hover:bg-panel-soft"
+                onClick={() => onAdjust(student)}
+                title={`Adjust credits for ${student.displayName}`}
+                type="button"
+              >
+                <PencilIcon className="h-3.5 w-3.5" />
+                <span>Adjust credits</span>
+              </button>
             )}
           </div>
         )}
@@ -120,18 +122,18 @@ function RecentTrend({ amount }: { amount: number }) {
       ? "text-danger"
       : "text-text-muted";
   const trendLabel = isPositive
-    ? "Trending up over the last 7 days"
+    ? `+${formatAmount(amount)} over the last 7 days`
     : isNegative
-      ? "Trending down over the last 7 days"
-      : "No recent movement over the last 7 days";
+      ? `-${formatAmount(Math.abs(amount))} over the last 7 days`
+      : "No movement over the last 7 days";
 
   return (
     <p
-      className={`mt-0.5 flex items-center gap-1 truncate text-xs font-medium ${textClassName}`}
+      className={`flex shrink-0 items-center gap-1 rounded-full bg-panel-soft px-2 py-1 text-[11px] font-semibold ${textClassName}`}
       title={trendLabel}
     >
-      <span className="text-text-muted">Recent:</span>
       <Icon className="h-3 w-3 shrink-0" />
+      <span>{isPositive ? `+${formatAmount(amount)}` : isNegative ? `-${formatAmount(Math.abs(amount))}` : "0"}</span>
     </p>
   );
 }
@@ -144,8 +146,8 @@ function BalanceAmount({
   currencyName: string;
 }) {
   return (
-    <p className="flex min-w-0 flex-col text-left text-brand">
-      <span className="font-number text-2xl font-semibold leading-none">
+    <p className="flex min-w-0 flex-col text-left text-foreground">
+      <span className="font-number text-3xl font-semibold leading-none">
         {formatAmount(amount)}
       </span>
       <span className="mt-0.5 text-xs font-semibold text-text-muted">

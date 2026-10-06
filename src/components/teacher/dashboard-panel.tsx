@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { ShopRequestsPanel } from "@/components/rewards/shop-requests-panel";
 import {
   StudentBalanceCard,
   type StudentBalanceCardStudent,
@@ -10,8 +9,10 @@ import {
 import { LedgerAdjustmentForm } from "@/components/transactions/ledger-adjustment-form";
 import { FixedNotification } from "@/components/ui/fixed-notification";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
+import { CreditActionControl } from "@/components/ui/credit-action-control";
 import {
   PlusIcon,
+  PencilIcon,
   SparkleIcon,
   UsersIcon,
   XIcon,
@@ -20,12 +21,12 @@ import {
   ListPagination,
   usePagedList,
 } from "@/components/ui/list-pagination";
-import { CreditActionControl } from "@/components/ui/credit-action-control";
 import { SearchInput } from "@/components/ui/search-input";
 import { LoadFailure } from "@/components/ui/load-failure";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { useDialogFocus } from "@/components/ui/use-dialog-focus";
 import {
+  createGroupLedgerAdjustment,
   createLedgerAdjustment,
   getCurrentTeacherClass,
   getMyTransactionPresets,
@@ -38,6 +39,7 @@ import {
   getDefaultQuickAdjustments,
   type PersonalTransactionPresets,
 } from "@/lib/ledger/transaction-presets";
+import { formatAmount } from "@/lib/presentation/formatters";
 import type { AdjustmentDirection } from "@/components/transactions/ledger-adjustment-types";
 import type { GroupListItem } from "@/domains/groups/group-service";
 import type { CurrentClass } from "@/domains/timetable/timetable-service";
@@ -52,8 +54,8 @@ type TeacherDashboardPanelProps = {
     version: number;
   } | null;
   onGroupNavigationConsumed?: () => void;
-  schoolName: string;
   showAllStudentsByDefault?: boolean;
+  transactionCap: number | null;
 };
 
 type AdjustmentTargetSelection =
@@ -66,9 +68,13 @@ type AdjustmentTargetSelection =
   | {
       direction: AdjustmentDirection;
       kind: "students";
-      students: StudentListItem[];
+      students: AdjustmentStudent[];
       version: number;
     };
+
+type AdjustmentStudent = StudentListItem & {
+  balance: number;
+};
 
 type StudentDisplayScope = "all-students" | "current-class";
 
@@ -87,6 +93,7 @@ export function TeacherDashboardPanel({
   groupNavigation,
   onGroupNavigationConsumed,
   showAllStudentsByDefault = false,
+  transactionCap,
 }: TeacherDashboardPanelProps) {
   const [currentClass, setCurrentClass] = useState<CurrentClass | null>(null);
   const [studentBalances, setStudentBalances] = useState<StudentBalanceItem[]>(
@@ -109,6 +116,9 @@ export function TeacherDashboardPanel({
   const [quickActionStudentId, setQuickActionStudentId] = useState<
     string | null
   >(null);
+  const [quickActionGroupId, setQuickActionGroupId] = useState<string | null>(
+    null,
+  );
   const [selection, setSelection] =
     useState<AdjustmentTargetSelection | null>(null);
   const quickActionPendingRef = useRef(false);
@@ -192,6 +202,16 @@ export function TeacherDashboardPanel({
     () => getVisibleGroups(search, groups),
     [groups, search],
   );
+  const visibleBalanceTotal = visibleStudents.reduce(
+    (total, student) => total + student.balance,
+    0,
+  );
+  const studentScopeLabel = selectedGroupView?.name
+    ?? (search.trim()
+      ? "Search results"
+      : studentDisplayScope === "current-class" && currentClass
+        ? currentClass.groupName
+        : "All students");
   const {
     page: studentPage,
     pageItems: visibleStudentPage,
@@ -244,7 +264,7 @@ export function TeacherDashboardPanel({
     !selectedGroupView;
 
   function handleStudentsSelected(
-    students: StudentListItem[],
+    students: AdjustmentStudent[],
     direction: AdjustmentDirection,
   ) {
     setMessage(null);
@@ -297,6 +317,13 @@ export function TeacherDashboardPanel({
         ? personalPresets.quickAdd
         : personalPresets.quickRemove;
 
+    if (transactionCap !== null && preset.amount > transactionCap) {
+      setError(
+        `Your quick amount of ${preset.amount} exceeds the organisation transaction limit of ${transactionCap}. Update it in Preferences or use Adjust credits.`,
+      );
+      return;
+    }
+
     quickActionPendingRef.current = true;
     setQuickActionStudentId(student.id);
     setError(null);
@@ -331,6 +358,68 @@ export function TeacherDashboardPanel({
     } finally {
       quickActionPendingRef.current = false;
       setQuickActionStudentId(null);
+    }
+  }
+
+  async function handleQuickGroupAdjustment(
+    group: GroupListItem,
+    direction: AdjustmentDirection,
+  ) {
+    if (quickActionPendingRef.current) {
+      return;
+    }
+
+    if (!navigator.onLine) {
+      setError("You are offline. Reconnect before creating a transaction.");
+      return;
+    }
+
+    const preset =
+      direction === "add"
+        ? personalPresets.quickAdd
+        : personalPresets.quickRemove;
+
+    if (transactionCap !== null && preset.amount > transactionCap) {
+      setError(
+        `Your quick amount of ${preset.amount} exceeds the organisation transaction limit of ${transactionCap}. Update it in Preferences or use Adjust credits.`,
+      );
+      return;
+    }
+
+    quickActionPendingRef.current = true;
+    setQuickActionGroupId(group.id);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const result = await createGroupLedgerAdjustment({
+        amount: direction === "add" ? preset.amount : -preset.amount,
+        groupId: group.id,
+        reason: preset.reason,
+        requestId: crypto.randomUUID(),
+      });
+
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+
+      const successMessage =
+        result.message ??
+        `${direction === "add" ? "Added" : "Removed"} ${preset.amount} ${currencyName} ${direction === "add" ? "to" : "from"} ${group.name} for ${preset.reason}.`;
+
+      setMessage(successMessage);
+
+      try {
+        await refreshStudentData();
+      } catch {
+        setMessage(`${successMessage} Refresh the page if balances look stale.`);
+      }
+    } catch {
+      setError("Could not create quick group transaction.");
+    } finally {
+      quickActionPendingRef.current = false;
+      setQuickActionGroupId(null);
     }
   }
 
@@ -406,16 +495,6 @@ export function TeacherDashboardPanel({
 
         {!isLoading && !error && (
           <div>
-            <ShopRequestsPanel
-              className="mb-4"
-              compact
-              currencyName={currencyName}
-              helpText="Students add rewards to their cart first. Their balance and reward stock are reserved until you approve or deny the request."
-              maxVisibleRequests={4}
-              showViewToggle={false}
-              title="Reward Requests"
-            />
-
             <div className="teacher-mobile-controls theme-panel mb-4 p-3 sm:p-4">
               <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row">
                 <SearchInput
@@ -461,17 +540,36 @@ export function TeacherDashboardPanel({
               )}
 
               {(visibleStudents.length > 0 || visibleGroups.length > 0) && (
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <CountChip
-                    icon={<UsersIcon />}
-                    label={`${visibleStudents.length} student${visibleStudents.length === 1 ? "" : "s"}`}
-                  />
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-3">
+                  {visibleStudents.length > 0 && (
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-brand-soft text-brand">
+                        <UsersIcon />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-foreground">{studentScopeLabel}</p>
+                        <p className="text-xs text-text-muted">
+                          {visibleStudents.length} student{visibleStudents.length === 1 ? "" : "s"}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="ml-auto flex items-center gap-2">
+                    {visibleStudents.length > 0 && (
+                      <div className="text-right">
+                        <p className="font-number text-lg font-semibold leading-none text-foreground">
+                          {formatAmount(visibleBalanceTotal)}
+                        </p>
+                        <p className="mt-1 text-[11px] text-text-muted">Total {currencyName}</p>
+                      </div>
+                    )}
                   {visibleGroups.length > 0 && (
                     <CountChip
                       icon={<SparkleIcon />}
                       label={`${visibleGroups.length} group${visibleGroups.length === 1 ? "" : "s"}`}
                     />
                   )}
+                  </div>
                 </div>
               )}
 
@@ -528,10 +626,18 @@ export function TeacherDashboardPanel({
                 {visibleGroups.map((group) => (
                   <GroupCreditCard
                     group={group}
+                    isQuickActionPending={quickActionGroupId === group.id}
                     key={group.id}
-                    onAdd={() => handleGroupSelected(group, "add")}
+                    onAdjust={() => handleGroupSelected(group, "add")}
                     onExpand={() => handleGroupExpanded(group)}
-                    onRemove={() => handleGroupSelected(group, "remove")}
+                    onQuickAdd={() =>
+                      handleQuickGroupAdjustment(group, "add")
+                    }
+                    onQuickRemove={() =>
+                      handleQuickGroupAdjustment(group, "remove")
+                    }
+                    quickAddAmount={personalPresets.quickAdd.amount}
+                    quickRemoveAmount={personalPresets.quickRemove.amount}
                   />
                 ))}
               </div>
@@ -556,6 +662,7 @@ export function TeacherDashboardPanel({
           onCreated={handleAdjustmentCreated}
           onClose={() => setSelection(null)}
           selection={selection}
+          transactionCap={transactionCap}
         />
       )}
     </>
@@ -579,14 +686,22 @@ function CountChip({
 
 function GroupCreditCard({
   group,
-  onAdd,
+  isQuickActionPending,
+  onAdjust,
   onExpand,
-  onRemove,
+  onQuickAdd,
+  onQuickRemove,
+  quickAddAmount,
+  quickRemoveAmount,
 }: {
   group: GroupListItem;
-  onAdd: () => void;
+  isQuickActionPending: boolean;
+  onAdjust: () => void;
   onExpand: () => void;
-  onRemove: () => void;
+  onQuickAdd: () => void;
+  onQuickRemove: () => void;
+  quickAddAmount: number;
+  quickRemoveAmount: number;
 }) {
   return (
     <article className="theme-card p-3">
@@ -608,13 +723,27 @@ function GroupCreditCard({
           </p>
         </div>
       </button>
-      <div className="mt-3 flex justify-end">
+      <div className="mt-3 space-y-2">
         <CreditActionControl
-          addAriaLabel={`Add credits to ${group.name}`}
-          onAdd={onAdd}
-          onRemove={onRemove}
-          removeAriaLabel={`Remove credits from ${group.name}`}
+          addAriaLabel={`Quick add ${quickAddAmount} credits to ${group.name}`}
+          addLabel={formatAmount(quickAddAmount)}
+          amountLabels
+          fullWidth
+          onAdd={isQuickActionPending ? undefined : onQuickAdd}
+          onRemove={isQuickActionPending ? undefined : onQuickRemove}
+          removeAriaLabel={`Quick take ${quickRemoveAmount} credits from ${group.name}`}
+          removeLabel={formatAmount(quickRemoveAmount)}
+          solid
         />
+        <button
+          aria-label={`Adjust credits for ${group.name}`}
+          className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-button-border bg-surface px-3 text-xs font-semibold text-text-control transition hover:border-border-strong hover:bg-panel-soft"
+          onClick={onAdjust}
+          type="button"
+        >
+          <PencilIcon className="h-3.5 w-3.5" />
+          Adjust credits
+        </button>
       </div>
     </article>
   );
@@ -625,11 +754,13 @@ function QuickAdjustmentModal({
   onCreated,
   onClose,
   selection,
+  transactionCap,
 }: {
   currencyName: string;
   onCreated: (message: string) => Promise<void> | void;
   onClose: () => void;
   selection: AdjustmentTargetSelection;
+  transactionCap: number | null;
 }) {
   const [error, setError] = useState<string | null>(null);
   const dialogRef = useDialogFocus({ onEscape: onClose });
@@ -640,11 +771,15 @@ function QuickAdjustmentModal({
       : `${selection.students.length} student${
           selection.students.length === 1 ? "" : "s"
         }`;
+  const displayedStudents =
+    selection.kind === "students" && selection.students.length < 5
+      ? selection.students
+      : [];
 
   return (
     <div className="app-modal-backdrop fixed inset-0 z-50 flex items-center justify-center px-4 py-6">
       <div
-        aria-label={`${selection.direction === "add" ? "Add" : "Take"} ${currencyName}`}
+        aria-label={`Adjust ${currencyName}`}
         aria-modal="true"
         className="app-modal theme-panel motion-pop max-h-[90vh] w-full max-w-xl overflow-y-auto p-5 shadow-lg"
         ref={dialogRef}
@@ -653,12 +788,10 @@ function QuickAdjustmentModal({
       >
         <div className="app-modal-header flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="truncate text-lg font-semibold">
-              {selection.direction === "add" ? "Add" : "Take"} {currencyName}
-            </h3>
-            <p className="mt-1 truncate text-sm text-text-muted">
-              {targetName}
-            </p>
+            <h3 className="truncate text-lg font-semibold">Adjust {currencyName}</h3>
+            {displayedStudents.length === 0 && (
+              <p className="mt-1 truncate text-sm text-text-muted">{targetName}</p>
+            )}
           </div>
           <button
             aria-label="Close credit adjustment"
@@ -669,6 +802,21 @@ function QuickAdjustmentModal({
             <XIcon />
           </button>
         </div>
+
+        {displayedStudents.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 border-b border-border-subtle pb-4">
+            {displayedStudents.map((student) => (
+              <div className="flex min-w-0 items-baseline gap-2" key={student.id}>
+                <span className="truncate text-sm font-medium text-text-control">
+                  {student.displayName}
+                </span>
+                <span className="shrink-0 font-number text-xs text-text-muted">
+                  {formatAmount(student.balance)} {currencyName}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="app-modal-body">
           <LedgerAdjustmentForm
@@ -687,6 +835,7 @@ function QuickAdjustmentModal({
               selection.kind === "students" ? selection.students : undefined
             }
             preferredStudentSelectionVersion={selection.version}
+            transactionCap={transactionCap}
           />
 
           {error && (
@@ -802,8 +951,9 @@ function normaliseSearchValue(value: string) {
 
 function toStudentListItem(
   student: CurrentClass["students"][number] | StudentBalanceItem,
-): StudentListItem {
+): AdjustmentStudent {
   return {
+    balance: student.balance,
     id: student.id,
     firstName: student.firstName,
     lastName: student.lastName,

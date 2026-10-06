@@ -16,9 +16,11 @@ import { StudentActivityRecap } from "@/components/student/activity-recap";
 import { StudentTransactionNotificationModal } from "@/components/student/transaction-notification-modal";
 import { TransactionLogPanel } from "@/components/transactions/transaction-log-panel";
 import { FixedNotification } from "@/components/ui/fixed-notification";
-import { SparkleIcon, WalletIcon } from "@/components/ui/icons";
+import { CrownIcon, SparkleIcon, WalletIcon } from "@/components/ui/icons";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { InlineSelectMenu } from "@/components/ui/inline-select-menu";
 import { LoadFailure } from "@/components/ui/load-failure";
+import { PanelTitle } from "@/components/ui/panel-title";
 import {
   getStudentBalance,
   listUnseenTransactions,
@@ -247,11 +249,11 @@ export function StudentDashboardPanel({
 
       <section className="student-dashboard-section dashboard-grid mt-5">
         <StudentShopRequestsPanel
-          className="dashboard-unit-3"
+          className="dashboard-unit-2"
           onBrowseRewards={onBrowseRewards}
         />
         <StudentMetricStrip
-          className="student-dashboard-card student-metric-strip dashboard-unit-1"
+          className="student-dashboard-card student-metric-strip dashboard-unit-2"
           currencyName={currencyName}
           transactions={transactions}
         />
@@ -396,10 +398,10 @@ function BalanceTrendCard({
       <div className="flex min-h-56 w-full flex-col rounded-2xl bg-surface">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand-soft text-brand">
               <WalletIcon className="h-4 w-4" />
             </span>
-            <h2 className="text-base font-semibold text-foreground">Balance</h2>
+            <PanelTitle title="Balance" />
           </div>
           <ChartScaleMenu
             onWindowChange={setSelectedWindow}
@@ -525,64 +527,86 @@ function StudentMetricStrip({
   const [timeframeDays, setTimeframeDays] =
     useState<StudentMetricTimeframeDays>(30);
   const metrics = getStudentMetrics(transactions, timeframeDays);
-  const selectedOption = studentMetricTimeframeOptions.find(
-    (option) => option.value === timeframeDays,
-  );
 
   return (
     <section className={`rounded-3xl bg-surface p-4 ${className}`}>
       <div className="mb-3 flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="text-base font-semibold text-foreground">Averages</h2>
-          <p className="mt-1 text-xs text-text-muted">
-            {selectedOption?.label ?? "Month"}
-          </p>
-        </div>
+        <PanelTitle title="Activity insights" />
         <InlineSelectMenu
-          ariaLabel="Change average timeframe"
+          ariaLabel="Change activity insight timeframe"
           onChange={setTimeframeDays}
           options={studentMetricTimeframeOptions}
           value={timeframeDays}
         />
       </div>
-      <div className="divide-y divide-border-subtle">
-        <StudentMetricCard
-          label="Avg gain/day"
-          currencyName={currencyName}
-          value={formatAmount(metrics.averageDailyGain)}
-        />
-        <StudentMetricCard
-          label="Avg loss/day"
-          currencyName={currencyName}
-          value={formatAmount(metrics.averageDailyLoss)}
-        />
+      <div className="border-b border-border-subtle pb-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-text-muted">Average net per day</p>
+            <div className="mt-1 flex min-w-0 items-baseline gap-1.5">
+              <p className={`font-number text-2xl font-semibold leading-none ${metrics.averageDailyNet >= 0 ? "text-success-text" : "text-danger-strong"}`}>
+                {metrics.averageDailyNet > 0 ? "+" : ""}{formatAmount(metrics.averageDailyNet)}
+              </p>
+              <span className="truncate text-[11px] text-text-muted">{currencyName}</span>
+            </div>
+            <p className={`mt-1.5 truncate text-[11px] font-medium ${metrics.comparison >= 0 ? "text-success-text" : "text-danger-strong"}`}>
+              {formatMetricComparison(metrics.comparison, currencyName)}
+            </p>
+          </div>
+          <MiniMetricSparkline values={metrics.trend} />
+        </div>
+      </div>
+
+      <div className="mt-3 space-y-3">
+        <InsightBar label="Average gain" tone="positive" value={metrics.averageDailyGain} maximum={metrics.maximumAverage} currencyName={currencyName} />
+        <InsightBar label="Average loss" tone="negative" value={metrics.averageDailyLoss} maximum={metrics.maximumAverage} currencyName={currencyName} />
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-2 border-t border-border-subtle pt-3">
+        <InsightDetail label="Best day" value={metrics.bestDay} detail={metrics.bestDayAmount === 0 ? "No gains yet" : `+${formatAmount(metrics.bestDayAmount)} ${currencyName}`} showCrown />
+        <InsightDetail label="Most active" value={metrics.mostActiveDay} detail={`${metrics.mostActiveCount} ${metrics.mostActiveCount === 1 ? "entry" : "entries"}`} />
+      </div>
+
+      <div className="mt-3 border-t border-border-subtle pt-3">
+        <div className="flex items-center justify-between gap-3 text-xs">
+          <span className="inline-flex items-center gap-1 font-medium text-text-control">
+            School-day consistency
+            <InfoTooltip label="The number of weekdays in this period where you had at least one credit transaction." />
+          </span>
+          <span className="text-text-muted">{metrics.activeSchoolDays} of {metrics.schoolDays} days</span>
+        </div>
+        <div className="mt-2 grid gap-1" style={{ gridTemplateColumns: `repeat(${Math.max(metrics.schoolDays, 1)}, minmax(0, 1fr))` }}>
+          {Array.from({ length: Math.max(metrics.schoolDays, 1) }, (_, index) => (
+            <span className={`h-2 rounded-full ${index < metrics.activeSchoolDays ? "bg-brand" : "bg-panel-soft"}`} key={index} />
+          ))}
+        </div>
       </div>
     </section>
   );
 }
 
-function StudentMetricCard({
-  currencyName,
-  label,
-  value,
-}: {
-  currencyName: string;
-  label: string;
-  value: string;
-}) {
+function InsightBar({ currencyName, label, maximum, tone, value }: { currencyName: string; label: string; maximum: number; tone: "negative" | "positive"; value: number }) {
+  const width = maximum > 0 ? Math.max(5, (value / maximum) * 100) : 0;
   return (
-    <article className="py-3 first:pt-1 last:pb-1">
-      <p className="wallet-balance-number text-2xl leading-none text-foreground">
-        {value}
-      </p>
-      <p className="mt-1 text-xs font-normal text-text-muted">
-        {currencyName}
-      </p>
-      <p className="mt-2 text-xs font-medium uppercase tracking-[0.12em] text-text-muted">
-        {label}
-      </p>
-    </article>
+    <div>
+      <div className="flex items-center justify-between gap-3 text-xs"><span className="text-text-muted">{label}</span><span className={tone === "positive" ? "font-medium text-success-text" : "font-medium text-danger-strong"}>{formatAmount(value)} {currencyName}</span></div>
+      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-panel-soft"><span className={`block h-full rounded-full transition-[width] duration-500 ${tone === "positive" ? "bg-success" : "bg-danger"}`} style={{ width: `${width}%` }} /></div>
+    </div>
   );
+}
+
+function InsightDetail({ detail, label, showCrown = false, value }: { detail: string; label: string; showCrown?: boolean; value: string }) {
+  return <div className="min-w-0 rounded-xl bg-panel-soft px-3 py-2.5"><p className="flex items-center gap-1 text-[11px] font-medium uppercase text-text-muted">{showCrown && <CrownIcon className="h-3.5 w-3.5 text-accent" />}{label}</p><p className="mt-1 truncate text-sm font-semibold text-text-control">{value}</p><p className="mt-0.5 truncate text-[11px] text-text-muted">{detail}</p></div>;
+}
+
+function MiniMetricSparkline({ values }: { values: number[] }) {
+  const width = 92;
+  const height = 38;
+  const minimum = Math.min(...values, 0);
+  const maximum = Math.max(...values, 0);
+  const range = Math.max(maximum - minimum, 1);
+  const points = values.map((value, index) => `${(index / Math.max(values.length - 1, 1)) * width},${height - ((value - minimum) / range) * height}`).join(" ");
+  return <svg aria-label="Net movement trend" className="h-10 w-24" role="img" viewBox={`0 0 ${width} ${height}`}><polyline fill="none" points={points} stroke="var(--brand)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" /></svg>;
 }
 
 function useAnimatedWholeNumber(targetValue: number) {
@@ -738,33 +762,146 @@ function getStudentMetrics(
   transactions: TransactionLogItem[],
   timeframeDays: StudentMetricTimeframeDays,
 ) {
-  const windowStartTime =
-    Date.now() - timeframeDays * MILLISECONDS_PER_DAY;
-  const recentTransactions = transactions.filter((transaction) => {
+  const windowEndTime = Date.now();
+  const windowStartTime = windowEndTime - timeframeDays * MILLISECONDS_PER_DAY;
+  const previousWindowStartTime = windowStartTime - timeframeDays * MILLISECONDS_PER_DAY;
+  const validTransactions = transactions.filter((transaction) => {
     const transactionTime = new Date(transaction.createdAt).getTime();
-
     return (
       Number.isFinite(transactionTime) &&
-      transactionTime >= windowStartTime &&
       doesTransactionAffectBalance(transaction)
     );
   });
+  const recentTransactions = validTransactions.filter((transaction) => {
+    const transactionTime = new Date(transaction.createdAt).getTime();
+    return transactionTime >= windowStartTime && transactionTime <= windowEndTime;
+  });
+  const previousTransactions = validTransactions.filter((transaction) => {
+    const transactionTime = new Date(transaction.createdAt).getTime();
+    return transactionTime >= previousWindowStartTime && transactionTime < windowStartTime;
+  });
 
-  const totalGain = recentTransactions.reduce(
+  const totalGain = getPositiveTotal(recentTransactions);
+  const totalLoss = getNegativeTotal(recentTransactions);
+  const previousNet =
+    getPositiveTotal(previousTransactions) - getNegativeTotal(previousTransactions);
+  const dailyActivity = getDailyActivity(recentTransactions);
+  const bestDay = [...dailyActivity.values()].sort(
+    (first, second) => second.net - first.net,
+  )[0];
+  const mostActiveDay = [...dailyActivity.values()].sort(
+    (first, second) => second.count - first.count,
+  )[0];
+  const schoolDays = countSchoolDays(windowStartTime, windowEndTime);
+  const activeSchoolDays = [...dailyActivity.values()].filter(
+    (day) => day.isSchoolDay,
+  ).length;
+  const averageDailyGain = Math.round(totalGain / timeframeDays);
+  const averageDailyLoss = Math.round(totalLoss / timeframeDays);
+  const averageDailyNet = averageDailyGain - averageDailyLoss;
+  const previousAverageDailyNet = Math.round(previousNet / timeframeDays);
+
+  return {
+    activeSchoolDays,
+    averageDailyGain,
+    averageDailyLoss,
+    averageDailyNet,
+    bestDay: bestDay?.net > 0 ? bestDay.label : "No gain yet",
+    bestDayAmount: Math.max(bestDay?.net ?? 0, 0),
+    comparison: averageDailyNet - previousAverageDailyNet,
+    maximumAverage: Math.max(averageDailyGain, averageDailyLoss, 1),
+    mostActiveCount: mostActiveDay?.count ?? 0,
+    mostActiveDay: mostActiveDay?.count ? mostActiveDay.label : "No activity",
+    schoolDays,
+    trend: buildMetricTrend(
+      recentTransactions,
+      windowStartTime,
+      windowEndTime,
+    ),
+  };
+}
+
+function getPositiveTotal(transactions: TransactionLogItem[]) {
+  return transactions.reduce(
     (total, transaction) =>
       transaction.amount > 0 ? total + transaction.amount : total,
     0,
   );
-  const totalLoss = recentTransactions.reduce(
+}
+
+function getNegativeTotal(transactions: TransactionLogItem[]) {
+  return transactions.reduce(
     (total, transaction) =>
       transaction.amount < 0 ? total + Math.abs(transaction.amount) : total,
     0,
   );
+}
 
-  return {
-    averageDailyGain: Math.round(totalGain / timeframeDays),
-    averageDailyLoss: Math.round(totalLoss / timeframeDays),
-  };
+function getDailyActivity(transactions: TransactionLogItem[]) {
+  const activity = new Map<
+    string,
+    { count: number; isSchoolDay: boolean; label: string; net: number }
+  >();
+
+  transactions.forEach((transaction) => {
+    const date = new Date(transaction.createdAt);
+    const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+    const current = activity.get(key);
+    activity.set(key, {
+      count: (current?.count ?? 0) + 1,
+      isSchoolDay: date.getDay() >= 1 && date.getDay() <= 5,
+      label: new Intl.DateTimeFormat("en-AU", {
+        day: "numeric",
+        month: "short",
+        weekday: "short",
+      }).format(date),
+      net: (current?.net ?? 0) + transaction.amount,
+    });
+  });
+
+  return activity;
+}
+
+function countSchoolDays(startTime: number, endTime: number) {
+  const date = new Date(startTime);
+  date.setHours(0, 0, 0, 0);
+  let count = 0;
+
+  while (date.getTime() <= endTime) {
+    if (date.getDay() >= 1 && date.getDay() <= 5) count += 1;
+    date.setDate(date.getDate() + 1);
+  }
+
+  return Math.max(count, 1);
+}
+
+function buildMetricTrend(
+  transactions: TransactionLogItem[],
+  startTime: number,
+  endTime: number,
+) {
+  const bucketCount = 7;
+  const bucketDuration = Math.max((endTime - startTime) / bucketCount, 1);
+  const values = Array.from({ length: bucketCount }, () => 0);
+
+  transactions.forEach((transaction) => {
+    const transactionTime = new Date(transaction.createdAt).getTime();
+    const bucketIndex = Math.min(
+      Math.floor((transactionTime - startTime) / bucketDuration),
+      bucketCount - 1,
+    );
+    if (bucketIndex >= 0) values[bucketIndex] += transaction.amount;
+  });
+
+  let cumulative = 0;
+  return values.map((value) => (cumulative += value));
+}
+
+function formatMetricComparison(comparison: number, currencyName: string) {
+  if (comparison === 0) return "Matching the previous period";
+  return `${formatAmount(Math.abs(comparison))} ${currencyName} ${
+    comparison > 0 ? "better" : "lower"
+  } per day than the previous period`;
 }
 
 function ChartScaleMenu({

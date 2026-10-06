@@ -9,6 +9,10 @@ import {
 } from "@/lib/theme/accent-theme-config";
 import { themeStorageKey } from "@/lib/theme/theme-config";
 import {
+  dashboardThemeStorageKey,
+  defaultDashboardTheme,
+} from "@/lib/theme/dashboard-theme-config";
+import {
   defaultWalletStyle,
   defaultWalletPattern,
   walletPatternStorageKey,
@@ -54,16 +58,23 @@ const themeInitScript = `
       walletStyleStorageKey,
     )});
     document.documentElement.dataset.walletStyle =
-      ["classic", "mint", "graphite"].includes(savedWalletStyle)
+      ["classic", "mint", "graphite", "accent", "ocean", "berry"].includes(savedWalletStyle)
         ? savedWalletStyle
         : ${JSON.stringify(defaultWalletStyle)};
     const savedWalletPattern = window.localStorage.getItem(${JSON.stringify(
       walletPatternStorageKey,
     )});
     document.documentElement.dataset.walletPattern =
-      ["none", "pinstripe", "grid", "dots", "orbit"].includes(savedWalletPattern)
+      ["none", "pinstripe", "grid", "dots", "orbit", "contour"].includes(savedWalletPattern)
         ? savedWalletPattern
         : ${JSON.stringify(defaultWalletPattern)};
+    const savedDashboardTheme = window.localStorage.getItem(${JSON.stringify(
+      dashboardThemeStorageKey,
+    )});
+    document.documentElement.dataset.dashboardTheme =
+      ["clean", "soft-grid", "notebook", "confetti"].includes(savedDashboardTheme)
+        ? savedDashboardTheme
+        : ${JSON.stringify(defaultDashboardTheme)};
   } catch {
     document.documentElement.dataset.theme = "light";
     document.documentElement.dataset.accent = ${JSON.stringify(
@@ -78,6 +89,9 @@ const themeInitScript = `
     )};
     document.documentElement.dataset.walletPattern = ${JSON.stringify(
       defaultWalletPattern,
+    )};
+    document.documentElement.dataset.dashboardTheme = ${JSON.stringify(
+      defaultDashboardTheme,
     )};
   }
 })();

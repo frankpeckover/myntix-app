@@ -8,8 +8,10 @@ import {
   isWalletStyle,
   walletPatternOptions,
   walletPatternStorageKey,
+  walletPatternBackgrounds,
   walletStyleOptions,
   walletStyleStorageKey,
+  walletStyleBackgrounds,
   type WalletStyle,
   type WalletPattern,
 } from "@/lib/theme/wallet-style-config";
@@ -33,14 +35,14 @@ export function useWalletStyle() {
 
   function setWalletStyle(nextWalletStyle: WalletStyle) {
     setWalletStyleState(nextWalletStyle);
-    window.localStorage.setItem(walletStyleStorageKey, nextWalletStyle);
     applyWalletStyle(nextWalletStyle);
+    savePreference(walletStyleStorageKey, nextWalletStyle);
   }
 
   function setWalletPattern(nextWalletPattern: WalletPattern) {
     setWalletPatternState(nextWalletPattern);
-    window.localStorage.setItem(walletPatternStorageKey, nextWalletPattern);
     applyWalletPattern(nextWalletPattern);
+    savePreference(walletPatternStorageKey, nextWalletPattern);
   }
 
   return {
@@ -54,11 +56,25 @@ export function useWalletStyle() {
 }
 
 function applyWalletPattern(walletPattern: WalletPattern) {
-  document.documentElement.dataset.walletPattern = walletPattern;
+  const root = document.documentElement;
+  root.setAttribute("data-wallet-pattern", walletPattern);
+  root.style.setProperty(
+    "--student-card-pattern",
+    walletPatternBackgrounds[walletPattern],
+  );
+  root.style.setProperty(
+    "--student-card-pattern-size",
+    walletPattern === "dots" ? "18px 18px" : "auto",
+  );
 }
 
 function applyWalletStyle(walletStyle: WalletStyle) {
-  document.documentElement.dataset.walletStyle = walletStyle;
+  const root = document.documentElement;
+  root.setAttribute("data-wallet-style", walletStyle);
+  root.style.setProperty(
+    "--student-card-background",
+    walletStyleBackgrounds[walletStyle],
+  );
 }
 
 function getSavedWalletStyle(): WalletStyle {
@@ -71,4 +87,12 @@ function getSavedWalletPattern(): WalletPattern {
   return isWalletPattern(savedWalletPattern)
     ? savedWalletPattern
     : defaultWalletPattern;
+}
+
+function savePreference(key: string, value: string) {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Keep the active visual choice for this session when storage is unavailable.
+  }
 }

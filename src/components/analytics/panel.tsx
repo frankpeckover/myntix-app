@@ -33,7 +33,7 @@ import {
 } from "@/components/analytics/charts/analytics-tooltips";
 import {
   ClockIcon,
-  ShoppingBagIcon,
+  ShoppingCartIcon,
   UsersIcon,
   WalletIcon,
 } from "@/components/ui/icons";
@@ -325,7 +325,7 @@ function AnalyticsMetricGrid({
         }
       />
       <MetricCard
-        icon={<ShoppingBagIcon />}
+        icon={<ShoppingCartIcon />}
         label="Reward requests"
         tone="accent"
         value={

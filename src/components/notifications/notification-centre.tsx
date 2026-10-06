@@ -114,7 +114,7 @@ export function NotificationCentre({ onNavigate }: NotificationCentreProps) {
       >
         <BellIcon className="h-4.5 w-4.5" />
         {unreadCount > 0 && (
-          <span className="absolute right-0.5 top-0.5 min-w-4 rounded-full bg-danger px-1 text-center text-[10px] font-semibold leading-4 text-white">
+          <span className="absolute right-0.5 top-0.5 min-w-4 rounded-full bg-danger px-1 text-center text-[10px] font-semibold leading-4 text-danger-foreground">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}

@@ -147,6 +147,7 @@ export function AdminDashboardPanel({
               ledgerBalance={summary.ledgerBalance}
             />
             <PendingSummaryCard
+              onOpenRequests={() => onNavigate("Reward Requests")}
               pendingHolds={summary.pendingHolds}
               pendingShopRequests={summary.pendingShopRequests}
             />
@@ -515,9 +516,11 @@ function CirculationChartSection({
 }
 
 function PendingSummaryCard({
+  onOpenRequests,
   pendingHolds,
   pendingShopRequests,
 }: {
+  onOpenRequests: () => void;
   pendingHolds: number;
   pendingShopRequests: number;
 }) {
@@ -529,10 +532,14 @@ function PendingSummaryCard({
         tone="accent"
       />
       <div className="mt-2 grid flex-1 gap-1">
-        <CompactMetricRow
-          label="Requests"
-          value={pendingShopRequests}
-        />
+        <button
+          className="flex min-w-0 items-center justify-between gap-3 border-b border-border-muted px-1 py-1.5 text-left transition hover:bg-panel-soft"
+          onClick={onOpenRequests}
+          type="button"
+        >
+          <span className="truncate text-xs font-semibold uppercase tracking-normal text-text-muted">Requests</span>
+          <span className="shrink-0 text-lg font-semibold tracking-normal text-foreground">{formatWholeNumber(pendingShopRequests)}</span>
+        </button>
         <CompactMetricRow
           label="Holds"
           value={pendingHolds}

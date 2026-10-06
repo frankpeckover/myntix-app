@@ -43,7 +43,7 @@ export function AdjustmentRecipientPanel({
   target,
 }: AdjustmentRecipientPanelProps) {
   return (
-    <section className="theme-card p-3">
+    <section className="border-b border-border-subtle pb-5">
       <TargetToggle onChange={onTargetChange} target={target} />
 
       <RecipientHeading

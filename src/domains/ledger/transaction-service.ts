@@ -431,6 +431,15 @@ export class TransactionService {
         return { ok: true, message: previousResult.message };
       }
 
+      const transactionCap = await ledgerService.getTransactionCap(client);
+      if (transactionCap !== null && Math.abs(input.amount) > transactionCap) {
+        await client.query("rollback");
+        return {
+          ok: false,
+          message: `This transaction exceeds the organisation limit of ${transactionCap}.`,
+        };
+      }
+
       const balanceCap = await ledgerService.getBalanceCap(client);
       const studentsResult = await client.query<{
           first_name: string;
@@ -645,6 +654,16 @@ export class TransactionService {
 
       const groupName = membersResult.rows[0].group_name;
       const description = `${reason} (Group: ${groupName})`;
+      const transactionCap = await ledgerService.getTransactionCap(client);
+
+      if (transactionCap !== null && Math.abs(input.amount) > transactionCap) {
+        await client.query("rollback");
+        return {
+          ok: false,
+          message: `This transaction exceeds the organisation limit of ${transactionCap} per student.`,
+        };
+      }
+
       const balanceCap = await ledgerService.getBalanceCap(client);
 
       const createdLedgerEntryIds: string[] = [];

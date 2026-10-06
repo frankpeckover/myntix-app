@@ -58,6 +58,23 @@ export class LedgerService {
       : Number(balanceCap);
   }
 
+  async getTransactionCap(client: PoolClient) {
+    const result = await client.query<{ transaction_cap: number | null }>(
+      `
+        select transaction_cap
+        from school_info
+        where id = 1
+        limit 1
+      `,
+    );
+
+    const transactionCap = result.rows[0]?.transaction_cap;
+
+    return transactionCap === null || transactionCap === undefined
+      ? null
+      : Number(transactionCap);
+  }
+
   async ensureStudentAccount(client: PoolClient, userId: string) {
     const existingAccount = await client.query<{ id: string }>(
       `

@@ -169,7 +169,7 @@ export function AdminSetupChecklist({
               aria-hidden="true"
               className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
                 item.isComplete
-                  ? "border-success-border bg-success-fill text-white"
+                  ? "border-success-border bg-success-fill text-success-foreground"
                   : "border-border bg-surface text-transparent"
               }`}
             >

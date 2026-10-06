@@ -57,6 +57,7 @@ const fallbackSchoolInfo: SchoolInfo = {
   name: appConfig.defaultSchoolName,
   address: "",
   balanceCap: null,
+  transactionCap: null,
   contactEmail: "",
   currencyName: defaultCurrencyName,
   logoUrl: "",
@@ -427,7 +428,7 @@ export function AdminSettingsPanel({
       >
         <form className="space-y-4" onSubmit={handleProfileSubmit}>
           <SettingsPanel defaultExpanded icon={<UsersIcon />} title="Profile">
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-3">
               <TextField
                 id="schoolName"
                 label="School name"
@@ -540,13 +541,22 @@ export function AdminSettingsPanel({
                 placeholder="No cap"
                 value={form.balanceCap}
               />
+              <NumberField
+                id="transactionCap"
+                info="The maximum amount a staff member or API can add or take from one student in a single transaction. This also limits quick-transaction presets. Leave blank for no transaction limit."
+                label="Transaction cap"
+                min={1}
+                onChange={(value) => updateField("transactionCap", value)}
+                placeholder="No cap"
+                value={form.transactionCap}
+              />
             </div>
             <div className="mt-5">
               <SettingsActionRow
                 error={error}
                 isSaving={isSaving}
                 message={message}
-                saveLabel="Save Rewards"
+                saveLabel="Save Currency Rules"
               />
             </div>
           </SettingsPanel>
