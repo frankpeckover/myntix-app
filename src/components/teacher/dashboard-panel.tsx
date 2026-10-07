@@ -12,7 +12,6 @@ import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { CreditActionControl } from "@/components/ui/credit-action-control";
 import {
   PlusIcon,
-  PencilIcon,
   SparkleIcon,
   UsersIcon,
   XIcon,
@@ -662,6 +661,7 @@ export function TeacherDashboardPanel({
           onCreated={handleAdjustmentCreated}
           onClose={() => setSelection(null)}
           selection={selection}
+          studentBalances={studentBalances}
           transactionCap={transactionCap}
         />
       )}
@@ -704,47 +704,43 @@ function GroupCreditCard({
   quickRemoveAmount: number;
 }) {
   return (
-    <article className="theme-card p-3">
-      <button
-        aria-label={`Show students in ${group.name}`}
-        className="flex w-full items-center gap-3 text-left"
-        onClick={onExpand}
-        type="button"
-      >
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-panel-soft text-text-muted">
-          <UsersIcon />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h3 className="truncate text-sm font-semibold text-foreground">
-            {group.name}
-          </h3>
-          <p className="mt-0.5 truncate text-xs font-medium text-text-muted">
-            {group.memberCount} students
-          </p>
-        </div>
-      </button>
-      <div className="mt-3 space-y-2">
+    <article className="theme-card flex flex-col overflow-hidden p-0">
+      <div className="flex-1 p-3">
+        <button
+          aria-label={`Show students in ${group.name}`}
+          className="flex w-full items-center gap-3 text-left"
+          onClick={onExpand}
+          type="button"
+        >
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-panel-soft text-text-muted">
+            <UsersIcon />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate text-sm font-semibold text-foreground">
+              {group.name}
+            </h3>
+            <p className="mt-0.5 truncate text-xs font-medium text-text-muted">
+              {group.memberCount} students
+            </p>
+          </div>
+        </button>
+      </div>
+      <footer className="mt-auto">
         <CreditActionControl
           addAriaLabel={`Quick add ${quickAddAmount} credits to ${group.name}`}
           addLabel={formatAmount(quickAddAmount)}
+          adjustAriaLabel={`Adjust credits for ${group.name}`}
           amountLabels
+          flush
           fullWidth
           onAdd={isQuickActionPending ? undefined : onQuickAdd}
+          onAdjust={onAdjust}
           onRemove={isQuickActionPending ? undefined : onQuickRemove}
           removeAriaLabel={`Quick take ${quickRemoveAmount} credits from ${group.name}`}
           removeLabel={formatAmount(quickRemoveAmount)}
           solid
         />
-        <button
-          aria-label={`Adjust credits for ${group.name}`}
-          className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-button-border bg-surface px-3 text-xs font-semibold text-text-control transition hover:border-border-strong hover:bg-panel-soft"
-          onClick={onAdjust}
-          type="button"
-        >
-          <PencilIcon className="h-3.5 w-3.5" />
-          Adjust credits
-        </button>
-      </div>
+      </footer>
     </article>
   );
 }
@@ -754,12 +750,14 @@ function QuickAdjustmentModal({
   onCreated,
   onClose,
   selection,
+  studentBalances,
   transactionCap,
 }: {
   currencyName: string;
   onCreated: (message: string) => Promise<void> | void;
   onClose: () => void;
   selection: AdjustmentTargetSelection;
+  studentBalances: StudentBalanceItem[];
   transactionCap: number | null;
 }) {
   const [error, setError] = useState<string | null>(null);
@@ -835,6 +833,7 @@ function QuickAdjustmentModal({
               selection.kind === "students" ? selection.students : undefined
             }
             preferredStudentSelectionVersion={selection.version}
+            studentBalances={studentBalances}
             transactionCap={transactionCap}
           />
 

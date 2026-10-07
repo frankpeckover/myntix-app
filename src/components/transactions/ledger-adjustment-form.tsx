@@ -5,6 +5,7 @@ import {
   createGroupLedgerAdjustment,
   createLedgerAdjustments,
   getMyTransactionPresets,
+  listGroupMembers,
   listGroups,
   searchStudents,
 } from "@/lib/actions";
@@ -20,6 +21,7 @@ import {
 import { formatAmount } from "@/lib/presentation/formatters";
 import { MinusIcon, PlusIcon } from "@/components/ui/icons";
 import type { GroupListItem } from "@/domains/groups/group-service";
+import type { StudentBalanceItem } from "@/domains/ledger/transaction-service";
 import type { StudentListItem } from "@/domains/users/user-service";
 
 type LedgerAdjustmentFormProps = {
@@ -33,6 +35,7 @@ type LedgerAdjustmentFormProps = {
   preferredStudent?: StudentListItem | null;
   preferredStudents?: StudentListItem[];
   preferredStudentSelectionVersion?: number;
+  studentBalances: StudentBalanceItem[];
   transactionCap: number | null;
 };
 
@@ -51,6 +54,7 @@ export function LedgerAdjustmentForm({
   preferredStudent = null,
   preferredStudents = [],
   preferredStudentSelectionVersion = 0,
+  studentBalances,
   transactionCap,
 }: LedgerAdjustmentFormProps) {
   const [amount, setAmount] = useState("");
@@ -76,6 +80,10 @@ export function LedgerAdjustmentForm({
   const [selectedStudents, setSelectedStudents] = useState<StudentListItem[]>(
     initialStudents,
   );
+  const [loadedGroupMembers, setLoadedGroupMembers] = useState<{
+    groupId: string;
+    memberIds: string[];
+  }>({ groupId: "", memberIds: [] });
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -106,6 +114,12 @@ export function LedgerAdjustmentForm({
   );
   const submitLabel =
     direction === "add" ? `Add ${currencyName}` : `Take ${currencyName}`;
+  const affectedStudents = getAffectedStudents({
+    groupMemberIds: loadedGroupMembers.memberIds,
+    selectedStudents,
+    studentBalances,
+    target,
+  });
 
   useEffect(() => {
     let isActive = true;
@@ -144,6 +158,35 @@ export function LedgerAdjustmentForm({
       isActive = false;
     };
   }, [onError, selectedGroup, selectedGroupId, target]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    if (target !== "group" || !selectedGroupId) {
+      return () => {
+        isActive = false;
+      };
+    }
+
+    void listGroupMembers(selectedGroupId)
+      .then((members) => {
+        if (isActive) {
+          setLoadedGroupMembers({
+            groupId: selectedGroupId,
+            memberIds: members.map((member) => member.id),
+          });
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setLoadedGroupMembers({ groupId: selectedGroupId, memberIds: [] });
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [selectedGroupId, target]);
 
   useEffect(() => {
     let isActive = true;
@@ -408,6 +451,18 @@ export function LedgerAdjustmentForm({
         reasonPresets={presets.reasons}
       />
 
+      <TransactionImpactSummary
+        amount={selectedAmount}
+        currencyName={currencyName}
+        direction={direction}
+        isLoading={
+          target === "group" &&
+          Boolean(selectedGroupId) &&
+          loadedGroupMembers.groupId !== selectedGroupId
+        }
+        students={affectedStudents}
+      />
+
       <AdjustmentFormActions
         canSubmit={canSubmit}
         direction={direction}
@@ -649,6 +704,97 @@ function ReasonField({
   );
 }
 
+function TransactionImpactSummary({
+  amount,
+  currencyName,
+  direction,
+  isLoading,
+  students,
+}: {
+  amount: number;
+  currencyName: string;
+  direction: AdjustmentDirection;
+  isLoading: boolean;
+  students: StudentBalanceItem[];
+}) {
+  if (isLoading) {
+    return (
+      <p className="border-t border-border-subtle pt-3 text-sm text-text-muted">
+        Calculating transaction impact...
+      </p>
+    );
+  }
+
+  if (!Number.isInteger(amount) || amount <= 0 || students.length === 0) {
+    return null;
+  }
+
+  const isAdding = direction === "add";
+  const totalImpact = isAdding
+    ? amount * students.length
+    : students.reduce(
+        (total, student) => total + Math.min(Math.max(student.balance, 0), amount),
+        0,
+      );
+  const partialStudents = isAdding
+    ? []
+    : students.filter(
+        (student) => student.balance > 0 && student.balance < amount,
+      );
+  const skippedStudents = isAdding
+    ? []
+    : students.filter((student) => student.balance <= 0);
+
+  return (
+    <section
+      aria-live="polite"
+      className="border-t border-border-subtle pt-3"
+    >
+      <p className="text-sm text-text-control">
+        <span className="font-semibold">{isAdding ? "Add" : "Take"}</span>{" "}
+        <span className="font-number font-semibold">{formatAmount(amount)}</span>{" "}
+        {currencyName} {isAdding ? "to" : "from"}{" "}
+        <span className="font-semibold">
+          {students.length} student{students.length === 1 ? "" : "s"}
+        </span>
+        :{" "}
+        <span className="font-number font-semibold text-brand-ink">
+          {formatAmount(totalImpact)}
+        </span>{" "}
+        {currencyName} total.
+      </p>
+
+      {partialStudents.length > 0 && (
+        <details className="mt-2 rounded-md border border-warning-border bg-warning-soft px-3 py-2 text-sm">
+          <summary className="cursor-pointer font-semibold text-warning">
+            {partialStudents.length} student
+            {partialStudents.length === 1 ? " has" : "s have"} insufficient
+            balance for the full amount
+          </summary>
+          <ul className="mt-2 max-h-32 space-y-1 overflow-y-auto text-text-control">
+            {partialStudents.map((student) => (
+              <li className="flex justify-between gap-3" key={student.id}>
+                <span className="truncate">{student.displayName}</span>
+                <span className="shrink-0 font-number text-text-muted">
+                  {formatAmount(student.balance)} available
+                </span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+
+      {skippedStudents.length > 0 && (
+        <p className="mt-2 text-xs font-medium text-text-muted">
+          {skippedStudents.length} student
+          {skippedStudents.length === 1 ? " has" : "s have"} no available
+          balance and will be skipped.
+        </p>
+      )}
+    </section>
+  );
+}
+
 function AdjustmentFormActions({
   canSubmit,
   direction,
@@ -708,6 +854,26 @@ function getPreferredStudents(
   }
 
   return preferredStudent ? [preferredStudent] : [];
+}
+
+function getAffectedStudents({
+  groupMemberIds,
+  selectedStudents,
+  studentBalances,
+  target,
+}: {
+  groupMemberIds: string[];
+  selectedStudents: StudentListItem[];
+  studentBalances: StudentBalanceItem[];
+  target: AdjustmentTarget;
+}) {
+  const affectedIds = new Set(
+    target === "group"
+      ? groupMemberIds
+      : selectedStudents.map((student) => student.id),
+  );
+
+  return studentBalances.filter((student) => affectedIds.has(student.id));
 }
 
 function shouldLoadGroups(

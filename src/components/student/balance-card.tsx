@@ -4,7 +4,6 @@ import {
   ArrowDownIcon,
   ArrowUpIcon,
   MinusIcon,
-  PencilIcon,
 } from "@/components/ui/icons";
 import { CreditActionControl } from "@/components/ui/credit-action-control";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -43,36 +42,41 @@ export function StudentBalanceCard({
   const hasActions = Boolean(onAdjust || onQuickAdd || onQuickRemove);
 
   return (
-    <article className="group min-w-0 rounded-xl border border-border-subtle bg-surface p-3 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md sm:p-4">
-      <div className="flex min-w-0 items-start gap-2.5 sm:gap-3">
-        <UserAvatar
-          displayName={student.displayName}
-          imageUrl={student.profileImageUrl}
-          size="md"
-          tone="neutral"
-        />
-        <div className="min-w-0 flex-1">
-          <h3 className="truncate text-sm font-semibold text-foreground">
-            {student.displayName}
-          </h3>
-          <p className="truncate text-xs text-text-muted">@{student.username}</p>
+    <article className="group flex min-w-0 flex-col overflow-hidden rounded-xl border border-border-subtle bg-surface shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md">
+      <div className="flex-1 p-3 sm:p-4">
+        <div className="flex min-w-0 items-start gap-2.5 sm:gap-3">
+          <UserAvatar
+            displayName={student.displayName}
+            imageUrl={student.profileImageUrl}
+            size="md"
+            tone="neutral"
+          />
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate text-sm font-semibold text-foreground">
+              {student.displayName}
+            </h3>
+            <p className="truncate text-xs text-text-muted">@{student.username}</p>
+          </div>
+          <RecentTrend amount={student.recentChange ?? 0} />
         </div>
-        <RecentTrend amount={student.recentChange ?? 0} />
+
+        <div className="mt-4">
+          <BalanceAmount
+            amount={student.balance}
+            currencyName={currencyName}
+          />
+        </div>
       </div>
 
-      <div className="mt-4">
-        <BalanceAmount
-          amount={student.balance}
-          currencyName={currencyName}
-        />
-
-        {hasActions && (
-          <div className="mt-4 space-y-2">
-            {(onQuickAdd || onQuickRemove) && (
-              <CreditActionControl
+      {hasActions && (
+        <footer className="mt-auto">
+          {(onQuickAdd || onQuickRemove || onAdjust) && (
+            <CreditActionControl
                 addAriaLabel={`Quick add ${quickAddAmount ?? "credits"} to ${student.displayName}`}
                 addLabel={quickAddAmount ? formatAmount(quickAddAmount) : "Add"}
+                adjustAriaLabel={`Adjust credits for ${student.displayName}`}
                 amountLabels
+                flush
                 fullWidth
                 onAdd={
                   onQuickAdd && !isQuickActionPending
@@ -84,6 +88,7 @@ export function StudentBalanceCard({
                     ? () => onQuickRemove(student)
                     : undefined
                 }
+                onAdjust={onAdjust ? () => onAdjust(student) : undefined}
                 removeAriaLabel={`Quick remove ${quickRemoveAmount ?? "credits"} from ${student.displayName}`}
                 removeLabel={
                   quickRemoveAmount
@@ -91,23 +96,10 @@ export function StudentBalanceCard({
                     : "Remove"
                 }
                 solid
-              />
-            )}
-            {onAdjust && (
-              <button
-                aria-label={`Adjust credits for ${student.displayName}`}
-                className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-button-border bg-surface px-3 text-xs font-semibold text-text-control transition hover:border-border-strong hover:bg-panel-soft"
-                onClick={() => onAdjust(student)}
-                title={`Adjust credits for ${student.displayName}`}
-                type="button"
-              >
-                <PencilIcon className="h-3.5 w-3.5" />
-                <span>Adjust credits</span>
-              </button>
-            )}
-          </div>
-        )}
-      </div>
+            />
+          )}
+        </footer>
+      )}
     </article>
   );
 }
@@ -116,11 +108,11 @@ function RecentTrend({ amount }: { amount: number }) {
   const isPositive = amount > 0;
   const isNegative = amount < 0;
   const Icon = isPositive ? ArrowUpIcon : isNegative ? ArrowDownIcon : MinusIcon;
-  const textClassName = isPositive
-    ? "text-success"
+  const toneClassName = isPositive
+    ? "bg-[#E8F5EE] text-[#166534]"
     : isNegative
-      ? "text-danger"
-      : "text-text-muted";
+      ? "bg-[#FEECEC] text-[#991B1B]"
+      : "bg-panel-soft text-text-muted";
   const trendLabel = isPositive
     ? `+${formatAmount(amount)} over the last 7 days`
     : isNegative
@@ -129,7 +121,7 @@ function RecentTrend({ amount }: { amount: number }) {
 
   return (
     <p
-      className={`flex shrink-0 items-center gap-1 rounded-full bg-panel-soft px-2 py-1 text-[11px] font-semibold ${textClassName}`}
+      className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold ${toneClassName}`}
       title={trendLabel}
     >
       <Icon className="h-3 w-3 shrink-0" />
