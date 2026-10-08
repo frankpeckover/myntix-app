@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { resolveActionTone } from "@/components/ui/action-tone";
 import { ModalShell } from "@/components/ui/modal-shell";
 
 type ConfirmationTone = "danger" | "primary" | "success";
@@ -28,9 +29,10 @@ export function ConfirmationModal({
   tone = "danger",
   children,
 }: ConfirmationModalProps) {
-  const confirmClassName = tone === "danger"
+  const resolvedTone = resolveActionTone(confirmLabel, tone);
+  const confirmClassName = resolvedTone === "danger"
     ? "bg-danger-strong text-white hover:bg-danger"
-    : tone === "success"
+    : resolvedTone === "success"
       ? "bg-success-fill text-success-foreground hover:bg-success-hover"
       : "bg-brand text-white hover:bg-brand-hover";
 

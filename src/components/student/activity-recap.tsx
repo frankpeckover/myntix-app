@@ -77,9 +77,9 @@ export function StudentActivityRecap({
             <p
               className={`font-number text-2xl font-semibold leading-none ${
                 weeklyNet > 0
-                  ? "text-success-text"
+                  ? "text-positive-ink"
                   : weeklyNet < 0
-                    ? "text-danger-strong"
+                    ? "text-negative-ink"
                     : "text-text-control"
               }`}
             >
@@ -160,11 +160,19 @@ function WeekdayMovementChart({
                   day.isFuture
                     ? "var(--border-muted)"
                     : day.net >= 0
-                      ? "var(--success)"
-                      : "var(--danger)"
+                      ? "var(--positive-fill)"
+                      : "var(--negative-fill)"
                 }
                 fillOpacity={day.isFuture ? 0.6 : 1}
                 key={day.timestamp}
+                stroke={
+                  day.isFuture
+                    ? "var(--border-muted)"
+                    : day.net >= 0
+                      ? "var(--positive-ink)"
+                      : "var(--negative-ink)"
+                }
+                strokeWidth={day.isFuture ? 0 : 1}
               />
             ))}
           </Bar>
@@ -190,11 +198,11 @@ function MovementTooltip({
       <p className="font-semibold text-text-control">{day.day}</p>
       <div className="mt-2 grid grid-cols-[auto_auto] gap-x-4 gap-y-1">
         <span className="text-text-muted">Earned</span>
-        <span className="text-right font-medium text-success-text">
+        <span className="text-right font-medium text-positive-ink">
           +{formatAmount(day.earned)}
         </span>
         <span className="text-text-muted">Outgoing</span>
-        <span className="text-right font-medium text-danger-strong">
+        <span className="text-right font-medium text-negative-ink">
           -{formatAmount(day.outgoing)}
         </span>
         <span className="border-t border-border-subtle pt-1 text-text-control">

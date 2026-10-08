@@ -49,9 +49,9 @@ export async function updateTimetableEntry(input: UpdateTimetableEntryInput) {
   return timetableService.updateEntry(input, currentUser);
 }
 
-export async function deleteTimetableEntry(entryId: string) {
+export async function setTimetableEntryActive(entryId: string, isActive: boolean) {
   const currentUser = await requireAdmin();
-  return timetableService.deleteEntry(entryId, currentUser);
+  return timetableService.setEntryActive(entryId, isActive, currentUser);
 }
 
 export async function getCurrentTeacherClass() {

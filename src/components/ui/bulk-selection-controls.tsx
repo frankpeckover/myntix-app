@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import {
-  TableActionMenu,
   type TableActionMenuItem,
 } from "@/components/ui/table-action-menu";
+import { IconButton } from "@/components/ui/icon-button";
 
 type BulkSelectionControlsProps = {
   actions: TableActionMenuItem[];
@@ -40,10 +40,20 @@ export function BulkSelectionControls({
       <span className="text-xs text-text-muted">
         {selectedCount} selected
       </span>
-      <TableActionMenu
-        items={actions}
-        label="Open bulk actions"
-      />
+      <div className="flex flex-wrap items-center gap-2">
+        {actions.map((action) => (
+          <IconButton
+            disabled={action.disabled}
+            key={action.label}
+            label={action.label}
+            onClick={action.onSelect}
+            text={action.label}
+            tone={action.tone ?? "default"}
+          >
+            {action.icon}
+          </IconButton>
+        ))}
+      </div>
         </>
       )}
     </div>
@@ -52,12 +62,14 @@ export function BulkSelectionControls({
 
 type RowSelectionCheckboxProps = {
   checked: boolean;
+  disabled?: boolean;
   label: string;
   onChange: (checked: boolean) => void;
 };
 
 export function RowSelectionCheckbox({
   checked,
+  disabled = false,
   label,
   onChange,
 }: RowSelectionCheckboxProps) {
@@ -66,6 +78,7 @@ export function RowSelectionCheckbox({
       aria-label={label}
       checked={checked}
       className="h-4 w-4 shrink-0 rounded-sm border border-border-strong bg-surface accent-[var(--color-brand)]"
+      disabled={disabled}
       onChange={(event) => onChange(event.target.checked)}
       type="checkbox"
     />

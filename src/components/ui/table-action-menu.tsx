@@ -2,6 +2,10 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import {
+  type ActionTone,
+  resolveActionTone,
+} from "@/components/ui/action-tone";
 import { MoreVerticalIcon } from "@/components/ui/icons";
 import { useMenuKeyboard } from "@/components/ui/use-menu-keyboard";
 
@@ -10,7 +14,7 @@ export type TableActionMenuItem = {
   icon?: ReactNode;
   label: string;
   onSelect: () => void;
-  tone?: "default" | "danger" | "primary" | "success";
+  tone?: ActionTone;
 };
 
 type TableActionMenuProps = {
@@ -105,7 +109,7 @@ export function TableActionMenu({
           {visibleItems.map((item) => (
             <button
               className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                itemToneClassNames[item.tone ?? "default"]
+                itemToneClassNames[resolveActionTone(item.label, item.tone)]
               }`}
               disabled={item.disabled}
               key={item.label}

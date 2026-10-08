@@ -434,8 +434,9 @@ export class TimetableService {
     }
   }
 
-  async deleteEntry(
+  async setEntryActive(
     entryId: string,
+    isActive: boolean,
     currentUser: SessionUser,
   ): Promise<ActionResult> {
     if (!entryId) {
@@ -448,10 +449,11 @@ export class TimetableService {
     try {
       const result = await db.query(
         `
-          delete from timetable_entries
+          update timetable_entries
+          set is_active = $2
           where id = $1
         `,
-        [entryId],
+        [entryId, isActive],
       );
 
       if (result.rowCount === 0) {
@@ -462,7 +464,9 @@ export class TimetableService {
       }
 
       await auditService.log({
-        action: "timetable_entry.deleted",
+        action: isActive
+          ? "timetable_entry.restored"
+          : "timetable_entry.archived",
         actorUserId: currentUser.id,
         entityId: entryId,
         entityType: "timetable_entry",
@@ -470,11 +474,11 @@ export class TimetableService {
 
       return { ok: true };
     } catch (error) {
-      console.error("Delete timetable entry failed", error);
+      console.error("Change timetable entry status failed", error);
 
       return {
         ok: false,
-        message: "Could not delete timetable entry.",
+        message: `Could not ${isActive ? "restore" : "archive"} timetable entry.`,
       };
     }
   }

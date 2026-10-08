@@ -536,8 +536,10 @@ function NetMovementChart({
           >
             {trend.map((point) => (
               <Cell
-                fill={point.net >= 0 ? "var(--success)" : "var(--danger)"}
+                fill={point.net >= 0 ? "var(--positive-fill)" : "var(--negative-fill)"}
                 key={point.timestamp}
+                stroke={point.net >= 0 ? "var(--positive-ink)" : "var(--negative-ink)"}
+                strokeWidth={1}
               />
             ))}
           </Bar>
@@ -1125,16 +1127,16 @@ function PurchaseTrendChart({
             radius={[7, 7, 2, 2]}
           />
           <Bar
-            activeBar={{ fill: "var(--success-hover)" }}
+            activeBar={{ fill: "var(--positive-border)" }}
             dataKey="approvedPurchases"
-            fill="var(--success)"
+            fill="var(--positive-fill)"
             name="Approved"
             radius={[7, 7, 2, 2]}
           />
           <Bar
-            activeBar={{ fill: "var(--danger-strong)" }}
+            activeBar={{ fill: "var(--negative-border)" }}
             dataKey="deniedPurchases"
-            fill="var(--danger)"
+            fill="var(--negative-fill)"
             name="Denied"
             radius={[7, 7, 2, 2]}
           />

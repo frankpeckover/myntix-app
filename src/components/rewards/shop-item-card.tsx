@@ -171,7 +171,7 @@ function ShopItemActions({
       </IconButton>
       {item.isActive && (
         <IconButton
-          label={`Remove ${item.name}`}
+          label={`Archive ${item.name}`}
           onClick={() => onRemove(item.id)}
           tone="danger"
         >

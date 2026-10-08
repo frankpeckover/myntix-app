@@ -4,19 +4,24 @@ import {
   type UserFilters,
   userRoles,
 } from "@/components/admin/users/user-management-types";
-import { CheckIcon, CopyIcon, KeyIcon, PencilIcon, XIcon } from "@/components/ui/icons";
+import { CheckIcon, CopyIcon, KeyIcon, PencilIcon, TrashIcon } from "@/components/ui/icons";
 import {
   MobileSelectionShell,
   RowSelectionCheckbox,
 } from "@/components/ui/bulk-selection-controls";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { TableActionMenu } from "@/components/ui/table-action-menu";
+import { TableActionGrid } from "@/components/ui/table-action-grid";
 import {
   TableHeaderFilter,
   TableHeaderFilterInput,
   TableHeaderFilterSelect,
 } from "@/components/ui/table-header-filter";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import {
+  DataTable,
+  DataTableSelectionCell,
+  DataTableSelectionHeader,
+} from "@/components/ui/data-table";
 import { formatDateTime } from "@/lib/presentation/formatters";
 import type { UserListItem } from "@/domains/users/user-service";
 
@@ -79,30 +84,28 @@ export function UsersTable({
       </div>
 
       {toolbar && <div className="hidden md:block">{toolbar}</div>}
-      <table aria-label="Users" className="hidden w-full table-fixed border-collapse text-left text-sm md:table">
+      <DataTable ariaLabel="Users" responsive="desktop">
         <colgroup>
           <col className="w-10" />
-          <col className="w-[24%]" />
-          <col className="w-[14%]" />
-          <col className="w-[23%]" />
-          <col className="w-[10%]" />
-          <col className="w-[14%]" />
-          <col className="w-[7%]" />
-          <col className="w-12" />
+          <col className="w-[22%]" />
+          <col className="w-[15%]" />
+          <col />
+          <col className="w-24" />
+          <col className="w-36" />
+          <col className="w-24" />
+          <col className="w-32" />
         </colgroup>
         <thead>
           <tr className="border-b border-border-subtle text-text-muted">
-            <th scope="col" className="py-3 pr-3 font-semibold">
-              <RowSelectionCheckbox
-                checked={areAllVisibleUsersSelected}
-                label={
-                  areAllVisibleUsersSelected
-                    ? "Clear selected users"
-                    : "Select all users"
-                }
-                onChange={onVisibleUsersSelectionChange}
-              />
-            </th>
+            <DataTableSelectionHeader
+              checked={areAllVisibleUsersSelected}
+              label={
+                areAllVisibleUsersSelected
+                  ? "Clear selected users"
+                  : "Select all users"
+              }
+              onChange={onVisibleUsersSelectionChange}
+            />
             <th scope="col" className="py-3 pr-4 font-semibold">
               <TableHeaderFilter
                 isActive={Boolean(filters.firstName || filters.lastName)}
@@ -207,7 +210,7 @@ export function UsersTable({
                   }
                   options={[
                     { label: "Active only", value: "activeOnly" },
-                    { label: "Include inactive", value: "includeInactive" },
+                    { label: "Include archived", value: "includeInactive" },
                   ]}
                   value={showInactiveUsers ? "includeInactive" : "activeOnly"}
                 />
@@ -221,15 +224,13 @@ export function UsersTable({
         <tbody>
           {users.map((user) => (
             <tr className="border-b border-border-subtle" key={user.id}>
-              <td className="py-3 pr-3">
-                <RowSelectionCheckbox
-                  checked={selectedUserIds.includes(user.id)}
-                  label={`Select ${user.displayName}`}
-                  onChange={(isSelected) =>
-                    onUserSelectionChange(user.id, isSelected)
-                  }
-                />
-              </td>
+              <DataTableSelectionCell
+                checked={selectedUserIds.includes(user.id)}
+                label={`Select ${user.displayName}`}
+                onChange={(isSelected) =>
+                  onUserSelectionChange(user.id, isSelected)
+                }
+              />
               <td className="py-3 pr-4">
                 <UserIdentity user={user} />
               </td>
@@ -254,7 +255,7 @@ export function UsersTable({
             </tr>
           ))}
         </tbody>
-      </table>
+      </DataTable>
     </>
   );
 }
@@ -335,7 +336,7 @@ function UserActions({
   user: UserListItem;
 }) {
   return (
-    <TableActionMenu
+    <TableActionGrid
       label={`Open actions for ${user.displayName}`}
       items={[
         {
@@ -354,8 +355,8 @@ function UserActions({
           onSelect: () => onPasswordReset(user),
         },
         {
-          icon: user.isActive ? <XIcon /> : <CheckIcon />,
-          label: user.isActive ? "Disable" : "Enable",
+          icon: user.isActive ? <TrashIcon /> : <CheckIcon />,
+          label: user.isActive ? "Archive" : "Restore",
           onSelect: () => onUserActiveChange(user, !user.isActive),
           tone: user.isActive ? "danger" : "success",
         },
@@ -383,7 +384,7 @@ function formatLastActivity(value: string | null) {
 function UserStatusBadge({ isActive }: { isActive: boolean }) {
   return (
     <StatusBadge
-      label={isActive ? "Active" : "Inactive"}
+      label={isActive ? "Active" : "Archived"}
       tone={isActive ? "success" : "danger"}
     />
   );

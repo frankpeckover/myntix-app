@@ -6,6 +6,7 @@ import {
   CopyIcon,
   EyeIcon,
   PencilIcon,
+  TrashIcon,
   UsersIcon,
   XIcon,
 } from "@/components/ui/icons";
@@ -21,13 +22,18 @@ import {
   usePagedList,
 } from "@/components/ui/list-pagination";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { TableActionMenu } from "@/components/ui/table-action-menu";
+import { TableActionGrid } from "@/components/ui/table-action-grid";
 import {
   TableHeaderFilter,
   TableHeaderFilterInput,
   TableHeaderFilterSelect,
 } from "@/components/ui/table-header-filter";
 import type { GroupListItem } from "@/domains/groups/group-service";
+import {
+  DataTable,
+  DataTableSelectionCell,
+  DataTableSelectionHeader,
+} from "@/components/ui/data-table";
 
 type GroupFilters = {
   description: string;
@@ -216,28 +222,26 @@ function GroupList({
       </div>
 
       {toolbar && <div className="hidden md:block">{toolbar}</div>}
-      <table aria-label="Groups" className="hidden w-full table-fixed border-collapse text-left text-sm md:table">
+      <DataTable ariaLabel="Groups" responsive="desktop">
         <colgroup>
           <col className="w-10" />
           <col className="w-[28%]" />
-          <col className="w-[38%]" />
-          <col className="w-[12%]" />
-          <col className="w-[10%]" />
-          <col className="w-12" />
+          <col />
+          <col className="w-28" />
+          <col className="w-24" />
+          <col className="w-32" />
         </colgroup>
         <thead>
           <tr className="border-b border-border-subtle text-text-muted">
-            <th scope="col" className="py-2 pr-3 font-semibold">
-              <RowSelectionCheckbox
-                checked={areAllVisibleGroupsSelected}
-                label={
-                  areAllVisibleGroupsSelected
-                    ? "Clear selected groups"
-                    : "Select all groups"
-                }
-                onChange={onVisibleGroupsSelectionChange}
-              />
-            </th>
+            <DataTableSelectionHeader
+              checked={areAllVisibleGroupsSelected}
+              label={
+                areAllVisibleGroupsSelected
+                  ? "Clear selected groups"
+                  : "Select all groups"
+              }
+              onChange={onVisibleGroupsSelectionChange}
+            />
             <th scope="col" className="py-2 pr-4 font-semibold">
               <TableHeaderFilter
                 isActive={Boolean(filters.name)}
@@ -264,7 +268,7 @@ function GroupList({
                 />
               </TableHeaderFilter>
             </th>
-            <th scope="col" className="py-2 pr-4 font-semibold">
+            <th scope="col" className="py-2 pr-4 text-right font-semibold">
               <TableHeaderFilter
                 isActive={Boolean(filters.memberMin || filters.memberMax)}
                 label="Members"
@@ -324,20 +328,18 @@ function GroupList({
               }`}
               key={group.id}
             >
-              <td className="py-3 pr-3">
-                <RowSelectionCheckbox
-                  checked={selectedGroupIds.includes(group.id)}
-                  label={`Select ${group.name}`}
-                  onChange={(isSelected) =>
-                    onGroupSelectionChange(group.id, isSelected)
-                  }
-                />
-              </td>
+              <DataTableSelectionCell
+                checked={selectedGroupIds.includes(group.id)}
+                label={`Select ${group.name}`}
+                onChange={(isSelected) =>
+                  onGroupSelectionChange(group.id, isSelected)
+                }
+              />
               <td className="py-3 pr-4 font-semibold">{group.name}</td>
               <td className="py-3 pr-4 text-text-muted">
                 {group.description || "-"}
               </td>
-              <td className="py-3 pr-4 text-text-muted">
+              <td className="py-3 pr-4 text-right text-text-muted">
                 {group.memberCount}
               </td>
               <td className="py-3 pr-4">
@@ -356,7 +358,7 @@ function GroupList({
             </tr>
           ))}
         </tbody>
-      </table>
+      </DataTable>
     </>
   );
 }
@@ -446,7 +448,7 @@ function GroupActions({
   onGroupStatusChange: (group: GroupListItem) => void;
 }) {
   return (
-    <TableActionMenu
+    <TableActionGrid
       label={`Open actions for ${group.name}`}
       items={[
         {
@@ -470,8 +472,8 @@ function GroupActions({
           onSelect: () => onEditMembers(group),
         },
         {
-          icon: group.isActive ? <XIcon /> : <CheckIcon />,
-          label: group.isActive ? "Archive" : "Reactivate",
+          icon: group.isActive ? <TrashIcon /> : <CheckIcon />,
+          label: group.isActive ? "Archive" : "Restore",
           onSelect: () => onGroupStatusChange(group),
           tone: group.isActive ? "danger" : "success",
         },

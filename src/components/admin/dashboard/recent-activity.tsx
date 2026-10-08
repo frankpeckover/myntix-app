@@ -5,6 +5,7 @@ import { getSignedAmountTextClassName } from "@/lib/presentation/amount-style";
 import { formatDateTime, formatSignedCurrencyAmount } from "@/lib/presentation/formatters";
 import type { AuditLogItem } from "@/domains/audit/audit-service";
 import type { AdminDashboardEntry } from "@/domains/analytics/admin-dashboard-service";
+import { DataTable } from "@/components/ui/data-table";
 
 export function RecentLedgerActivity({
   currencyName,
@@ -63,8 +64,8 @@ function RecentAuditList({ entries }: { entries: AuditLogItem[] }) {
         ))}
       </div>
 
-      <div className="hidden w-full min-w-0 max-w-full overflow-x-auto md:block">
-        <table aria-label="Recent audit activity" className="admin-recent-activity-table w-full min-w-[460px] table-fixed border-collapse text-left text-sm">
+      <div className="hidden w-full min-w-0 max-w-full overflow-x-clip md:block">
+        <DataTable ariaLabel="Recent audit activity" className="admin-recent-activity-table min-w-[460px]">
           <thead>
             <tr className="border-b border-border-subtle text-text-muted">
               <th scope="col" className="py-2 pr-4 font-semibold">Time</th>
@@ -87,7 +88,7 @@ function RecentAuditList({ entries }: { entries: AuditLogItem[] }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </DataTable>
       </div>
     </>
   );
@@ -128,8 +129,8 @@ function RecentLedgerList({
         ))}
       </div>
 
-      <div className="hidden w-full min-w-0 max-w-full overflow-x-auto md:block">
-        <table aria-label="Recent ledger entries" className="admin-recent-activity-table w-full min-w-full table-fixed border-collapse text-left text-sm">
+      <div className="hidden w-full min-w-0 max-w-full overflow-x-clip md:block">
+        <DataTable ariaLabel="Recent ledger entries" className="admin-recent-activity-table min-w-full">
           <colgroup>
             <col className="w-[24%]" />
             <col className="w-[46%]" />
@@ -170,7 +171,7 @@ function RecentLedgerList({
               </tr>
             ))}
           </tbody>
-        </table>
+        </DataTable>
       </div>
     </>
   );

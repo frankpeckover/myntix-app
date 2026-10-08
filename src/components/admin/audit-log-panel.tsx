@@ -20,11 +20,13 @@ import {
 import { ModalShell } from "@/components/ui/modal-shell";
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
 import { TableActionMenu } from "@/components/ui/table-action-menu";
+import { TableActionGrid } from "@/components/ui/table-action-grid";
 import {
   TableHeaderFilter,
   TableHeaderFilterInput,
 } from "@/components/ui/table-header-filter";
 import { TableToolbar } from "@/components/ui/table-toolbar";
+import { DataTable } from "@/components/ui/data-table";
 
 type AuditFilters = {
   action: string;
@@ -205,9 +207,9 @@ function AuditLogList({
         ))}
       </div>
 
-      <div className="hidden w-full min-w-0 max-w-full overflow-x-auto md:block">
+      <div className="hidden w-full min-w-0 max-w-full overflow-x-clip md:block">
         {toolbar}
-        <table aria-label="Audit log" className="w-full min-w-[760px] table-fixed border-collapse text-left text-sm">
+        <DataTable ariaLabel="Audit log" className="min-w-[760px]">
           <colgroup>
             <col className="w-[17%]" />
             <col className="w-[15%]" />
@@ -298,7 +300,7 @@ function AuditLogList({
                   {formatDetails(entry.details)}
                 </td>
                 <td className="py-3 text-right">
-                  <TableActionMenu
+                  <TableActionGrid
                     label="Open audit event actions"
                     items={[
                       {
@@ -312,7 +314,7 @@ function AuditLogList({
               </tr>
             ))}
           </tbody>
-        </table>
+        </DataTable>
       </div>
     </>
   );

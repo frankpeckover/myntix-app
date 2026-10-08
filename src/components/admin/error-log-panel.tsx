@@ -17,12 +17,13 @@ import {
   usePagedList,
 } from "@/components/ui/list-pagination";
 import { ModalShell } from "@/components/ui/modal-shell";
-import { TableActionMenu } from "@/components/ui/table-action-menu";
+import { TableActionGrid } from "@/components/ui/table-action-grid";
 import {
   TableHeaderFilter,
   TableHeaderFilterInput,
 } from "@/components/ui/table-header-filter";
 import { TableToolbar } from "@/components/ui/table-toolbar";
+import { DataTable } from "@/components/ui/data-table";
 
 type ErrorFilters = {
   message: string;
@@ -184,9 +185,9 @@ function ErrorLogList({
         ))}
       </div>
 
-      <div className="hidden w-full min-w-0 max-w-full overflow-x-auto md:block">
+      <div className="hidden w-full min-w-0 max-w-full overflow-x-clip md:block">
         {toolbar}
-        <table aria-label="Error log" className="w-full min-w-[760px] table-fixed border-collapse text-left text-sm">
+        <DataTable ariaLabel="Error log" className="min-w-[760px]">
           <colgroup>
             <col className="w-[18%]" />
             <col className="w-[28%]" />
@@ -240,7 +241,7 @@ function ErrorLogList({
                   {entry.message}
                 </td>
                 <td className="py-3 text-right">
-                  <TableActionMenu
+                  <TableActionGrid
                     label="Open error actions"
                     items={[
                       {
@@ -254,7 +255,7 @@ function ErrorLogList({
               </tr>
             ))}
           </tbody>
-        </table>
+        </DataTable>
       </div>
     </>
   );

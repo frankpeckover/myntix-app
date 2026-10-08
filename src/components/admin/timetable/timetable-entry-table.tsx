@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
 import { weekDays } from "@/components/admin/timetable/timetable-constants";
-import { CopyIcon, PencilIcon, TrashIcon } from "@/components/ui/icons";
+import { CheckIcon, CopyIcon, PencilIcon, TrashIcon } from "@/components/ui/icons";
 import {
   MobileSelectionShell,
   RowSelectionCheckbox,
 } from "@/components/ui/bulk-selection-controls";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { TableActionMenu } from "@/components/ui/table-action-menu";
+import { TableActionGrid } from "@/components/ui/table-action-grid";
 import {
   TableHeaderFilter,
   TableHeaderFilterInput,
@@ -14,6 +14,11 @@ import {
 } from "@/components/ui/table-header-filter";
 import type { TimetableFiltersState } from "@/components/admin/timetable/timetable-types";
 import type { TimetableEntry } from "@/domains/timetable/timetable-service";
+import {
+  DataTable,
+  DataTableSelectionCell,
+  DataTableSelectionHeader,
+} from "@/components/ui/data-table";
 
 export function TimetableEntryTable({
   entries,
@@ -66,29 +71,27 @@ export function TimetableEntryTable({
       </div>
 
       {toolbar && <div className="hidden md:block">{toolbar}</div>}
-      <table aria-label="Timetable entries" className="hidden w-full table-fixed border-collapse text-left text-sm md:table">
+      <DataTable ariaLabel="Timetable entries" responsive="desktop">
         <colgroup>
           <col className="w-10" />
           <col className="w-[26%]" />
-          <col className="w-[26%]" />
-          <col className="w-[14%]" />
-          <col className="w-[16%]" />
-          <col className="w-[8%]" />
-          <col className="w-12" />
+          <col />
+          <col className="w-28" />
+          <col className="w-32" />
+          <col className="w-24" />
+          <col className="w-32" />
         </colgroup>
         <thead>
           <tr className="border-b border-border-subtle text-text-muted">
-            <th scope="col" className="py-2 pr-3 font-semibold">
-              <RowSelectionCheckbox
-                checked={areAllVisibleEntriesSelected}
-                label={
-                  areAllVisibleEntriesSelected
-                    ? "Clear selected timetable entries"
-                    : "Select all timetable entries"
-                }
-                onChange={onVisibleEntriesSelectionChange}
-              />
-            </th>
+            <DataTableSelectionHeader
+              checked={areAllVisibleEntriesSelected}
+              label={
+                areAllVisibleEntriesSelected
+                  ? "Clear selected timetable entries"
+                  : "Select all timetable entries"
+              }
+              onChange={onVisibleEntriesSelectionChange}
+            />
             <th scope="col" className="py-2 pr-4 font-semibold">
               <TableHeaderFilter
                 isActive={Boolean(filters.groupName)}
@@ -164,15 +167,13 @@ export function TimetableEntryTable({
         <tbody>
           {entries.map((entry) => (
             <tr className="border-b border-border-subtle" key={entry.id}>
-              <td className="py-3 pr-3">
-                <RowSelectionCheckbox
-                  checked={selectedEntryIds.includes(entry.id)}
-                  label={`Select ${entry.groupName} timetable entry`}
-                  onChange={(isSelected) =>
-                    onEntrySelectionChange(entry.id, isSelected)
-                  }
-                />
-              </td>
+              <DataTableSelectionCell
+                checked={selectedEntryIds.includes(entry.id)}
+                label={`Select ${entry.groupName} timetable entry`}
+                onChange={(isSelected) =>
+                  onEntrySelectionChange(entry.id, isSelected)
+                }
+              />
               <td className="py-3 pr-4 font-semibold">{entry.groupName}</td>
               <td className="py-3 pr-4 text-text-muted">{entry.teacherName}</td>
               <td className="py-3 pr-4 text-text-muted">
@@ -196,7 +197,7 @@ export function TimetableEntryTable({
             </tr>
           ))}
         </tbody>
-      </table>
+      </DataTable>
     </>
   );
 }
@@ -265,7 +266,7 @@ function TimetableActions({
   onEditEntry: (entry: TimetableEntry) => void;
 }) {
   return (
-    <TableActionMenu
+    <TableActionGrid
       label={`Open actions for ${entry.groupName}`}
       items={[
         {
@@ -279,10 +280,10 @@ function TimetableActions({
           onSelect: () => onDuplicateEntry(entry),
         },
         {
-          icon: <TrashIcon />,
-          label: "Delete",
+          icon: entry.isActive ? <TrashIcon /> : <CheckIcon />,
+          label: entry.isActive ? "Archive" : "Restore",
           onSelect: () => onDeleteEntry(entry),
-          tone: "danger",
+          tone: entry.isActive ? "danger" : "success",
         },
       ]}
     />

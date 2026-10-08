@@ -37,7 +37,7 @@ import { TableActionMenu } from "@/components/ui/table-action-menu";
 import { TableToolbar } from "@/components/ui/table-toolbar";
 import {
   createTimetableEntry,
-  deleteTimetableEntry,
+  setTimetableEntryActive,
   listGroups,
   listTimetableEntries,
   listTimetableTeachers,
@@ -209,7 +209,11 @@ export function AdminTimetablePanel() {
       return;
     }
 
-    const result = await deleteTimetableEntry(deletingEntry.id);
+    const nextActiveState = !deletingEntry.isActive;
+    const result = await setTimetableEntryActive(
+      deletingEntry.id,
+      nextActiveState,
+    );
 
     if (!result.ok) {
       setError(result.message);
@@ -217,7 +221,7 @@ export function AdminTimetablePanel() {
     }
 
     setDeletingEntry(null);
-    setMessage("Timetable entry deleted.");
+    setMessage(`Timetable entry ${nextActiveState ? "restored" : "archived"}.`);
     setError(null);
     await refreshTimetable();
   }
@@ -228,7 +232,7 @@ export function AdminTimetablePanel() {
     }
 
     for (const entryId of deletingEntryIds) {
-      const result = await deleteTimetableEntry(entryId);
+      const result = await setTimetableEntryActive(entryId, false);
 
       if (!result.ok) {
         setError(result.message);
@@ -236,9 +240,10 @@ export function AdminTimetablePanel() {
       }
     }
 
+    const archivedCount = deletingEntryIds.length;
     setDeletingEntryIds([]);
     setSelectedEntryIds([]);
-    setMessage(`${deletingEntryIds.length} timetable entries deleted.`);
+    setMessage(`${archivedCount} timetable entries archived.`);
     setError(null);
     await refreshTimetable();
   }
@@ -373,21 +378,22 @@ export function AdminTimetablePanel() {
 
       {deletingEntry && (
         <ConfirmationModal
-          confirmLabel="Delete Entry"
-          description={`Delete ${deletingEntry.groupName} with ${deletingEntry.teacherName} on ${weekDays[deletingEntry.dayOfWeek]}?`}
+          confirmLabel={deletingEntry.isActive ? "Archive Entry" : "Restore Entry"}
+          description={`${deletingEntry.isActive ? "Archive" : "Restore"} ${deletingEntry.groupName} with ${deletingEntry.teacherName} on ${weekDays[deletingEntry.dayOfWeek]}?`}
           onCancel={() => setDeletingEntry(null)}
           onConfirm={confirmDeleteEntry}
-          title="Delete timetable entry"
+          title={deletingEntry.isActive ? "Archive timetable entry" : "Restore timetable entry"}
+          tone={deletingEntry.isActive ? "danger" : "success"}
         />
       )}
 
       {deletingEntryIds.length > 0 && (
         <ConfirmationModal
-          confirmLabel="Delete Entries"
-          description={`Delete ${deletingEntryIds.length} selected timetable entries?`}
+          confirmLabel="Archive Entries"
+          description={`Archive ${deletingEntryIds.length} selected timetable entries?`}
           onCancel={() => setDeletingEntryIds([])}
           onConfirm={confirmBulkDeleteEntries}
-          title="Delete selected timetable entries"
+          title="Archive selected timetable entries"
           tone="danger"
         />
       )}
@@ -495,7 +501,7 @@ export function AdminTimetablePanel() {
                       actions={[
                         {
                           icon: <TrashIcon />,
-                          label: "Delete selected",
+                          label: "Archive selected",
                           onSelect: () => setDeletingEntryIds(selectedEntryIds),
                           tone: "danger",
                         },

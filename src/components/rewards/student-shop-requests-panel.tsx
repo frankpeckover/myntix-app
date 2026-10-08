@@ -173,7 +173,7 @@ function StudentRequestStatusBadge({
 
 function getRequestStatusLabel(request: StudentShopRequest) {
   if (request.isVoided) {
-    return "Voided";
+    return "Archived";
   }
 
   if (request.status === "pending") {

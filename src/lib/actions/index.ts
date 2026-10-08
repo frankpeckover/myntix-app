@@ -83,7 +83,7 @@ export {
 export {
   createTimetableEntry,
   getTimetableCycleSettings,
-  deleteTimetableEntry,
+  setTimetableEntryActive,
   getCurrentTeacherClass,
   listMyTimetableEntries,
   importTimetableEntries,

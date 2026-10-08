@@ -193,7 +193,7 @@ export function BackupManagementSettings() {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-md border border-border-subtle">
+      <div className="overflow-clip rounded-md border border-border-subtle">
         {overview.backups.length === 0 ? (
           <p className="p-4 text-sm text-text-muted">No verified restore points yet.</p>
         ) : (
@@ -212,7 +212,7 @@ export function BackupManagementSettings() {
                   </p>
                 </div>
                 <button
-                  className="shrink-0 self-end rounded-md border border-button-border px-3 py-2 text-sm font-semibold text-text-control transition hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60 sm:self-auto"
+                  className="shrink-0 self-end rounded-md border border-button-border bg-surface px-3 py-2 text-sm font-semibold text-text-control transition duration-150 hover:-translate-y-0.5 hover:border-brand hover:bg-brand-soft hover:text-brand-strong hover:shadow-sm disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-60 disabled:shadow-none sm:self-auto"
                   disabled={hasActiveJob}
                   onClick={() => setRestoreBackupId(backup.id)}
                   type="button"
@@ -239,7 +239,7 @@ export function BackupManagementSettings() {
                 Cancel
               </button>
               <button
-                className="rounded-md bg-danger-strong px-4 py-2 text-sm font-semibold text-white transition hover:bg-danger disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-md bg-danger-strong px-4 py-2 text-sm font-semibold text-white transition duration-150 hover:-translate-y-0.5 hover:bg-danger hover:shadow-sm disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-60 disabled:shadow-none"
                 disabled={
                   isRequestingRestore ||
                   restoreConfirmation !== overview.organisationName

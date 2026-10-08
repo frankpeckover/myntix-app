@@ -682,7 +682,7 @@ export function AdminSettingsPanel({
               </p>
             </div>
             <button
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 py-3 text-sm font-semibold text-text-control transition hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-70"
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 py-3 text-sm font-semibold text-text-control transition duration-150 hover:-translate-y-0.5 hover:border-brand hover:bg-brand-soft hover:text-brand-strong hover:shadow-sm disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-70 disabled:shadow-none"
               disabled={isExporting}
               onClick={handleDataExport}
               type="button"

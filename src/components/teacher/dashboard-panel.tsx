@@ -2,10 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import {
-  StudentBalanceCard,
-  type StudentBalanceCardStudent,
-} from "@/components/student/balance-card";
 import { LedgerAdjustmentForm } from "@/components/transactions/ledger-adjustment-form";
 import { FixedNotification } from "@/components/ui/fixed-notification";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
@@ -23,6 +19,8 @@ import {
 import { SearchInput } from "@/components/ui/search-input";
 import { LoadFailure } from "@/components/ui/load-failure";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { DataTable } from "@/components/ui/data-table";
 import { useDialogFocus } from "@/components/ui/use-dialog-focus";
 import {
   createGroupLedgerAdjustment,
@@ -201,6 +199,10 @@ export function TeacherDashboardPanel({
     () => getVisibleGroups(search, groups),
     [groups, search],
   );
+  const studentBalanceById = useMemo(
+    () => new Map(studentBalances.map((student) => [student.id, student])),
+    [studentBalances],
+  );
   const visibleBalanceTotal = visibleStudents.reduce(
     (total, student) => total + student.balance,
     0,
@@ -299,7 +301,7 @@ export function TeacherDashboardPanel({
   }
 
   async function handleQuickAdjustment(
-    student: StudentBalanceCardStudent,
+    student: StudentBalanceItem | CurrentClass["students"][number],
     direction: AdjustmentDirection,
   ) {
     if (quickActionPendingRef.current) {
@@ -590,26 +592,136 @@ export function TeacherDashboardPanel({
               )}
             </div>
 
-            {visibleStudents.length > 0 && (
+            {(visibleStudents.length > 0 || visibleGroups.length > 0) && (
               <>
-                <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4">
-                  {visibleStudentPage.map((student) => (
-                    <StudentBalanceCard
-                      currencyName={currencyName}
-                      isQuickActionPending={quickActionStudentId === student.id}
-                      key={student.id}
-                      onAdjust={() =>
-                        handleStudentsSelected([toStudentListItem(student)], "add")
-                      }
-                      onQuickAdd={() => handleQuickAdjustment(student, "add")}
-                      onQuickRemove={() =>
-                        handleQuickAdjustment(student, "remove")
-                      }
-                      quickAddAmount={personalPresets.quickAdd.amount}
-                      quickRemoveAmount={personalPresets.quickRemove.amount}
-                      student={student}
-                    />
-                  ))}
+                <div className="overflow-clip rounded-lg border border-border-subtle bg-surface shadow-sm">
+                  <DataTable ariaLabel="Student credit accounts">
+                    <colgroup>
+                      <col />
+                      <col className="hidden w-36 sm:table-column" />
+                      <col className="hidden w-32 lg:table-column" />
+                      <col className="w-52 sm:w-56" />
+                    </colgroup>
+                    <thead className="border-b border-border-subtle bg-surface">
+                      <tr className="text-xs font-semibold text-text-muted">
+                        <th className="px-3 py-3 sm:px-4" scope="col">
+                          Account
+                        </th>
+                        <th className="hidden px-4 py-3 text-right sm:table-cell" scope="col">
+                          Current balance
+                        </th>
+                        <th className="hidden px-4 py-3 text-right lg:table-cell" scope="col">
+                          Last 7 days
+                        </th>
+                        <th className="px-3 py-3 text-center sm:px-4" scope="col">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border-subtle">
+                      {visibleGroups.map((group) => (
+                        <tr className="transition hover:bg-panel-soft/60" key={`group-${group.id}`}>
+                          <td className="px-3 py-3 sm:px-4">
+                            <button
+                              aria-label={`Show students in ${group.name}`}
+                              className="flex w-full min-w-0 items-center gap-3 text-left"
+                              onClick={() => handleGroupExpanded(group)}
+                              type="button"
+                            >
+                              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-panel-soft text-text-muted">
+                                <UsersIcon />
+                              </span>
+                              <span className="min-w-0">
+                                <span className="block truncate text-sm font-semibold text-foreground">
+                                  {group.name}
+                                </span>
+                                <span className="block truncate text-xs text-text-muted sm:hidden">
+                                  {group.memberCount} students
+                                </span>
+                                <span className="block text-xs text-text-muted">Group</span>
+                              </span>
+                            </button>
+                          </td>
+                          <td className="hidden px-4 py-3 text-right text-sm text-text-control sm:table-cell">
+                            {group.memberCount} students
+                          </td>
+                          <td className="hidden px-4 py-3 text-right text-sm text-text-muted lg:table-cell">
+                            —
+                          </td>
+                          <td className="px-3 py-2 sm:px-4">
+                            <CreditActionControl
+                              addAriaLabel={`Quick add ${personalPresets.quickAdd.amount} credits to ${group.name}`}
+                              adjustAriaLabel={`Adjust credits for ${group.name}`}
+                              fullWidth
+                              onAdd={quickActionGroupId === group.id ? undefined : () => handleQuickGroupAdjustment(group, "add")}
+                              onAdjust={() => handleGroupSelected(group, "add")}
+                              onRemove={quickActionGroupId === group.id ? undefined : () => handleQuickGroupAdjustment(group, "remove")}
+                              removeAriaLabel={`Quick take ${personalPresets.quickRemove.amount} credits from ${group.name}`}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                      {visibleStudentPage.map((student) => (
+                        <tr className="transition hover:bg-panel-soft/60" key={`student-${student.id}`}>
+                          <td className="px-3 py-3 sm:px-4">
+                            <div className="flex min-w-0 items-center gap-3">
+                              <UserAvatar
+                                displayName={student.displayName}
+                                imageUrl={student.profileImageUrl}
+                                size="sm"
+                                tone="neutral"
+                              />
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-semibold text-foreground">
+                                  {student.displayName}
+                                </p>
+                                <p className="truncate text-xs text-text-muted">
+                                  @{student.username}
+                                </p>
+                                <p className="mt-1 flex flex-col sm:hidden">
+                                  <span className="font-number text-xs font-semibold text-foreground">
+                                    {formatAmount(student.balance)}
+                                  </span>
+                                  <span className="text-[11px] text-text-muted">
+                                    {currencyName}
+                                  </span>
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="hidden px-4 py-3 text-right sm:table-cell">
+                            <span className="flex flex-col items-end">
+                              <span className="font-number text-base font-semibold text-foreground">
+                                {formatAmount(student.balance)}
+                              </span>
+                              <span className="text-xs text-text-muted">
+                                {currencyName}
+                              </span>
+                            </span>
+                          </td>
+                          <td className="hidden px-4 py-3 text-right lg:table-cell">
+                            <RecentChangeBadge
+                              amount={
+                                studentBalanceById.get(student.id)
+                                  ?.recentChange ?? 0
+                              }
+                            />
+                          </td>
+                          <td className="px-3 py-2 sm:px-4">
+                            <CreditActionControl
+                              addAriaLabel={`Quick add ${personalPresets.quickAdd.amount} credits to ${student.displayName}`}
+                              adjustAriaLabel={`Adjust credits for ${student.displayName}`}
+                              fullWidth
+                              onAdd={quickActionStudentId === student.id ? undefined : () => handleQuickAdjustment(student, "add")}
+                              onAdjust={() => handleStudentsSelected([toStudentListItem(student)], "add")}
+                              onRemove={quickActionStudentId === student.id ? undefined : () => handleQuickAdjustment(student, "remove")}
+                              removeAriaLabel={`Quick take ${personalPresets.quickRemove.amount} credits from ${student.displayName}`}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </DataTable>
                 </div>
                 <ListPagination
                   onPageChange={setStudentPage}
@@ -618,28 +730,6 @@ export function TeacherDashboardPanel({
                   totalPages={studentTotalPages}
                 />
               </>
-            )}
-
-            {visibleGroups.length > 0 && (
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {visibleGroups.map((group) => (
-                  <GroupCreditCard
-                    group={group}
-                    isQuickActionPending={quickActionGroupId === group.id}
-                    key={group.id}
-                    onAdjust={() => handleGroupSelected(group, "add")}
-                    onExpand={() => handleGroupExpanded(group)}
-                    onQuickAdd={() =>
-                      handleQuickGroupAdjustment(group, "add")
-                    }
-                    onQuickRemove={() =>
-                      handleQuickGroupAdjustment(group, "remove")
-                    }
-                    quickAddAmount={personalPresets.quickAdd.amount}
-                    quickRemoveAmount={personalPresets.quickRemove.amount}
-                  />
-                ))}
-              </div>
             )}
 
             {visibleStudents.length === 0 &&
@@ -684,64 +774,26 @@ function CountChip({
   );
 }
 
-function GroupCreditCard({
-  group,
-  isQuickActionPending,
-  onAdjust,
-  onExpand,
-  onQuickAdd,
-  onQuickRemove,
-  quickAddAmount,
-  quickRemoveAmount,
-}: {
-  group: GroupListItem;
-  isQuickActionPending: boolean;
-  onAdjust: () => void;
-  onExpand: () => void;
-  onQuickAdd: () => void;
-  onQuickRemove: () => void;
-  quickAddAmount: number;
-  quickRemoveAmount: number;
-}) {
+function RecentChangeBadge({ amount }: { amount: number }) {
+  const isPositive = amount > 0;
+  const isNegative = amount < 0;
+  const className = isPositive
+    ? "bg-positive-fill text-positive-ink"
+    : isNegative
+      ? "bg-negative-fill text-negative-ink"
+      : "bg-panel-soft text-text-muted";
+  const label = isPositive
+    ? `+${formatAmount(amount)}`
+    : isNegative
+      ? `-${formatAmount(Math.abs(amount))}`
+      : "0";
+
   return (
-    <article className="theme-card flex flex-col overflow-hidden p-0">
-      <div className="flex-1 p-3">
-        <button
-          aria-label={`Show students in ${group.name}`}
-          className="flex w-full items-center gap-3 text-left"
-          onClick={onExpand}
-          type="button"
-        >
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-panel-soft text-text-muted">
-            <UsersIcon />
-          </span>
-          <div className="min-w-0 flex-1">
-            <h3 className="truncate text-sm font-semibold text-foreground">
-              {group.name}
-            </h3>
-            <p className="mt-0.5 truncate text-xs font-medium text-text-muted">
-              {group.memberCount} students
-            </p>
-          </div>
-        </button>
-      </div>
-      <footer className="mt-auto">
-        <CreditActionControl
-          addAriaLabel={`Quick add ${quickAddAmount} credits to ${group.name}`}
-          addLabel={formatAmount(quickAddAmount)}
-          adjustAriaLabel={`Adjust credits for ${group.name}`}
-          amountLabels
-          flush
-          fullWidth
-          onAdd={isQuickActionPending ? undefined : onQuickAdd}
-          onAdjust={onAdjust}
-          onRemove={isQuickActionPending ? undefined : onQuickRemove}
-          removeAriaLabel={`Quick take ${quickRemoveAmount} credits from ${group.name}`}
-          removeLabel={formatAmount(quickRemoveAmount)}
-          solid
-        />
-      </footer>
-    </article>
+    <span
+      className={`inline-flex rounded-full px-2 py-1 font-number text-xs font-semibold ${className}`}
+    >
+      {label}
+    </span>
   );
 }
 

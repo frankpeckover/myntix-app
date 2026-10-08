@@ -27,6 +27,12 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { FixedNotification } from "@/components/ui/fixed-notification";
 import { IconButton } from "@/components/ui/icon-button";
 import {
+  DataTable,
+  DataTableCurrencyValue,
+  DataTableSelectionCell,
+  DataTableSelectionHeader,
+} from "@/components/ui/data-table";
+import {
   CopyIcon,
   CheckIcon,
   EyeIcon,
@@ -46,6 +52,7 @@ import {
 } from "@/components/ui/list-pagination";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { TableActionMenu } from "@/components/ui/table-action-menu";
+import { TableActionGrid } from "@/components/ui/table-action-grid";
 import {
   TableHeaderFilter,
   TableHeaderFilterInput,
@@ -627,29 +634,27 @@ function ShopManagementList({
         </div>
       </TableToolbar>
 
-      <table aria-label="Rewards" className="hidden w-full table-fixed border-collapse text-left text-sm md:table">
+      <DataTable ariaLabel="Rewards" responsive="desktop">
         <colgroup>
           <col className="w-10" />
           <col className="w-[26%]" />
-          <col className="w-[32%]" />
-          <col className="w-[12%]" />
-          <col className="w-[12%]" />
-          <col className="w-[10%]" />
-          <col className="w-12" />
+          <col />
+          <col className="w-28" />
+          <col className="w-24" />
+          <col className="w-24" />
+          <col className="w-32" />
         </colgroup>
         <thead>
           <tr className="border-b border-border-subtle text-text-muted">
-            <th scope="col" className="py-2 pr-3 font-semibold">
-              <RowSelectionCheckbox
-                checked={areAllVisibleItemsSelected}
-                label={
-                  areAllVisibleItemsSelected
-                    ? "Clear selected rewards"
-                    : "Select all rewards"
-                }
-                onChange={onVisibleItemsSelectionChange}
-              />
-            </th>
+            <DataTableSelectionHeader
+              checked={areAllVisibleItemsSelected}
+              label={
+                areAllVisibleItemsSelected
+                  ? "Clear selected rewards"
+                  : "Select all rewards"
+              }
+              onChange={onVisibleItemsSelectionChange}
+            />
             <th scope="col" className="py-2 pr-4 font-semibold">
               <TableHeaderFilter
                 isActive={Boolean(filters.name)}
@@ -733,15 +738,13 @@ function ShopManagementList({
         <tbody>
           {items.map((item) => (
             <tr className="border-b border-border-subtle" key={item.id}>
-              <td className="py-3 pr-3">
-                <RowSelectionCheckbox
-                  checked={selectedItemIds.includes(item.id)}
-                  label={`Select ${item.name}`}
-                  onChange={(isSelected) =>
-                    onSelectionChange(item.id, isSelected)
-                  }
-                />
-              </td>
+              <DataTableSelectionCell
+                checked={selectedItemIds.includes(item.id)}
+                label={`Select ${item.name}`}
+                onChange={(isSelected) =>
+                  onSelectionChange(item.id, isSelected)
+                }
+              />
               <td className="py-3 pr-4">
                 <div className="flex min-w-0 items-center gap-3">
                   <ShopTableImage item={item} />
@@ -752,10 +755,10 @@ function ShopManagementList({
                 <span className="line-clamp-2">{item.description || "-"}</span>
               </td>
               <td className="py-3 pr-4 text-right font-semibold">
-                {formatAmount(item.price)}
-                <span className="ml-1 text-xs font-normal text-text-muted">
-                  {currencyName}
-                </span>
+                <DataTableCurrencyValue
+                  amount={formatAmount(item.price)}
+                  currencyName={currencyName}
+                />
               </td>
               <td className="py-3 pr-4 text-right text-text-muted">
                 {formatItemQuantity(item)}
@@ -775,7 +778,7 @@ function ShopManagementList({
             </tr>
           ))}
         </tbody>
-      </table>
+      </DataTable>
       <div className="mt-3 grid min-w-0 gap-2 md:hidden sm:mt-4">
         {items.map((item) => (
           <ShopManagementCard
@@ -991,7 +994,7 @@ function ShopManagementActions({
   onView: (item: ShopItem) => void;
 }) {
   return (
-    <TableActionMenu
+    <TableActionGrid
       label={`Open actions for ${item.name}`}
       items={[
         {
@@ -1011,7 +1014,7 @@ function ShopManagementActions({
         },
         {
           icon: item.isActive ? <TrashIcon /> : <CheckIcon />,
-          label: item.isActive ? "Archive" : "Enable",
+          label: item.isActive ? "Archive" : "Restore",
           onSelect: () => onStatusChange(item),
           tone: item.isActive ? "danger" : "success",
         },

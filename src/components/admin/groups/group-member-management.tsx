@@ -1,13 +1,14 @@
 import { IconButton } from "@/components/ui/icon-button";
 import { TrashIcon, XIcon } from "@/components/ui/icons";
 import { SearchInput } from "@/components/ui/search-input";
-import { TableActionMenu } from "@/components/ui/table-action-menu";
+import { TableActionGrid } from "@/components/ui/table-action-grid";
 import type {
   GroupListItem,
   GroupMemberItem,
 } from "@/domains/groups/group-service";
 import type { StudentListItem } from "@/domains/users/user-service";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { DataTable } from "@/components/ui/data-table";
 
 type GroupMemberManagementProps = {
   availableStudents: StudentListItem[];
@@ -210,7 +211,7 @@ function SelectedStudents({
             </span>
             <button
               aria-label={`Remove ${student.displayName} from selection`}
-              className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-text-muted transition hover:bg-surface-hover hover:text-text-control"
+              className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-danger-strong transition hover:bg-danger-soft"
               onClick={() => onStudentSelectionToggle(student)}
               title={`Remove ${student.displayName} from selection`}
               type="button"
@@ -263,7 +264,7 @@ function GroupMembersTable({
             ))}
           </div>
 
-          <table aria-label="Students available to add" className="hidden w-full table-fixed text-left text-sm md:table">
+          <DataTable ariaLabel="Students available to add" responsive="desktop">
             <colgroup>
               <col className="w-[12%]" />
               <col className="w-[42%]" />
@@ -298,7 +299,7 @@ function GroupMembersTable({
                     {member.username}
                   </td>
                   <td className="py-2 text-right">
-                    <TableActionMenu
+                    <TableActionGrid
                       label={`Open actions for ${member.displayName}`}
                       items={[
                         {
@@ -313,7 +314,7 @@ function GroupMembersTable({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </DataTable>
         </>
       )}
       {selectedMemberIds.length > 0 && (

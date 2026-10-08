@@ -19,11 +19,13 @@ import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { IconButton } from "@/components/ui/icon-button";
 import { LoadFailure } from "@/components/ui/load-failure";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { ListCount } from "@/components/ui/list-count";
 import {
   CheckIcon,
   FileDownIcon,
   FileUpIcon,
   PlusIcon,
+  TrashIcon,
   UsersIcon,
   XIcon,
 } from "@/components/ui/icons";
@@ -184,7 +186,7 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
     }
 
     if (pendingUserStatusChange.isActive) {
-      setMessage("User enabled.");
+      setMessage("User restored.");
     } else {
       const disabledUser = pendingUserStatusChange.user;
       setMessage(null);
@@ -201,7 +203,7 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
             showToast({ text: "User restored." });
           },
         },
-        text: "User disabled.",
+        text: "User archived.",
       });
     }
     setPendingUserStatusChange(null);
@@ -231,7 +233,7 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
 
     setMessage(
       `${pendingBulkUserStatusChange.userIds.length} users ${
-        pendingBulkUserStatusChange.isActive ? "enabled" : "disabled"
+        pendingBulkUserStatusChange.isActive ? "restored" : "archived"
       }.`,
     );
     setPendingBulkUserStatusChange(null);
@@ -326,7 +328,7 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
                       actions={[
                         {
                           icon: <CheckIcon />,
-                          label: "Enable selected",
+                          label: "Restore selected",
                           onSelect: () =>
                             setPendingBulkUserStatusChange({
                               isActive: true,
@@ -335,8 +337,8 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
                           tone: "success",
                         },
                         {
-                          icon: <XIcon />,
-                          label: "Disable selected",
+                          icon: <TrashIcon />,
+                          label: "Archive selected",
                           onSelect: () =>
                             setPendingBulkUserStatusChange({
                               isActive: false,
@@ -459,16 +461,16 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
       {pendingUserStatusChange && (
         <ConfirmationModal
           confirmLabel={
-            pendingUserStatusChange.isActive ? "Enable User" : "Disable User"
+            pendingUserStatusChange.isActive ? "Restore User" : "Archive User"
           }
-          description={`${pendingUserStatusChange.isActive ? "Enable" : "Disable"} ${pendingUserStatusChange.user.displayName}?`}
+          description={`${pendingUserStatusChange.isActive ? "Restore" : "Archive"} ${pendingUserStatusChange.user.displayName}?`}
           isConfirming={isChangingUserStatus}
           onCancel={() => setPendingUserStatusChange(null)}
           onConfirm={confirmSetUserActive}
           title={
             pendingUserStatusChange.isActive
-              ? "Enable user account"
-              : "Disable user account"
+              ? "Restore user account"
+              : "Archive user account"
           }
           tone={pendingUserStatusChange.isActive ? "success" : "danger"}
         />
@@ -478,37 +480,21 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
         <ConfirmationModal
           confirmLabel={
             pendingBulkUserStatusChange.isActive
-              ? "Enable Users"
-              : "Disable Users"
+              ? "Restore Users"
+              : "Archive Users"
           }
-          description={`${pendingBulkUserStatusChange.isActive ? "Enable" : "Disable"} ${pendingBulkUserStatusChange.userIds.length} selected users?`}
+          description={`${pendingBulkUserStatusChange.isActive ? "Restore" : "Archive"} ${pendingBulkUserStatusChange.userIds.length} selected users?`}
           onCancel={() => setPendingBulkUserStatusChange(null)}
           onConfirm={confirmBulkSetUserActive}
           title={
             pendingBulkUserStatusChange.isActive
-              ? "Enable selected users"
-              : "Disable selected users"
+              ? "Restore selected users"
+              : "Archive selected users"
           }
           tone={pendingBulkUserStatusChange.isActive ? "success" : "danger"}
         />
       )}
     </AdminPageSection>
-  );
-}
-
-function ListCount({
-  count,
-  label,
-  totalCount,
-}: {
-  count: number;
-  label: string;
-  totalCount: number;
-}) {
-  return (
-    <p className="text-sm font-semibold text-text-muted">
-      Showing {count} of {totalCount} {label}.
-    </p>
   );
 }
 

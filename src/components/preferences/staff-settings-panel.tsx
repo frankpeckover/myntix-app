@@ -259,7 +259,7 @@ function PresetList({
             />
             <button
               aria-label={`Remove ${label.toLowerCase()} ${index + 1}`}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-text-muted transition hover:bg-danger-soft hover:text-danger-strong"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-danger-strong transition hover:bg-danger-soft"
               onClick={() => onRemove(index)}
               title={`Remove ${label.toLowerCase()} ${index + 1}`}
               type="button"

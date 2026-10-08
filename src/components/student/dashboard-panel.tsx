@@ -544,12 +544,12 @@ function StudentMetricStrip({
           <div className="min-w-0">
             <p className="text-xs font-medium text-text-muted">Average net per day</p>
             <div className="mt-1 flex min-w-0 items-baseline gap-1.5">
-              <p className={`font-number text-2xl font-semibold leading-none ${metrics.averageDailyNet >= 0 ? "text-success-text" : "text-danger-strong"}`}>
+              <p className={`font-number text-2xl font-semibold leading-none ${metrics.averageDailyNet >= 0 ? "text-positive-ink" : "text-negative-ink"}`}>
                 {metrics.averageDailyNet > 0 ? "+" : ""}{formatAmount(metrics.averageDailyNet)}
               </p>
               <span className="truncate text-[11px] text-text-muted">{currencyName}</span>
             </div>
-            <p className={`mt-1.5 truncate text-[11px] font-medium ${metrics.comparison >= 0 ? "text-success-text" : "text-danger-strong"}`}>
+            <p className={`mt-1.5 truncate text-[11px] font-medium ${metrics.comparison >= 0 ? "text-positive-ink" : "text-negative-ink"}`}>
               {formatMetricComparison(metrics.comparison, currencyName)}
             </p>
           </div>
@@ -589,8 +589,8 @@ function InsightBar({ currencyName, label, maximum, tone, value }: { currencyNam
   const width = maximum > 0 ? Math.max(5, (value / maximum) * 100) : 0;
   return (
     <div>
-      <div className="flex items-center justify-between gap-3 text-xs"><span className="text-text-muted">{label}</span><span className={tone === "positive" ? "font-medium text-success-text" : "font-medium text-danger-strong"}>{formatAmount(value)} {currencyName}</span></div>
-      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-panel-soft"><span className={`block h-full rounded-full transition-[width] duration-500 ${tone === "positive" ? "bg-success" : "bg-danger"}`} style={{ width: `${width}%` }} /></div>
+      <div className="flex items-center justify-between gap-3 text-xs"><span className="text-text-muted">{label}</span><span className={tone === "positive" ? "font-medium text-positive-ink" : "font-medium text-negative-ink"}>{formatAmount(value)} {currencyName}</span></div>
+      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-panel-soft"><span className={`block h-full rounded-full transition-[width] duration-500 ${tone === "positive" ? "bg-positive-ink" : "bg-negative-ink"}`} style={{ width: `${width}%` }} /></div>
     </div>
   );
 }

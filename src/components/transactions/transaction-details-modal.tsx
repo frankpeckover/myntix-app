@@ -100,7 +100,7 @@ export function TransactionDetailsModal({
 
 function getStatusLabel(transaction: TransactionLogItem) {
   if (transaction.isVoided) {
-    return "Voided";
+    return "Archived";
   }
 
   if (transaction.entryStatus === "pending") {

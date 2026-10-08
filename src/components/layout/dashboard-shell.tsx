@@ -43,6 +43,7 @@ import {
 import { defaultCurrencyName } from "@/lib/config/school-defaults";
 import { type SessionUser } from "@/lib/auth/session";
 import type { SchoolInfo } from "@/domains/organisation/school-service";
+import { useTableDensity } from "@/lib/theme/use-table-density";
 
 type DashboardShellProps = {
   maintenanceMessage: string;
@@ -61,6 +62,7 @@ export function DashboardShell({
   user,
   onLogout,
 }: DashboardShellProps) {
+  useTableDensity();
   const [activeNavItem, setActiveNavItem] =
     useState<NavigationItem>("Dashboard");
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -136,10 +138,10 @@ export function DashboardShell({
   }, []);
 
   return (
-    <div className={`app-shell-surface min-h-screen overflow-x-hidden bg-background text-foreground ${shellRoleClassName}`}>
+    <div className={`app-shell-surface min-h-screen overflow-x-clip bg-background text-foreground ${shellRoleClassName}`}>
       <OfflineBanner />
       <GlobalMaintenanceBanner message={maintenanceMessage} />
-      <div className="flex min-h-screen w-full min-w-0 overflow-x-hidden">
+      <div className="flex min-h-screen w-full min-w-0 overflow-x-clip">
         <DesktopSideNav
           activeItem={activeNavItem}
           onItemChange={setActiveNavItem}

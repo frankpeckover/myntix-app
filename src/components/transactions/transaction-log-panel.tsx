@@ -25,12 +25,14 @@ import { TransactionStatusBadge } from "@/components/transactions/transaction-st
 import { EmptyState } from "@/components/ui/empty-state";
 import { FixedNotification } from "@/components/ui/fixed-notification";
 import { IconButton } from "@/components/ui/icon-button";
+import { DataTable } from "@/components/ui/data-table";
 import { LoadFailure } from "@/components/ui/load-failure";
 import {
   EyeIcon,
   FileDownIcon,
   FilterIcon,
   ListIcon,
+  TrashIcon,
   XIcon,
 } from "@/components/ui/icons";
 import {
@@ -41,6 +43,7 @@ import {
   TableActionMenu,
   type TableActionMenuItem,
 } from "@/components/ui/table-action-menu";
+import { TableActionGrid } from "@/components/ui/table-action-grid";
 import {
   TableHeaderFilter,
   TableHeaderFilterInput,
@@ -69,13 +72,13 @@ const transactionTypeOptions = [
   { label: "Reward redemption", value: "shop_purchase" },
   { label: "Reward refund", value: "shop_refund" },
   { label: "Manual adjustment", value: "manual_adjustment" },
-  { label: "Void reversal", value: "void_reversal" },
+  { label: "Archive reversal", value: "void_reversal" },
 ];
 
 const voidedStatusOptions = [
   { label: "Any status", value: "" },
   { label: "Active", value: "active" },
-  { label: "Voided", value: "voided" },
+  { label: "Archived", value: "voided" },
 ];
 
 const purchaseStatusOptions = [
@@ -170,7 +173,7 @@ export function TransactionLogPanel({
     }
 
     setVoidingTransaction(null);
-    setMessage("Transaction voided.");
+    setMessage("Transaction archived.");
     refreshTransactions();
   }
 
@@ -298,12 +301,12 @@ export function TransactionLogPanel({
 
       {voidingTransaction && (
         <TextReasonModal
-          confirmLabel="Void Transaction"
-          description="Voiding keeps the original entry and adds a reversal where needed."
+          confirmLabel="Archive Transaction"
+          description="Archiving keeps the original entry and adds a reversal where needed."
           isRequired
           onCancel={() => setVoidingTransaction(null)}
           onConfirm={handleVoidTransaction}
-          title="Void Transaction"
+          title="Archive Transaction"
         />
       )}
 
@@ -361,7 +364,7 @@ function TransactionList({
 
       <div className="hidden w-full min-w-0 max-w-full overflow-visible md:block">
         {toolbar}
-        <table aria-label="Transaction log" className="transaction-log-table w-full min-w-0 table-fixed border-collapse text-left text-sm">
+        <DataTable ariaLabel="Transaction log" className="transaction-log-table min-w-0">
           <TransactionTableColumnGroup
             canViewAllTransactions={canViewAllTransactions}
             isPreview={isPreview}
@@ -429,7 +432,7 @@ function TransactionList({
                 >
                   <div className="grid gap-3">
                     <TableHeaderFilterSelect
-                      label="Void status"
+                      label="Archive status"
                       onChange={(value) =>
                         updateFilter(
                           "voidedStatus",
@@ -542,7 +545,7 @@ function TransactionList({
               </tr>
             ))}
           </tbody>
-        </table>
+        </DataTable>
       </div>
     </>
   );
@@ -574,7 +577,7 @@ function TransactionTableColumnGroup({
         <col className="w-[15%]" />
         <col className="w-[13%]" />
         <col className="w-[11%]" />
-        <col className="w-[6%]" />
+        <col className="w-24" />
       </colgroup>
     );
   }
@@ -586,7 +589,7 @@ function TransactionTableColumnGroup({
       <col className="w-[18%]" />
       <col className="w-[14%]" />
       <col className="w-[10%]" />
-      <col className="w-[6%]" />
+      <col className="w-24" />
     </colgroup>
   );
 }
@@ -674,14 +677,14 @@ function TransactionActions({
   if (canVoidTransactions) {
     actionItems.push({
       disabled: transaction.isVoided || transaction.type === "void_reversal",
-      icon: <XIcon />,
-      label: "Void",
+      icon: <TrashIcon />,
+      label: "Archive",
       onSelect: () => onVoidClick(transaction),
     });
   }
 
   return (
-    <TableActionMenu
+    <TableActionGrid
       label="Open transaction actions"
       items={actionItems}
     />
@@ -710,7 +713,7 @@ function downloadTransactions(
       transaction.reason,
       transaction.studentName,
       transaction.studentUsername,
-      transaction.isVoided ? "Voided" : transaction.entryStatus,
+      transaction.isVoided ? "Archived" : transaction.entryStatus,
       transaction.amount,
       currencyName,
       transaction.source,

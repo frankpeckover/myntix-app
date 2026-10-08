@@ -3,6 +3,7 @@ import type {
   GroupMemberItem,
 } from "@/domains/groups/group-service";
 import { ModalCloseButton } from "@/components/ui/modal-close-button";
+import { DataTable } from "@/components/ui/data-table";
 
 type GroupDetailsPanelProps = {
   isLoadingMembers: boolean;
@@ -99,7 +100,7 @@ function GroupMembersList({
             ))}
           </div>
 
-          <table aria-label="Group members" className="hidden w-full text-left text-sm md:table">
+          <DataTable ariaLabel="Group members" layout="auto" responsive="desktop">
             <thead className="text-text-muted">
               <tr className="border-b border-border-subtle">
                 <th scope="col" className="py-2 pr-4 font-semibold">Name</th>
@@ -116,7 +117,7 @@ function GroupMembersList({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </DataTable>
         </>
       )}
     </div>

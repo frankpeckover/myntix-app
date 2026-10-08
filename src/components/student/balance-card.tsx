@@ -109,9 +109,9 @@ function RecentTrend({ amount }: { amount: number }) {
   const isNegative = amount < 0;
   const Icon = isPositive ? ArrowUpIcon : isNegative ? ArrowDownIcon : MinusIcon;
   const toneClassName = isPositive
-    ? "bg-[#E8F5EE] text-[#166534]"
+    ? "bg-positive-fill text-positive-ink"
     : isNegative
-      ? "bg-[#FEECEC] text-[#991B1B]"
+      ? "bg-negative-fill text-negative-ink"
       : "bg-panel-soft text-text-muted";
   const trendLabel = isPositive
     ? `+${formatAmount(amount)} over the last 7 days`

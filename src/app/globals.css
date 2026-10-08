@@ -79,20 +79,26 @@
   --accent-soft: color-mix(in srgb, var(--accent-secondary) 12%, white);
   --success: #10b981;
   --success-action: #047857;
-  --success-text: #047857;
+  --success-text: #166534;
   --success-foreground: #052e24;
   --success-hover: #34d399;
-  --success-soft: #ecfdf5;
-  --success-soft-hover: #d1fae5;
-  --success-border: #6ee7b7;
+  --success-soft: #e8f5ee;
+  --success-soft-hover: #dcefe5;
+  --success-border: #cde9d8;
   --danger: #ef4444;
   --danger-action: #b91c1c;
-  --danger-strong: #b91c1c;
+  --danger-strong: #991b1b;
   --danger-foreground: #3f0909;
-  --danger-border: #fca5a5;
+  --danger-border: #f5caca;
   --danger-button-border: #ef4444;
-  --danger-soft: #fef2f2;
-  --danger-soft-hover: #fee2e2;
+  --danger-soft: #feecec;
+  --danger-soft-hover: #fbdede;
+  --positive-fill: #e8f5ee;
+  --positive-ink: #166534;
+  --positive-border: #cde9d8;
+  --negative-fill: #feecec;
+  --negative-ink: #991b1b;
+  --negative-border: #f5caca;
   --warning: #9a6700;
   --warning-border: #f4d27a;
   --warning-soft: #fff8df;
@@ -184,6 +190,12 @@ html[data-theme="dark"] {
   --danger-button-border: #f87171;
   --danger-soft: #451f24;
   --danger-soft-hover: #5c282d;
+  --positive-fill: #183d2a;
+  --positive-ink: #86d9a8;
+  --positive-border: #315d42;
+  --negative-fill: #4a2424;
+  --negative-ink: #f0a0a0;
+  --negative-border: #754141;
   --warning: #f5c451;
   --warning-border: #80632a;
   --warning-soft: #3b311c;
@@ -288,6 +300,12 @@ html[data-accent="custom"] {
   --color-danger-button-border: var(--danger-button-border);
   --color-danger-soft: var(--danger-soft);
   --color-danger-soft-hover: var(--danger-soft-hover);
+  --color-positive-fill: var(--positive-fill);
+  --color-positive-ink: var(--positive-ink);
+  --color-positive-border: var(--positive-border);
+  --color-negative-fill: var(--negative-fill);
+  --color-negative-ink: var(--negative-ink);
+  --color-negative-border: var(--negative-border);
   --color-warning: var(--warning);
   --color-warning-border: var(--warning-border);
   --color-warning-soft: var(--warning-soft);
@@ -816,6 +834,17 @@ html[data-theme="dark"] .professional-shell {
   appearance: none;
 }
 
+input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
 .color-swatch-input::-webkit-color-swatch-wrapper {
   padding: 0;
 }
@@ -1153,15 +1182,43 @@ html[data-theme="dark"] .app-modal.theme-panel {
   }
 }
 
-table {
+.app-data-table {
+  --table-action-size: 20px;
+  --table-cell-block-padding: 0.5rem;
+  --table-row-height: 48px;
   background: var(--surface);
   border: 1px solid var(--border-muted);
+  border-collapse: separate !important;
+  border-spacing: 0;
   border-top: 0 !important;
   border-collapse: separate !important;
   border-radius: var(--radius-card);
   border-spacing: 0;
   overflow: visible;
   width: 100%;
+}
+
+:root[data-table-density="compact"] .app-data-table {
+  --table-action-size: 22px;
+  --table-cell-block-padding: 0.25rem;
+  --table-row-height: 40px;
+}
+
+:root[data-table-density="compact"] .table-action-grid {
+  display: inline-flex !important;
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+
+:root[data-table-density="compact"] .table-action-grid button svg {
+  height: 14px;
+  width: 14px;
+}
+
+:root[data-table-density="roomy"] .app-data-table {
+  --table-action-size: 24px;
+  --table-cell-block-padding: 0.75rem;
+  --table-row-height: 56px;
 }
 
 .table-toolbar-band {
@@ -1172,7 +1229,7 @@ table {
   padding: 0.7rem 1.25rem;
 }
 
-.table-toolbar-band + table {
+.table-toolbar-band + .app-data-table {
   border-top: 0 !important;
   border-top-left-radius: 0;
   border-top-right-radius: 0;
@@ -1186,57 +1243,159 @@ table {
   border-top: 0;
 }
 
-.theme-panel > div > .table-toolbar-band:first-child + table,
-.theme-panel > .table-toolbar-band:first-child + table {
+.theme-panel > div > .table-toolbar-band:first-child + .app-data-table,
+.theme-panel > .table-toolbar-band:first-child + .app-data-table {
   border-bottom: 0;
   border-left: 0;
   border-right: 0;
 }
 
-table thead tr,
-table tbody tr {
+.app-data-table thead tr,
+.app-data-table tbody tr {
   border-bottom: 0 !important;
 }
 
-table thead,
-table thead tr,
-table thead th {
+.app-data-table thead,
+.app-data-table thead tr,
+.app-data-table thead th {
   border-top: 0 !important;
 }
 
-table th,
-table td {
+.app-data-table th,
+.app-data-table td {
   border-bottom: 1px solid var(--border-subtle);
   padding-left: 1rem !important;
   padding-right: 1rem !important;
 }
 
-table th {
+.app-data-table th {
   padding-bottom: 0.5rem !important;
   padding-top: 0.5rem !important;
 }
 
-table td {
-  padding-bottom: 0.75rem !important;
-  padding-top: 0.75rem !important;
+.app-data-table td {
+  padding-bottom: var(--table-cell-block-padding) !important;
+  padding-top: var(--table-cell-block-padding) !important;
 }
 
-table th:first-child,
-table td:first-child {
+.app-data-table tbody tr {
+  height: var(--table-row-height);
+}
+
+.app-data-table td:has(> .table-action-grid) {
+  padding-bottom: 3px !important;
+  padding-top: 3px !important;
+}
+
+.table-action-grid {
+  gap: 2px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(2px);
+  transition:
+    opacity var(--motion-fast) var(--motion-ease),
+    transform var(--motion-fast) var(--motion-ease);
+}
+
+.table-action-grid button {
+  box-shadow: 0 1px 2px color-mix(in srgb, currentColor 8%, transparent);
+  height: var(--table-action-size, 20px);
+  transform: translateY(0) scale(1);
+  transition:
+    background-color var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease),
+    transform var(--motion-fast) var(--motion-ease);
+  width: var(--table-action-size, 20px);
+  will-change: transform;
+}
+
+.table-action-grid button:not(:disabled):hover,
+.table-action-grid button:not(:disabled):focus-visible {
+  border-color: var(--foreground);
+  box-shadow:
+    0 0 0 1px var(--surface),
+    0 0 0 3px color-mix(in srgb, var(--foreground) 82%, transparent),
+    0 5px 10px color-mix(in srgb, var(--shadow-panel) 42%, transparent);
+  position: relative;
+  transform: translateY(-2px) scale(1.14);
+  z-index: 2;
+}
+
+.table-action-grid button:not(:disabled):active {
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--shadow-panel) 35%, transparent);
+  transform: translateY(0) scale(0.96);
+}
+
+.app-data-table tbody tr:hover .table-action-grid,
+.app-data-table tbody tr:focus-within .table-action-grid {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+}
+
+@media (hover: none), (pointer: coarse) {
+  .table-action-grid {
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .table-action-grid,
+  .table-action-grid button {
+    transition: none;
+  }
+
+  .table-action-grid button:not(:disabled):hover,
+  .table-action-grid button:not(:disabled):focus-visible,
+  .table-action-grid button:not(:disabled):active {
+    transform: none;
+  }
+}
+
+.app-data-table th:first-child,
+.app-data-table td:first-child {
   padding-left: 1.25rem !important;
 }
 
-table th:last-child,
-table td:last-child {
+.app-data-table th:last-child,
+.app-data-table td:last-child {
   padding-right: 1.25rem !important;
 }
 
-table thead th {
+.app-data-table thead th {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 
-table tbody tr:last-child td {
+.app-data-table[data-layout="fixed"] tbody td:not(.text-right):not(:last-child):not(:has(.status-badge)) {
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-data-table td:has(.status-badge) {
+  overflow: visible;
+  white-space: nowrap;
+}
+
+.app-data-table td.text-right,
+.app-data-table th.text-right,
+.app-data-table .font-number {
+  font-variant-numeric: tabular-nums;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.app-data-table tbody tr:last-child td {
   border-bottom: 0;
 }
 
@@ -1304,13 +1463,13 @@ table tbody tr:last-child td {
   opacity: 0.9;
 }
 
-.professional-shell table {
+.professional-shell .app-data-table {
   border-collapse: separate !important;
   font-variant-numeric: tabular-nums;
   line-height: 1.25;
 }
 
-.professional-shell table th {
+.professional-shell .app-data-table th {
   color: var(--text-label);
   font-size: 0.72rem;
   letter-spacing: 0.04em;
@@ -1319,30 +1478,35 @@ table tbody tr:last-child td {
   text-transform: uppercase;
 }
 
-.professional-shell table td {
+.professional-shell .app-data-table td {
   font-size: 0.84rem;
-  padding-bottom: 0.75rem !important;
-  padding-top: 0.75rem !important;
+  padding-bottom: var(--table-cell-block-padding) !important;
+  padding-top: var(--table-cell-block-padding) !important;
   vertical-align: middle;
 }
 
-.professional-shell table th:first-child,
-.professional-shell table td:first-child {
+.professional-shell .app-data-table td:has(> .table-action-grid) {
+  padding-bottom: 3px !important;
+  padding-top: 3px !important;
+}
+
+.professional-shell .app-data-table th:first-child,
+.professional-shell .app-data-table td:first-child {
   padding-left: 1.25rem !important;
 }
 
-.professional-shell table th:last-child,
-.professional-shell table td:last-child {
+.professional-shell .app-data-table th:last-child,
+.professional-shell .app-data-table td:last-child {
   padding-right: 1.25rem !important;
 }
 
-.professional-shell table tbody tr {
+.professional-shell .app-data-table tbody tr {
   transition-duration: var(--motion-fast);
   transition-property: background-color;
   transition-timing-function: var(--motion-ease);
 }
 
-.professional-shell table tbody tr:hover {
+.professional-shell .app-data-table tbody tr:hover {
   background: color-mix(in srgb, var(--brand-soft) 42%, transparent);
 }
 
@@ -1350,8 +1514,8 @@ table tbody tr:last-child td {
   background: transparent;
 }
 
-.professional-shell table td:last-child,
-.professional-shell table th:last-child {
+.professional-shell .app-data-table td:last-child,
+.professional-shell .app-data-table th:last-child {
   white-space: nowrap;
 }
 

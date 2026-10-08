@@ -10,27 +10,37 @@ import type { ShopPurchaseRequest } from "@/domains/rewards/shop-service";
 import { formatAmount, formatDateTime } from "@/lib/presentation/formatters";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FixedNotification } from "@/components/ui/fixed-notification";
-import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { IconButton } from "@/components/ui/icon-button";
 import { LoadFailure } from "@/components/ui/load-failure";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { ListCount } from "@/components/ui/list-count";
 import { CheckIcon, ShoppingCartIcon, XIcon } from "@/components/ui/icons";
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
-import { TableActionMenu } from "@/components/ui/table-action-menu";
 import {
   TableHeaderFilter,
   TableHeaderFilterInput,
   TableHeaderFilterSelect,
 } from "@/components/ui/table-header-filter";
+import { TableToolbar } from "@/components/ui/table-toolbar";
 import { TextReasonModal } from "@/components/ui/text-reason-modal";
+import {
+  DataTable,
+  DataTableCurrencyValue,
+  DataTableSelectionCell,
+  DataTableSelectionHeader,
+} from "@/components/ui/data-table";
+import { BulkSelectionControls } from "@/components/ui/bulk-selection-controls";
+import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 
 type ShopRequestTableFilters = {
+  decisionNote: string;
   item: string;
   status: "" | ShopPurchaseRequest["status"];
   student: string;
 };
 
 const emptyShopRequestTableFilters: ShopRequestTableFilters = {
+  decisionNote: "",
   item: "",
   status: "",
   student: "",
@@ -38,29 +48,28 @@ const emptyShopRequestTableFilters: ShopRequestTableFilters = {
 
 type ShopRequestsPanelProps = {
   className?: string;
-  compact?: boolean;
   currencyName: string;
-  helpText?: string;
   maxVisibleRequests?: number;
   onRequestActioned?: () => void;
   showViewToggle?: boolean;
-  title?: string;
 };
 
 export function ShopRequestsPanel({
   className = "mt-5",
-  compact = false,
   currencyName,
-  helpText,
   maxVisibleRequests,
   onRequestActioned,
   showViewToggle = true,
-  title = "Reward Requests",
 }: ShopRequestsPanelProps) {
   const [requests, setRequests] = useState<ShopPurchaseRequest[]>([]);
   const [activeView, setActiveView] = useState<"pending" | "recent">("pending");
-  const [denyingRequestId, setDenyingRequestId] = useState<string | null>(null);
+  const [denyingRequestIds, setDenyingRequestIds] = useState<string[]>([]);
+  const [filters, setFilters] = useState<ShopRequestTableFilters>(
+    emptyShopRequestTableFilters,
+  );
+  const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isConfirmingBulkApproval, setIsConfirmingBulkApproval] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const pendingDecisionIdsRef = useRef(new Set<string>());
@@ -138,15 +147,15 @@ export function ShopRequestsPanel({
     }
 
     setMessage("Request approved.");
+    setSelectedRequestIds((current) =>
+      current.filter((requestId) => requestId !== purchaseId),
+    );
     onRequestActioned?.();
     refreshRequests();
   }
 
   async function handleDeny(decisionNote: string) {
-    if (!denyingRequestId) {
-      return;
-    }
-    if (pendingDecisionIdsRef.current.has(denyingRequestId)) {
+    if (denyingRequestIds.length === 0) {
       return;
     }
     if (!navigator.onLine) {
@@ -155,27 +164,59 @@ export function ShopRequestsPanel({
     }
     setError(null);
     setMessage(null);
-    pendingDecisionIdsRef.current.add(denyingRequestId);
 
-    const purchaseId = denyingRequestId;
-    let result;
-
-    try {
-      result = await denyShopRequest(purchaseId, decisionNote);
-    } catch {
-      setError("Could not confirm the denial. Refresh before trying again.");
-      pendingDecisionIdsRef.current.delete(purchaseId);
-      return;
-    }
-    pendingDecisionIdsRef.current.delete(purchaseId);
-
-    if (!result.ok) {
-      setError(result.message);
-      return;
+    let deniedCount = 0;
+    for (const purchaseId of denyingRequestIds) {
+      if (pendingDecisionIdsRef.current.has(purchaseId)) continue;
+      pendingDecisionIdsRef.current.add(purchaseId);
+      try {
+        const result = await denyShopRequest(purchaseId, decisionNote);
+        if (result.ok) deniedCount += 1;
+      } catch {
+        // Continue so one changed request does not block the rest of the selection.
+      } finally {
+        pendingDecisionIdsRef.current.delete(purchaseId);
+      }
     }
 
-    setDenyingRequestId(null);
-    setMessage("Request denied.");
+    setDenyingRequestIds([]);
+    setSelectedRequestIds([]);
+    setIsConfirmingBulkApproval(false);
+    setMessage(
+      deniedCount === 1 ? "Request denied." : `${deniedCount} requests denied.`,
+    );
+    onRequestActioned?.();
+    refreshRequests();
+  }
+
+  async function handleBulkApprove() {
+    if (!navigator.onLine) {
+      setError("You are offline. Reconnect before approving requests.");
+      return;
+    }
+
+    setError(null);
+    setMessage(null);
+    let approvedCount = 0;
+    for (const purchaseId of selectedRequestIds) {
+      if (pendingDecisionIdsRef.current.has(purchaseId)) continue;
+      pendingDecisionIdsRef.current.add(purchaseId);
+      try {
+        const result = await approveShopRequest(purchaseId);
+        if (result.ok) approvedCount += 1;
+      } catch {
+        // Continue so one changed request does not block the rest of the selection.
+      } finally {
+        pendingDecisionIdsRef.current.delete(purchaseId);
+      }
+    }
+
+    setSelectedRequestIds([]);
+    setMessage(
+      approvedCount === 1
+        ? "Request approved."
+        : `${approvedCount} requests approved.`,
+    );
     onRequestActioned?.();
     refreshRequests();
   }
@@ -188,57 +229,94 @@ export function ShopRequestsPanel({
     maxVisibleRequests === undefined
       ? filteredRequests
       : filteredRequests.slice(0, maxVisibleRequests);
-  const pendingRequestCount = requests.filter(
-    (request) => request.status === "pending",
-  ).length;
+  const displayedRequests = visibleRequests.filter((request) =>
+    matchesShopRequestTableFilters(request, filters),
+  );
+  const selectableRequestIds = displayedRequests
+    .filter((request) => request.status === "pending")
+    .map((request) => request.id);
+  const areAllVisibleRequestsSelected =
+    selectableRequestIds.length > 0 &&
+    selectableRequestIds.every((id) => selectedRequestIds.includes(id));
+
+  function handleVisibleSelectionChange(isSelected: boolean) {
+    setSelectedRequestIds((current) =>
+      isSelected
+        ? Array.from(new Set([...current, ...selectableRequestIds]))
+        : current.filter((id) => !selectableRequestIds.includes(id)),
+    );
+  }
+
+  function handleRequestSelectionChange(requestId: string, isSelected: boolean) {
+    setSelectedRequestIds((current) =>
+      isSelected
+        ? Array.from(new Set([...current, requestId]))
+        : current.filter((id) => id !== requestId),
+    );
+  }
+
+  function changeView(view: "pending" | "recent") {
+    setActiveView(view);
+    setSelectedRequestIds([]);
+    if (view === "pending") {
+      setFilters((current) => ({ ...current, decisionNote: "" }));
+    }
+  }
 
   return (
-    <section
-      className={`${
-        compact
-          ? "wallet-card reward-requests-card rounded-3xl border border-brand-soft-strong shadow-sm"
-          : "theme-panel"
-      } motion-panel p-4 ${className}`}
-    >
+    <section className={`min-w-0 ${className}`}>
       <FixedNotification error={error} message={message} />
-      <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-panel-soft text-text-muted">
-            <ShoppingCartIcon />
-          </span>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="text-lg font-semibold">{title}</h3>
-              {helpText && <InfoTooltip label={helpText} />}
-            </div>
-            {!compact && (
-              <p className="mt-2 inline-flex rounded-md bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent">
-                {pendingRequestCount} pending
-              </p>
-            )}
+      <div className="relative z-10 min-w-0 overflow-x-clip">
+        <TableToolbar
+          actions={
+            showViewToggle ? (
+              <div className="flex rounded-md border border-border bg-surface p-1">
+                {(["pending", "recent"] as const).map((view) => (
+                  <button
+                    className={`rounded-sm px-3 py-1.5 text-sm font-semibold transition ${
+                      activeView === view
+                        ? "bg-brand text-white"
+                        : "text-text-control hover:bg-surface-hover"
+                    }`}
+                    key={view}
+                    onClick={() => changeView(view)}
+                    type="button"
+                  >
+                    {view === "pending" ? "Pending" : "Recent"}
+                  </button>
+                ))}
+              </div>
+            ) : undefined
+          }
+        >
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <ListCount
+              count={displayedRequests.length}
+              label="rewards"
+              totalCount={filteredRequests.length}
+            />
+            <BulkSelectionControls
+              actions={[
+                {
+                  icon: <CheckIcon />,
+                  label: "Approve selected",
+                  onSelect: () => setIsConfirmingBulkApproval(true),
+                  tone: "success",
+                },
+                {
+                  icon: <XIcon />,
+                  label: "Deny selected",
+                  onSelect: () => setDenyingRequestIds(selectedRequestIds),
+                  tone: "danger",
+                },
+              ]}
+              allSelectedLabel="Select all visible reward requests"
+              isAllSelected={areAllVisibleRequestsSelected}
+              onVisibleSelectionChange={handleVisibleSelectionChange}
+              selectedCount={selectedRequestIds.length}
+            />
           </div>
-        </div>
-        {showViewToggle && (
-          <div className="flex rounded-md border border-border bg-surface p-1">
-            {(["pending", "recent"] as const).map((view) => (
-              <button
-                className={`rounded-sm px-3 py-1.5 text-sm font-semibold ${
-                  activeView === view
-                    ? "bg-brand text-white"
-                    : "text-text-control hover:bg-surface-hover"
-                }`}
-                key={view}
-                onClick={() => setActiveView(view)}
-                type="button"
-              >
-                {view === "pending" ? "Pending" : "Recent"}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="relative z-10 mt-4">
+        </TableToolbar>
         {isLoading && (
           <LoadingSkeleton className="px-0" lines={4} />
         )}
@@ -258,23 +336,40 @@ export function ShopRequestsPanel({
         )}
         {!isLoading && visibleRequests.length > 0 && (
           <ShopRequestList
-            compact={compact}
             currencyName={currencyName}
+            filters={filters}
             onApprove={handleApprove}
-            onDeny={setDenyingRequestId}
-            requests={visibleRequests}
+            onClearFilters={() => setFilters(emptyShopRequestTableFilters)}
+            onDeny={(requestId) => setDenyingRequestIds([requestId])}
+            onFiltersChange={setFilters}
+            onRequestSelectionChange={handleRequestSelectionChange}
+            onVisibleSelectionChange={handleVisibleSelectionChange}
+            requests={displayedRequests}
+            selectedRequestIds={selectedRequestIds}
+            showDecisionNote={activeView === "recent"}
+            visibleRequestsSelected={areAllVisibleRequestsSelected}
           />
         )}
       </div>
 
-      {denyingRequestId && (
+      {denyingRequestIds.length > 0 && (
         <TextReasonModal
           confirmLabel="Deny Request"
-          description="The reserved balance and stock will be released."
+          description={`The reserved balance and stock will be released for ${denyingRequestIds.length === 1 ? "this request" : `${denyingRequestIds.length} requests`}.`}
           isRequired
-          onCancel={() => setDenyingRequestId(null)}
+          onCancel={() => setDenyingRequestIds([])}
           onConfirm={handleDeny}
           title="Deny Reward Request"
+        />
+      )}
+      {isConfirmingBulkApproval && (
+        <ConfirmationModal
+          confirmLabel="Approve Requests"
+          description={`Approve ${selectedRequestIds.length} selected reward requests?`}
+          onCancel={() => setIsConfirmingBulkApproval(false)}
+          onConfirm={handleBulkApprove}
+          title="Approve selected requests"
+          tone="success"
         />
       )}
     </section>
@@ -282,99 +377,110 @@ export function ShopRequestsPanel({
 }
 
 function ShopRequestList({
-  compact,
   currencyName,
+  filters,
   onApprove,
+  onClearFilters,
   onDeny,
+  onFiltersChange,
+  onRequestSelectionChange,
+  onVisibleSelectionChange,
   requests,
+  selectedRequestIds,
+  showDecisionNote,
+  visibleRequestsSelected,
 }: {
-  compact: boolean;
   currencyName: string;
+  filters: ShopRequestTableFilters;
   onApprove: (purchaseId: string) => void;
+  onClearFilters: () => void;
   onDeny: (purchaseId: string) => void;
+  onFiltersChange: (filters: ShopRequestTableFilters) => void;
+  onRequestSelectionChange: (requestId: string, isSelected: boolean) => void;
+  onVisibleSelectionChange: (isSelected: boolean) => void;
   requests: ShopPurchaseRequest[];
+  selectedRequestIds: string[];
+  showDecisionNote: boolean;
+  visibleRequestsSelected: boolean;
 }) {
-  if (compact) {
-    return (
-      <CompactShopRequestList
-        currencyName={currencyName}
-        onApprove={onApprove}
-        onDeny={onDeny}
-        requests={requests}
-      />
-    );
-  }
-
   return (
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-      {requests.map((request) => (
-        <ShopRequestCard
-          currencyName={currencyName}
-          key={request.id}
-          onApprove={onApprove}
-          onDeny={onDeny}
-          request={request}
-        />
-      ))}
-    </div>
+    <CompactShopRequestList
+      currencyName={currencyName}
+      filters={filters}
+      onApprove={onApprove}
+      onClearFilters={onClearFilters}
+      onDeny={onDeny}
+      onFiltersChange={onFiltersChange}
+      onRequestSelectionChange={onRequestSelectionChange}
+      onVisibleSelectionChange={onVisibleSelectionChange}
+      requests={requests}
+      selectedRequestIds={selectedRequestIds}
+      showDecisionNote={showDecisionNote}
+      visibleRequestsSelected={visibleRequestsSelected}
+    />
   );
 }
 
 function CompactShopRequestList({
   currencyName,
+  filters,
   onApprove,
+  onClearFilters,
   onDeny,
+  onFiltersChange,
+  onRequestSelectionChange,
+  onVisibleSelectionChange,
   requests,
+  selectedRequestIds,
+  showDecisionNote,
+  visibleRequestsSelected,
 }: {
   currencyName: string;
+  filters: ShopRequestTableFilters;
   onApprove: (purchaseId: string) => void;
+  onClearFilters: () => void;
   onDeny: (purchaseId: string) => void;
+  onFiltersChange: (filters: ShopRequestTableFilters) => void;
+  onRequestSelectionChange: (requestId: string, isSelected: boolean) => void;
+  onVisibleSelectionChange: (isSelected: boolean) => void;
   requests: ShopPurchaseRequest[];
+  selectedRequestIds: string[];
+  showDecisionNote: boolean;
+  visibleRequestsSelected: boolean;
 }) {
-  const [filters, setFilters] = useState<ShopRequestTableFilters>(
-    emptyShopRequestTableFilters,
-  );
-  const filteredRequests = requests.filter((request) =>
-    matchesShopRequestTableFilters(request, filters),
-  );
-
   function updateFilter<Field extends keyof ShopRequestTableFilters>(
     field: Field,
     value: ShopRequestTableFilters[Field],
   ) {
-    setFilters({ ...filters, [field]: value });
-  }
-
-  function clearFilters() {
-    setFilters(emptyShopRequestTableFilters);
+    onFiltersChange({ ...filters, [field]: value });
   }
 
   return (
     <>
-      <div className="grid gap-2 md:hidden">
-        {filteredRequests.map((request) => (
-          <CompactShopRequestMobileRow
-            currencyName={currencyName}
-            key={request.id}
-            onApprove={onApprove}
-            onDeny={onDeny}
-            request={request}
-          />
-        ))}
-      </div>
-
-      <div className="hidden md:block">
-        <table aria-label="Reward requests" className="w-full table-fixed border-collapse text-left text-sm">
+      <DataTable ariaLabel="Reward requests">
           <colgroup>
-            <col className="w-[38%]" />
-            <col className="w-[30%]" />
-            <col className="w-[12%]" />
-            <col className="w-[12%]" />
-            <col className="w-12" />
+            <col className="w-10" />
+            <col />
+            <col className="hidden w-[24%] md:table-column" />
+            <col className="hidden w-28 sm:table-column" />
+            <col className="hidden w-28 lg:table-column" />
+            {showDecisionNote && (
+              <col className="hidden w-[22%] lg:table-column" />
+            )}
+            <col className="w-28 sm:w-40" />
           </colgroup>
           <thead>
             <tr className="border-b border-border-subtle text-text-muted">
-              <th scope="col" className="py-2 pr-4 font-semibold">
+              <DataTableSelectionHeader
+                checked={visibleRequestsSelected}
+                label={
+                  visibleRequestsSelected
+                    ? "Clear selected reward requests"
+                    : "Select all visible reward requests"
+                }
+                onChange={onVisibleSelectionChange}
+              />
+              <th scope="col" className="py-3 pr-4 font-semibold">
                 <TableHeaderFilter
                   isActive={Boolean(filters.item)}
                   label="Request"
@@ -387,7 +493,7 @@ function CompactShopRequestList({
                   />
                 </TableHeaderFilter>
               </th>
-              <th scope="col" className="py-2 pr-4 font-semibold">
+              <th scope="col" className="hidden py-3 pr-4 font-semibold md:table-cell">
                 <TableHeaderFilter
                   isActive={Boolean(filters.student)}
                   label="Student"
@@ -400,8 +506,8 @@ function CompactShopRequestList({
                   />
                 </TableHeaderFilter>
               </th>
-              <th scope="col" className="py-2 pr-4 font-semibold">Cost</th>
-              <th scope="col" className="py-2 pr-4 font-semibold">
+              <th scope="col" className="hidden py-3 pr-4 text-right font-semibold sm:table-cell">Cost</th>
+              <th scope="col" className="hidden py-3 pr-4 font-semibold lg:table-cell">
                 <TableHeaderFilter
                   isActive={Boolean(filters.status)}
                   label="Status"
@@ -425,23 +531,57 @@ function CompactShopRequestList({
                   />
                 </TableHeaderFilter>
               </th>
-              <th scope="col" className="py-2 text-right font-semibold">
-                <span className="sr-only">Actions</span>
+              {showDecisionNote && (
+                <th scope="col" className="hidden py-3 pr-4 font-semibold lg:table-cell">
+                  <TableHeaderFilter
+                    isActive={Boolean(filters.decisionNote)}
+                    label="Comment"
+                    onClear={() => updateFilter("decisionNote", "")}
+                  >
+                    <TableHeaderFilterInput
+                      label="Comment"
+                      onChange={(value) => updateFilter("decisionNote", value)}
+                      value={filters.decisionNote}
+                    />
+                  </TableHeaderFilter>
+                </th>
+              )}
+              <th scope="col" className="py-3 text-right font-semibold">
+                Actions
               </th>
             </tr>
           </thead>
           <tbody>
-            {filteredRequests.map((request) => (
-              <tr className="border-b border-border-subtle" key={request.id}>
-                <td className="py-2 pr-4">
-                  <p className="truncate text-sm font-semibold text-text-control">
+            {requests.map((request) => (
+              <tr className="border-b border-border-subtle transition hover:bg-panel-soft/60" key={request.id}>
+                <DataTableSelectionCell
+                  checked={selectedRequestIds.includes(request.id)}
+                  disabled={request.status !== "pending"}
+                  label={`Select ${request.itemName} for ${request.studentName}`}
+                  onChange={(isSelected) =>
+                    onRequestSelectionChange(request.id, isSelected)
+                  }
+                />
+                <td className="py-3 pr-4">
+                  <p className="truncate text-[13px] font-semibold text-text-control sm:text-sm">
                     {request.itemName}
                   </p>
-                  <p className="mt-1 truncate text-xs text-text-muted">
+                  <p className="mt-0.5 truncate text-xs text-text-muted md:hidden">
+                    {request.studentName} · {formatAmount(request.price)} {currencyName}
+                  </p>
+                  <p className="mt-0.5 truncate text-xs text-text-muted">
                     {formatDateTime(request.purchasedAt)}
                   </p>
+                  <div className="mt-1 lg:hidden">
+                    <ShopRequestStatusBadge request={request} />
+                  </div>
+                  {showDecisionNote && request.decisionNote && (
+                    <p className="mt-1 truncate text-xs text-text-muted lg:hidden">
+                      {request.decisionNote}
+                    </p>
+                  )}
                 </td>
-                <td className="py-2 pr-4">
+                <td className="hidden py-3 pr-4 md:table-cell">
                   <p className="truncate text-sm font-semibold text-text-control">
                     {request.studentName}
                   </p>
@@ -449,15 +589,21 @@ function CompactShopRequestList({
                     {request.studentUsername}
                   </p>
                 </td>
-                <td className="py-2 pr-4">
-                  <span className="text-sm font-semibold">
-                    {formatAmount(request.price)} {currencyName}
-                  </span>
+                <td className="hidden py-3 pr-4 text-right sm:table-cell">
+                  <DataTableCurrencyValue
+                    amount={formatAmount(request.price)}
+                    currencyName={currencyName}
+                  />
                 </td>
-                <td className="py-2 pr-4">
+                <td className="hidden py-3 pr-4 lg:table-cell">
                   <ShopRequestStatusBadge request={request} />
                 </td>
-                <td className="py-2 text-right">
+                {showDecisionNote && (
+                  <td className="hidden py-3 pr-4 text-sm text-text-muted lg:table-cell">
+                    {request.decisionNote || "No comment"}
+                  </td>
+                )}
+                <td className="py-2 pl-3">
                   <ShopRequestActions
                     onApprove={onApprove}
                     onDeny={onDeny}
@@ -467,14 +613,13 @@ function CompactShopRequestList({
               </tr>
             ))}
           </tbody>
-        </table>
-      </div>
-      {filteredRequests.length === 0 && (
+      </DataTable>
+      {requests.length === 0 && (
         <EmptyState
           action={
             <IconButton
               label="Clear reward request filters"
-              onClick={clearFilters}
+              onClick={onClearFilters}
               text="Clear Filters"
             >
               <XIcon />
@@ -489,122 +634,6 @@ function CompactShopRequestList({
   );
 }
 
-function CompactShopRequestMobileRow({
-  currencyName,
-  onApprove,
-  onDeny,
-  request,
-}: {
-  currencyName: string;
-  onApprove: (purchaseId: string) => void;
-  onDeny: (purchaseId: string) => void;
-  request: ShopPurchaseRequest;
-}) {
-  return (
-    <article className="theme-card flex items-center justify-between gap-3 p-3">
-      <div className="min-w-0">
-        <p className="truncate text-sm font-semibold">{request.itemName}</p>
-        <p className="mt-1 truncate text-xs text-text-muted">
-          {formatDateTime(request.purchasedAt)}
-        </p>
-        <p className="mt-1 truncate text-xs text-text-muted">
-          {request.studentName}
-        </p>
-        <p className="mt-1">
-          <span className="text-sm font-semibold">
-            {formatAmount(request.price)} {currencyName}
-          </span>
-        </p>
-      </div>
-      <ShopRequestActions
-        onApprove={onApprove}
-        onDeny={onDeny}
-        request={request}
-      />
-    </article>
-  );
-}
-
-function ShopRequestCard({
-  currencyName,
-  onApprove,
-  onDeny,
-  request,
-}: {
-  currencyName: string;
-  onApprove: (purchaseId: string) => void;
-  onDeny: (purchaseId: string) => void;
-  request: ShopPurchaseRequest;
-}) {
-  return (
-    <article className="theme-card p-3 transition hover:border-brand-soft-strong hover:shadow-md">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent-soft text-accent">
-            <ShoppingCartIcon />
-          </span>
-          <div className="min-w-0">
-            <h4 className="truncate text-sm font-semibold">{request.itemName}</h4>
-            <p className="truncate text-sm text-text-muted">
-              {request.studentName} ({request.studentUsername})
-            </p>
-          </div>
-        </div>
-      </div>
-      <div className="mt-3 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 border-t border-border-subtle pt-3">
-        <ShopRequestStatusBadge request={request} />
-        <p className="truncate text-center text-xs text-text-muted">
-          {formatDateTime(request.purchasedAt)}
-        </p>
-        <p className="inline-flex items-baseline gap-1 whitespace-nowrap rounded-md bg-brand-soft px-2.5 py-1.5 text-right text-xs text-text-muted">
-          <span className="font-number text-sm font-semibold text-brand-ink">
-            {formatAmount(request.price)}
-          </span>
-          <span>{currencyName}</span>
-        </p>
-      </div>
-      {request.decisionNote && (
-        <p className="mt-2 text-sm text-text-muted">{request.decisionNote}</p>
-      )}
-      {request.status === "pending" && (
-        <ShopRequestDecisionButtons
-          onApprove={() => onApprove(request.id)}
-          onDeny={() => onDeny(request.id)}
-        />
-      )}
-    </article>
-  );
-}
-
-function ShopRequestDecisionButtons({
-  onApprove,
-  onDeny,
-}: {
-  onApprove: () => void;
-  onDeny: () => void;
-}) {
-  return (
-    <div className="mt-4 flex justify-end gap-2 border-t border-border-subtle pt-3">
-      <button
-        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-danger-action px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
-        onClick={onDeny}
-        type="button"
-      >
-        <XIcon />
-        Deny
-      </button>
-      <button
-        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-success-action px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
-        onClick={onApprove}
-        type="button"
-      >
-        <CheckIcon />
-        Approve
-      </button>
-    </div>
-  );
-}
-
 function ShopRequestActions({
   onApprove,
   onDeny,
@@ -615,27 +644,32 @@ function ShopRequestActions({
   request: ShopPurchaseRequest;
 }) {
   if (request.status !== "pending") {
-    return null;
+    return <span className="block text-center text-xs text-text-muted">Complete</span>;
   }
 
   return (
-    <TableActionMenu
-      label={`Open actions for ${request.itemName}`}
-      items={[
-        {
-          icon: <CheckIcon />,
-          label: "Approve",
-          onSelect: () => onApprove(request.id),
-          tone: "success",
-        },
-        {
-          icon: <XIcon />,
-          label: "Deny",
-          onSelect: () => onDeny(request.id),
-          tone: "danger",
-        },
-      ]}
-    />
+    <div className="flex items-center justify-end gap-2">
+      <button
+        aria-label={`Deny ${request.itemName} for ${request.studentName}`}
+        className="group inline-flex h-9 min-w-9 flex-1 items-center justify-center gap-1.5 rounded-md border border-negative-border bg-negative-fill px-2 text-xs font-semibold text-negative-ink shadow-sm transition-all duration-150 hover:-translate-y-px hover:border-negative-ink hover:bg-negative-border hover:shadow-md focus-visible:-translate-y-px focus-visible:border-negative-ink focus-visible:bg-negative-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-negative-ink focus-visible:ring-offset-1 active:translate-y-0 active:scale-[0.97]"
+        onClick={() => onDeny(request.id)}
+        title="Deny request"
+        type="button"
+      >
+        <XIcon className="h-3.5 w-3.5 shrink-0 transition-transform duration-150 group-hover:scale-110 group-focus-visible:scale-110" />
+        <span className="hidden sm:inline">Deny</span>
+      </button>
+      <button
+        aria-label={`Approve ${request.itemName} for ${request.studentName}`}
+        className="group inline-flex h-9 min-w-9 flex-1 items-center justify-center gap-1.5 rounded-md border border-positive-border bg-positive-fill px-2 text-xs font-semibold text-positive-ink shadow-sm transition-all duration-150 hover:-translate-y-px hover:border-positive-ink hover:bg-positive-border hover:shadow-md focus-visible:-translate-y-px focus-visible:border-positive-ink focus-visible:bg-positive-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-positive-ink focus-visible:ring-offset-1 active:translate-y-0 active:scale-[0.97]"
+        onClick={() => onApprove(request.id)}
+        title="Approve request"
+        type="button"
+      >
+        <CheckIcon className="h-3.5 w-3.5 shrink-0 transition-transform duration-150 group-hover:scale-110 group-focus-visible:scale-110" />
+        <span className="hidden sm:inline">Approve</span>
+      </button>
+    </div>
   );
 }
 
@@ -662,6 +696,7 @@ function matchesShopRequestTableFilters(
       `${request.studentName} ${request.studentUsername}`,
       filters.student,
     ) &&
+    includesFilter(request.decisionNote, filters.decisionNote) &&
     (!filters.status || request.status === filters.status)
   );
 }
@@ -672,7 +707,7 @@ function includesFilter(value: string, filter: string) {
 
 function getShopRequestStatusLabel(request: ShopPurchaseRequest) {
   if (request.isVoided) {
-    return "Voided";
+    return "Archived";
   }
 
   if (request.status === "pending") {

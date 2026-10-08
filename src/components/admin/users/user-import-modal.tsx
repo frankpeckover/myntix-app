@@ -8,6 +8,7 @@ import { CsvColumnGuide } from "@/components/ui/csv-column-guide";
 import { CsvFileInput } from "@/components/ui/csv-file-input";
 import { CsvTemplateButton } from "@/components/ui/csv-template-button";
 import { ImportModalLayout } from "@/components/ui/import-modal-layout";
+import { DataTable } from "@/components/ui/data-table";
 import type { Role } from "@/lib/auth/session";
 import type {
   ImportedUserCredential,
@@ -293,7 +294,7 @@ function GeneratedPasswords({ users }: { users: ImportedUserCredential[] }) {
           ))}
         </div>
 
-        <table aria-label="User import preview" className="hidden w-full text-left text-sm md:table">
+        <DataTable ariaLabel="User import preview" layout="auto" responsive="desktop">
           <thead className="text-text-muted">
             <tr>
               <th scope="col" className="py-2 pr-4 font-semibold">Username</th>
@@ -310,7 +311,7 @@ function GeneratedPasswords({ users }: { users: ImportedUserCredential[] }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </DataTable>
       </div>
     </div>
   );

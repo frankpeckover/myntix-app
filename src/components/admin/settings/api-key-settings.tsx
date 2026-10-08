@@ -10,6 +10,7 @@ import type { ApiScope } from "@/lib/api/api-types";
 import type { ApiClientSummary } from "@/domains/integrations/api-client-service";
 import { FixedNotification } from "@/components/ui/fixed-notification";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { DataTable } from "@/components/ui/data-table";
 
 const scopeOptions: Array<{
   label: string;
@@ -163,14 +164,14 @@ export function ApiKeySettings() {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-md bg-surface">
+      <div className="overflow-clip rounded-md bg-surface">
         {isLoading ? (
           <LoadingSkeleton lines={4} />
         ) : clients.length === 0 ? (
           <p className="p-4 text-sm text-text-muted">No API keys have been created.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table aria-label="API keys" className="w-full table-fixed text-left text-sm">
+          <div className="overflow-x-clip">
+            <DataTable ariaLabel="API keys">
               <thead>
                 <tr className="border-b-2 border-border text-xs uppercase text-text-muted">
                   <th scope="col" className="w-[28%] px-4 py-3 font-medium">Name</th>
@@ -199,7 +200,11 @@ export function ApiKeySettings() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button
-                        className="rounded-md border border-border bg-surface-muted px-3 py-2 text-xs font-medium text-text-control transition hover:bg-surface"
+                        className={`rounded-md border px-3 py-2 text-xs font-medium transition ${
+                          client.isActive
+                            ? "border-danger-button-border bg-surface text-danger-strong hover:bg-danger-soft"
+                            : "border-positive-border bg-positive-fill text-positive-ink hover:brightness-[0.97]"
+                        }`}
                         onClick={() => handleStatusChange(client.id, !client.isActive)}
                         type="button"
                       >
@@ -209,7 +214,7 @@ export function ApiKeySettings() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </DataTable>
           </div>
         )}
       </div>

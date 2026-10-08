@@ -149,7 +149,7 @@ export function NetMovementTooltip({
       <p className="font-semibold text-text-control">{point.label}</p>
       <p
         className={`mt-1 font-semibold ${
-          point.net >= 0 ? "text-success" : "text-danger"
+          point.net >= 0 ? "text-positive-ink" : "text-negative-ink"
         }`}
       >
         {formatSignedCurrencyAmount(point.net, currencyName)}

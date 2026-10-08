@@ -15,6 +15,7 @@ import { useAccentTheme } from "@/lib/theme/use-accent-theme";
 import { useDashboardTheme } from "@/lib/theme/use-dashboard-theme";
 import { useThemeMode } from "@/lib/theme/use-theme-mode";
 import { useWalletStyle } from "@/lib/theme/use-wallet-style";
+import { useTableDensity } from "@/lib/theme/use-table-density";
 import {
   walletPatternBackgrounds,
   walletStyleBackgrounds,
@@ -51,6 +52,8 @@ function AppearancePreferences({
     setAccentTheme,
   } = useAccentTheme();
   const { isDarkMode, toggleThemeMode } = useThemeMode();
+  const { setTableDensity, tableDensity, tableDensityOptions } =
+    useTableDensity();
   const [isCustomColorPickerOpen, setIsCustomColorPickerOpen] =
     useState(false);
 
@@ -104,6 +107,31 @@ function AppearancePreferences({
             }`}
           />
         </button>
+      </div>
+
+      <div className="mt-5 border-t border-border-subtle pt-4">
+        <p className="text-sm font-medium text-text-control">Table density</p>
+        <p className="mt-0.5 text-xs text-text-muted">
+          Choose how much vertical space data rows use.
+        </p>
+        <div className="mt-3 grid grid-cols-3 rounded-md border border-border bg-surface p-1">
+          {tableDensityOptions.map((option) => (
+            <button
+              aria-pressed={tableDensity === option.value}
+              className={`min-w-0 rounded-sm px-2 py-2 text-sm font-semibold transition ${
+                tableDensity === option.value
+                  ? "bg-brand text-white"
+                  : "text-text-control hover:bg-surface-hover"
+              }`}
+              key={option.value}
+              onClick={() => setTableDensity(option.value)}
+              title={option.description}
+              type="button"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="mt-5 border-t border-border-subtle pt-4">

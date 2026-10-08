@@ -26,7 +26,7 @@ import {
   FileDownIcon,
   FileUpIcon,
   PlusIcon,
-  XIcon,
+  TrashIcon,
 } from "@/components/ui/icons";
 import { TableActionMenu } from "@/components/ui/table-action-menu";
 import { TableToolbar } from "@/components/ui/table-toolbar";
@@ -626,7 +626,7 @@ export function AdminGroupsPanel() {
               <BulkSelectionControls
                 actions={[
                   {
-                    icon: <XIcon />,
+                    icon: <TrashIcon />,
                     label: "Archive selected",
                     onSelect: () =>
                       setPendingBulkGroupStatusChange({
@@ -637,7 +637,7 @@ export function AdminGroupsPanel() {
                   },
                   {
                     icon: <CheckIcon />,
-                    label: "Reactivate selected",
+                    label: "Restore selected",
                     onSelect: () =>
                       setPendingBulkGroupStatusChange({
                         groupIds: selectedGroupIds,
@@ -726,16 +726,16 @@ export function AdminGroupsPanel() {
           confirmLabel={
             pendingGroupStatusChange.isActive
               ? "Archive Group"
-              : "Reactivate Group"
+              : "Restore Group"
           }
-          description={`${pendingGroupStatusChange.isActive ? "Archive" : "Reactivate"} ${pendingGroupStatusChange.name}?`}
+          description={`${pendingGroupStatusChange.isActive ? "Archive" : "Restore"} ${pendingGroupStatusChange.name}?`}
           isConfirming={isChangingGroupStatus}
           onCancel={() => setPendingGroupStatusChange(null)}
           onConfirm={confirmGroupStatusChange}
           title={
             pendingGroupStatusChange.isActive
               ? "Archive group"
-              : "Reactivate group"
+              : "Restore group"
           }
           tone={pendingGroupStatusChange.isActive ? "danger" : "success"}
         />
@@ -745,15 +745,15 @@ export function AdminGroupsPanel() {
         <ConfirmationModal
           confirmLabel={
             pendingBulkGroupStatusChange.isActive
-              ? "Reactivate Groups"
+              ? "Restore Groups"
               : "Archive Groups"
           }
-          description={`${pendingBulkGroupStatusChange.isActive ? "Reactivate" : "Archive"} ${pendingBulkGroupStatusChange.groupIds.length} selected groups?`}
+          description={`${pendingBulkGroupStatusChange.isActive ? "Restore" : "Archive"} ${pendingBulkGroupStatusChange.groupIds.length} selected groups?`}
           onCancel={() => setPendingBulkGroupStatusChange(null)}
           onConfirm={confirmBulkGroupStatusChange}
           title={
             pendingBulkGroupStatusChange.isActive
-              ? "Reactivate selected groups"
+              ? "Restore selected groups"
               : "Archive selected groups"
           }
           tone={pendingBulkGroupStatusChange.isActive ? "success" : "danger"}
