@@ -648,26 +648,24 @@ function ShopRequestActions({
   }
 
   return (
-    <div className="flex items-center justify-end gap-2">
+    <div className="flex items-center justify-end gap-1.5">
       <button
         aria-label={`Deny ${request.itemName} for ${request.studentName}`}
-        className="group inline-flex h-9 min-w-9 flex-1 items-center justify-center gap-1.5 rounded-md border border-negative-border bg-negative-fill px-2 text-xs font-semibold text-negative-ink shadow-sm transition-all duration-150 hover:-translate-y-px hover:border-negative-ink hover:bg-negative-border hover:shadow-md focus-visible:-translate-y-px focus-visible:border-negative-ink focus-visible:bg-negative-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-negative-ink focus-visible:ring-offset-1 active:translate-y-0 active:scale-[0.97]"
+        className="group inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-negative-border bg-negative-fill text-negative-ink shadow-sm transition-all duration-150 hover:-translate-y-px hover:border-negative-ink hover:bg-negative-border hover:shadow-md focus-visible:-translate-y-px focus-visible:border-negative-ink focus-visible:bg-negative-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-negative-ink focus-visible:ring-offset-1 active:translate-y-0 active:scale-[0.97]"
         onClick={() => onDeny(request.id)}
         title="Deny request"
         type="button"
       >
-        <XIcon className="h-3.5 w-3.5 shrink-0 transition-transform duration-150 group-hover:scale-110 group-focus-visible:scale-110" />
-        <span className="hidden sm:inline">Deny</span>
+        <XIcon className="h-4 w-4 shrink-0 transition-transform duration-150 group-hover:scale-110 group-focus-visible:scale-110" />
       </button>
       <button
         aria-label={`Approve ${request.itemName} for ${request.studentName}`}
-        className="group inline-flex h-9 min-w-9 flex-1 items-center justify-center gap-1.5 rounded-md border border-positive-border bg-positive-fill px-2 text-xs font-semibold text-positive-ink shadow-sm transition-all duration-150 hover:-translate-y-px hover:border-positive-ink hover:bg-positive-border hover:shadow-md focus-visible:-translate-y-px focus-visible:border-positive-ink focus-visible:bg-positive-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-positive-ink focus-visible:ring-offset-1 active:translate-y-0 active:scale-[0.97]"
+        className="group inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-positive-border bg-positive-fill text-positive-ink shadow-sm transition-all duration-150 hover:-translate-y-px hover:border-positive-ink hover:bg-positive-border hover:shadow-md focus-visible:-translate-y-px focus-visible:border-positive-ink focus-visible:bg-positive-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-positive-ink focus-visible:ring-offset-1 active:translate-y-0 active:scale-[0.97]"
         onClick={() => onApprove(request.id)}
         title="Approve request"
         type="button"
       >
-        <CheckIcon className="h-3.5 w-3.5 shrink-0 transition-transform duration-150 group-hover:scale-110 group-focus-visible:scale-110" />
-        <span className="hidden sm:inline">Approve</span>
+        <CheckIcon className="h-4 w-4 shrink-0 transition-transform duration-150 group-hover:scale-110 group-focus-visible:scale-110" />
       </button>
     </div>
   );

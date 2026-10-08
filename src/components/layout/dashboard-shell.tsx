@@ -43,9 +43,12 @@ import {
 import { defaultCurrencyName } from "@/lib/config/school-defaults";
 import { type SessionUser } from "@/lib/auth/session";
 import type { SchoolInfo } from "@/domains/organisation/school-service";
-import { useTableDensity } from "@/lib/theme/use-table-density";
+import { VoiceCreditAssistant } from "@/components/voice/voice-credit-assistant";
+import { UserPreferencesProvider } from "@/components/preferences/user-preferences-provider";
+import type { UserPreferences } from "@/lib/theme/user-preferences";
 
 type DashboardShellProps = {
+  initialPreferences: UserPreferences | null;
   maintenanceMessage: string;
   user: SessionUser;
   onLogout: () => void;
@@ -58,11 +61,11 @@ type TeacherGroupNavigation = {
 };
 
 export function DashboardShell({
+  initialPreferences,
   maintenanceMessage,
   user,
   onLogout,
 }: DashboardShellProps) {
-  useTableDensity();
   const [activeNavItem, setActiveNavItem] =
     useState<NavigationItem>("Dashboard");
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -138,6 +141,10 @@ export function DashboardShell({
   }, []);
 
   return (
+    <UserPreferencesProvider
+      initialPreferences={initialPreferences}
+      userId={user.id}
+    >
     <div className={`app-shell-surface min-h-screen overflow-x-clip bg-background text-foreground ${shellRoleClassName}`}>
       <OfflineBanner />
       <GlobalMaintenanceBanner message={maintenanceMessage} />
@@ -177,6 +184,12 @@ export function DashboardShell({
                 </span>
               </div>
               <div className="order-2 ml-auto flex shrink-0 items-center gap-2 lg:order-none lg:ml-0">
+                {!isStudent(user) && (
+                  <VoiceCreditAssistant
+                    currencyName={schoolInfo.currencyName}
+                    transactionCap={schoolInfo.transactionCap}
+                  />
+                )}
                 <NotificationCentre
                   onNavigate={(target) => setActiveNavItem(target)}
                 />
@@ -320,6 +333,7 @@ export function DashboardShell({
         </main>
       </div>
     </div>
+    </UserPreferencesProvider>
   );
 }
 

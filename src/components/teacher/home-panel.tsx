@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getCurrentTeacherClass, listStaffShopRequests } from "@/lib/actions";
 import type { CurrentClass } from "@/domains/timetable/timetable-service";
 import { ClockIcon, CoinStackIcon, ShoppingCartIcon, UsersIcon } from "@/components/ui/icons";
 import { PageHeader } from "@/components/ui/page-header";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { useCurrentClassRefresh } from "@/components/teacher/use-current-class-refresh";
 
 type TeacherHomePanelProps = {
   onNavigateToCredits: () => void;
@@ -23,6 +24,16 @@ export function TeacherHomePanel({
   const [currentClass, setCurrentClass] = useState<CurrentClass | null>(null);
   const [pendingRequests, setPendingRequests] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+
+  const refreshCurrentClass = useCallback(async () => {
+    try {
+      setCurrentClass(await getCurrentTeacherClass());
+    } catch {
+      // Keep the last known class if a background refresh briefly fails.
+    }
+  }, []);
+
+  useCurrentClassRefresh(() => void refreshCurrentClass());
 
   useEffect(() => {
     let isMounted = true;

@@ -47,6 +47,7 @@ import {
   getCreditAnalyticsSummary,
   searchCreditAnalyticsScopes,
 } from "@/lib/actions";
+import { ledgerChangeEventName } from "@/lib/ledger/ledger-change-event";
 import type {
   CreditAnalyticsBucket,
   CreditAnalyticsBalanceHistoryPoint,
@@ -102,6 +103,19 @@ export function CreditAnalyticsPanel({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    function refreshAfterExternalAdjustment() {
+      setReloadKey((current) => current + 1);
+    }
+
+    window.addEventListener(ledgerChangeEventName, refreshAfterExternalAdjustment);
+    return () =>
+      window.removeEventListener(
+        ledgerChangeEventName,
+        refreshAfterExternalAdjustment,
+      );
+  }, []);
 
   const selectedScopeKey = selectedScope
     ? `${selectedScope.kind}:${selectedScope.id}`
@@ -483,7 +497,7 @@ function NetMovementChart({
       <ResponsiveContainer height="100%" width="100%">
         <BarChart
           data={trend}
-          margin={{ bottom: 0, left: 0, right: 8, top: 8 }}
+          margin={{ bottom: 0, left: 4, right: 8, top: 8 }}
         >
           <CartesianGrid
             horizontal={false}
@@ -506,10 +520,11 @@ function NetMovementChart({
             axisLine={false}
             domain={[yAxisMinimum, yAxisMaximum]}
             tick={{ fill: "var(--text-muted)", fontSize: 11 }}
+            tickMargin={12}
             tickLine={false}
             ticks={compactYAxisTicks}
             type="number"
-            width={42}
+            width={56}
           />
           {compactYAxisTicks.map((tick) => (
             <ReferenceLine

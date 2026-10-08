@@ -142,7 +142,7 @@
   --radius-control: 0.75rem;
   --radius-card: 1rem;
   --radius-panel: 1.25rem;
-  --font-numeric: "App Numerals", Lato, "Segoe UI", Arial, Helvetica, sans-serif;
+  --font-numeric: "App Numerals", "Segoe UI", Arial, Helvetica, sans-serif;
   --motion-fast: 140ms;
   --motion-standard: 180ms;
   --motion-ease: cubic-bezier(0.2, 0, 0, 1);
@@ -317,9 +317,9 @@ html[data-accent="custom"] {
   --color-wallet-highlight: var(--wallet-highlight);
   --color-progress-track: var(--progress-track);
   --color-activity-meta: var(--activity-meta);
-  --font-numeric: "App Numerals", var(--font-lato), "Segoe UI", Arial, Helvetica, sans-serif;
-  --font-sans: var(--font-lato), "Segoe UI", Arial, Helvetica, sans-serif;
-  --font-heading: var(--font-lato), "Segoe UI", Arial, Helvetica, sans-serif;
+  --font-numeric: "App Numerals", "Segoe UI", Arial, Helvetica, sans-serif;
+  --font-sans: var(--font-inter), "Segoe UI", Arial, Helvetica, sans-serif;
+  --font-heading: var(--font-plus-jakarta), var(--font-inter), "Segoe UI", Arial, Helvetica, sans-serif;
   --font-mono: "Cascadia Code", Consolas, monospace;
 }
 
@@ -412,7 +412,7 @@ body {
     linear-gradient(180deg, var(--background-gradient-start) 0, var(--background) 260px),
     var(--background);
   color: var(--foreground);
-  font-family: var(--font-lato), "Segoe UI", Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), "Segoe UI", Arial, Helvetica, sans-serif;
   font-kerning: normal;
   font-synthesis: none;
   font-weight: 400;
@@ -426,7 +426,7 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: var(--font-lato), "Segoe UI", Arial, Helvetica, sans-serif;
+  font-family: var(--font-plus-jakarta), var(--font-inter), "Segoe UI", Arial, Helvetica, sans-serif;
 }
 
 .font-semibold {
@@ -445,6 +445,34 @@ h6 {
 button,
 textarea {
   font: inherit;
+}
+
+select {
+  font: inherit;
+  appearance: auto;
+  color-scheme: inherit;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background-color: var(--surface);
+  color: var(--text-control);
+}
+
+.theme-select {
+  min-width: 0;
+  box-shadow: 0 1px 1px color-mix(in srgb, var(--shadow-panel) 35%, transparent);
+  transition:
+    border-color var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
+}
+
+.theme-select:focus-visible {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 18%, transparent);
+}
+
+select option {
+  background-color: var(--surface);
+  color: var(--text-control);
 }
 
 button,
@@ -1374,7 +1402,7 @@ html[data-theme="dark"] .app-modal.theme-panel {
   z-index: 20;
 }
 
-.app-data-table[data-layout="fixed"] tbody td:not(.text-right):not(:last-child):not(:has(.status-badge)) {
+.app-data-table[data-layout="fixed"] tbody td:not(.table-selection-cell):not(.text-right):not(:last-child):not(:has(.status-badge)) {
   max-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

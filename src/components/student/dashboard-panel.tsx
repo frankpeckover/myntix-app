@@ -626,6 +626,12 @@ function useAnimatedWholeNumber(targetValue: number) {
       return;
     }
 
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      currentValueRef.current = targetValue;
+      const frameId = requestAnimationFrame(() => setDisplayValue(targetValue));
+      return () => cancelAnimationFrame(frameId);
+    }
+
     const animationStart = performance.now();
 
     function animateBalance(currentTime: number) {

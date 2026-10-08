@@ -2,11 +2,14 @@
 
 import { useState } from "react";
 import { StaffSettingsPanel } from "@/components/preferences/staff-settings-panel";
+import { PreferencesSection } from "@/components/preferences/preferences-section";
 import { PageHeader } from "@/components/ui/page-header";
 import {
+  MicrophoneIcon,
   MoonIcon,
   SlidersHorizontalIcon,
   SunIcon,
+  WalletIcon,
 } from "@/components/ui/icons";
 import { defaultCustomAccentColor, type AccentTheme } from "@/lib/theme/accent-theme-config";
 import { isStaff, isStudent } from "@/lib/auth/permissions";
@@ -16,6 +19,8 @@ import { useDashboardTheme } from "@/lib/theme/use-dashboard-theme";
 import { useThemeMode } from "@/lib/theme/use-theme-mode";
 import { useWalletStyle } from "@/lib/theme/use-wallet-style";
 import { useTableDensity } from "@/lib/theme/use-table-density";
+import { useUserPreferences } from "@/components/preferences/user-preferences-provider";
+import type { VoiceShortcut } from "@/lib/theme/user-preferences";
 import {
   walletPatternBackgrounds,
   walletStyleBackgrounds,
@@ -27,23 +32,21 @@ type PreferencesPanelProps = {
 
 export function PreferencesPanel({ user }: PreferencesPanelProps) {
   return (
-    <section className="motion-panel mt-2 space-y-5">
+    <section className="motion-panel mt-2 space-y-4 sm:space-y-5">
       <PageHeader
-        description="Manage the appearance and personal workflow choices for your account."
+        description="Your personal appearance and workflow settings. Changes save to your account."
         icon={<SlidersHorizontalIcon />}
         title="Preferences"
       />
-      <AppearancePreferences showWalletOptions={isStudent(user)} />
+      <AppearancePreferences />
+      {isStaff(user) && <WorkflowPreferences />}
+      {isStudent(user) && <WalletAppearancePreferences />}
       {isStaff(user) && <StaffSettingsPanel />}
     </section>
   );
 }
 
-function AppearancePreferences({
-  showWalletOptions,
-}: {
-  showWalletOptions: boolean;
-}) {
+function AppearancePreferences() {
   const {
     accentTheme,
     accentThemeOptions,
@@ -69,23 +72,21 @@ function AppearancePreferences({
   }
 
   return (
-    <section className="theme-panel p-5">
-      <div>
-        <h2 className="text-sm font-semibold text-text-control">Appearance</h2>
-        <p className="mt-1 text-sm text-text-muted">
-          These choices apply only to this browser.
-        </p>
-      </div>
-
-      <div className="mt-5 flex items-center justify-between gap-4 border-t border-border-subtle pt-4">
+    <PreferencesSection
+      description="Choose how Myntix looks on each device."
+      icon={isDarkMode ? <MoonIcon /> : <SunIcon />}
+      title="Appearance"
+    >
+      <div className="grid gap-5 md:grid-cols-2">
+      <div className="flex min-w-0 items-center justify-between gap-4 rounded-md border border-border-subtle px-3 py-3">
         <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-panel-soft text-text-muted">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-panel-soft text-text-muted">
             {isDarkMode ? <MoonIcon /> : <SunIcon />}
           </span>
           <div>
             <p className="text-sm font-medium text-text-control">Dark theme</p>
             <p className="mt-0.5 text-xs text-text-muted">
-              Use a darker interface in this browser.
+              Use a darker interface across your account.
             </p>
           </div>
         </div>
@@ -109,16 +110,14 @@ function AppearancePreferences({
         </button>
       </div>
 
-      <div className="mt-5 border-t border-border-subtle pt-4">
+      <div className="min-w-0 rounded-md border border-border-subtle px-3 py-3">
         <p className="text-sm font-medium text-text-control">Table density</p>
-        <p className="mt-0.5 text-xs text-text-muted">
-          Choose how much vertical space data rows use.
-        </p>
-        <div className="mt-3 grid grid-cols-3 rounded-md border border-border bg-surface p-1">
+        <p className="mt-0.5 text-xs text-text-muted">Choose the spacing used in tables.</p>
+        <div className="mt-3 grid grid-cols-3 gap-1 rounded-md bg-panel-soft p-1">
           {tableDensityOptions.map((option) => (
             <button
               aria-pressed={tableDensity === option.value}
-              className={`min-w-0 rounded-sm px-2 py-2 text-sm font-semibold transition ${
+              className={`min-w-0 rounded-sm px-2 py-2 text-xs font-semibold transition sm:text-sm ${
                 tableDensity === option.value
                   ? "bg-brand text-white"
                   : "text-text-control hover:bg-surface-hover"
@@ -133,12 +132,18 @@ function AppearancePreferences({
           ))}
         </div>
       </div>
+      </div>
 
-      <div className="mt-5 border-t border-border-subtle pt-4">
-        <p className="text-sm font-medium text-text-control">Accent colour</p>
-        <p className="mt-0.5 text-xs text-text-muted">
-          Choose the colour used for active controls and highlights.
-        </p>
+      <div className="mt-5 border-t border-border-subtle pt-5">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <p className="text-sm font-medium text-text-control">Accent colour</p>
+            <p className="mt-0.5 text-xs text-text-muted">Used for active controls and highlights.</p>
+          </div>
+          <p className="text-xs font-medium text-text-muted">
+            Selected: {accentThemeOptions.find((option) => option.value === accentTheme)?.label ?? "Custom"}
+          </p>
+        </div>
         <div className="mt-3 flex flex-wrap items-center gap-3">
           {accentThemeOptions.map((option) => (
             <div className="relative" key={option.value}>
@@ -195,9 +200,41 @@ function AppearancePreferences({
           ))}
         </div>
       </div>
+    </PreferencesSection>
+  );
+}
 
-      {showWalletOptions && <WalletAppearancePreferences />}
-    </section>
+function WorkflowPreferences() {
+  const { preferences, updatePreferences } = useUserPreferences();
+
+  return (
+    <PreferencesSection
+      description="Shortcuts and interaction settings for your day-to-day work."
+      icon={<MicrophoneIcon />}
+      title="Workflow"
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <label className="text-sm font-medium text-text-control" htmlFor="voice-shortcut">
+            Voice command shortcut
+          </label>
+          <p className="mt-1 text-xs leading-5 text-text-muted">
+            Choose a shortcut to start or stop listening. It is ignored while you are typing; the microphone button is always available.
+          </p>
+        </div>
+        <select
+          className="theme-select h-10 w-full px-3 text-sm sm:w-56"
+          id="voice-shortcut"
+          onChange={(event) => updatePreferences({ voiceShortcut: event.target.value as VoiceShortcut })}
+          value={preferences.voiceShortcut}
+        >
+          <option value="F2">F2</option>
+          <option value="F8">F8</option>
+          <option value="Control+Shift+Space">Ctrl + Shift + Space</option>
+          <option value="click">Microphone button only</option>
+        </select>
+      </div>
+    </PreferencesSection>
   );
 }
 
@@ -214,12 +251,12 @@ function WalletAppearancePreferences() {
     useDashboardTheme();
 
   return (
-    <div className="mt-5 border-t border-border-subtle pt-4">
-      <p className="text-sm font-medium text-text-control">Wallet appearance</p>
-      <p className="mt-0.5 text-xs text-text-muted">
-        Personalise the balance card on your dashboard.
-      </p>
-      <p className="mt-4 text-xs font-medium uppercase text-text-muted">Finish</p>
+    <PreferencesSection
+      description="Personalise the balance card and background on your dashboard."
+      icon={<WalletIcon />}
+      title="Student dashboard"
+    >
+      <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Card finish</p>
       <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
         {walletStyleOptions.map((option) => (
           <button
@@ -240,7 +277,7 @@ function WalletAppearancePreferences() {
           </button>
         ))}
       </div>
-      <p className="mt-4 text-xs font-medium uppercase text-text-muted">Pattern</p>
+      <p className="mt-5 border-t border-border-subtle pt-4 text-xs font-semibold uppercase tracking-wide text-text-muted">Card pattern</p>
       <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
         {walletPatternOptions.map((option) => (
           <button
@@ -271,10 +308,9 @@ function WalletAppearancePreferences() {
         ))}
       </div>
 
-      <p className="mt-5 text-sm font-medium text-text-control">Dashboard background</p>
-      <p className="mt-0.5 text-xs text-text-muted">
-        Add a subtle pattern behind your dashboard cards.
-      </p>
+      <div className="mt-5 border-t border-border-subtle pt-4">
+      <p className="text-sm font-medium text-text-control">Dashboard background</p>
+      <p className="mt-1 text-xs text-text-muted">A subtle pattern behind your dashboard cards.</p>
       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {dashboardThemeOptions.map((option) => (
           <button
@@ -297,7 +333,8 @@ function WalletAppearancePreferences() {
           </button>
         ))}
       </div>
-    </div>
+      </div>
+    </PreferencesSection>
   );
 }
 

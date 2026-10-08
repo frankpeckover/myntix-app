@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { listTransactionLog, voidTransaction } from "@/lib/actions";
 import { downloadCsv } from "@/lib/csv/client";
@@ -52,6 +52,7 @@ import {
 import { TableToolbar } from "@/components/ui/table-toolbar";
 import { TextReasonModal } from "@/components/ui/text-reason-modal";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { ledgerChangeEventName } from "@/lib/ledger/ledger-change-event";
 
 type TransactionLogPanelProps = {
   className?: string;
@@ -115,7 +116,7 @@ export function TransactionLogPanel({
   const [voidingTransaction, setVoidingTransaction] =
     useState<TransactionLogItem | null>(null);
 
-  async function refreshTransactions() {
+  const refreshTransactions = useCallback(async () => {
     setIsLoading(true);
 
     try {
@@ -127,7 +128,20 @@ export function TransactionLogPanel({
     } finally {
       setIsLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    function refreshAfterExternalAdjustment() {
+      void refreshTransactions();
+    }
+
+    window.addEventListener(ledgerChangeEventName, refreshAfterExternalAdjustment);
+    return () =>
+      window.removeEventListener(
+        ledgerChangeEventName,
+        refreshAfterExternalAdjustment,
+      );
+  }, [refreshTransactions]);
 
   useEffect(() => {
     let isMounted = true;

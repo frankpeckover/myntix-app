@@ -139,3 +139,7 @@ export {
   updateUser,
   uploadUserProfileImage,
 } from "@/lib/actions/user-actions";
+export {
+  getMyUserPreferences,
+  updateMyUserPreferences,
+} from "@/lib/actions/user-preference-actions";

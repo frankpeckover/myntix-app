@@ -6,7 +6,6 @@ export type DashboardThemeOption = {
   value: DashboardTheme;
 };
 
-export const dashboardThemeStorageKey = "app-dashboard-theme";
 export const defaultDashboardTheme: DashboardTheme = "clean";
 
 export const dashboardThemeBackgrounds: Record<DashboardTheme, string> = {

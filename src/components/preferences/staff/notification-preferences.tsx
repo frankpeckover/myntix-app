@@ -7,6 +7,7 @@ import {
 } from "@/lib/actions";
 import { FixedNotification } from "@/components/ui/fixed-notification";
 import { BellIcon } from "@/components/ui/icons";
+import { PreferencesSection } from "@/components/preferences/preferences-section";
 import type { RewardRequestNotificationMode } from "@/domains/notifications/notification-types";
 
 const rewardRequestOptions: Array<{
@@ -67,22 +68,14 @@ export function NotificationPreferences() {
   }
 
   return (
-    <section className="theme-panel p-5">
+    <PreferencesSection
+      description="Choose how you want to be reminded when reward requests are waiting."
+      icon={<BellIcon />}
+      title="Notifications"
+    >
       <FixedNotification error={error} message={message} />
-      <div className="flex items-start gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-panel-soft text-text-muted">
-          <BellIcon />
-        </span>
-        <div>
-          <h2 className="text-sm font-semibold text-text-control">Notifications</h2>
-          <p className="mt-1 text-sm text-text-muted">
-            Choose how you want to be reminded when reward requests are waiting.
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-5 flex items-center justify-between gap-4 border-t border-border-subtle pt-4">
-        <div>
+      <div className="flex flex-col gap-4 border-t border-border-subtle pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <label className="text-sm font-medium text-text-control" htmlFor="reward-request-notifications">
             Reward request notifications
           </label>
@@ -91,7 +84,7 @@ export function NotificationPreferences() {
           </p>
         </div>
         <select
-          className="min-h-9 rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-text-control outline-none ring-brand focus:border-brand focus:ring-2"
+          className="theme-input h-10 w-full px-3 text-sm sm:w-64"
           disabled={isLoading}
           id="reward-request-notifications"
           onChange={(event) =>
@@ -119,6 +112,6 @@ export function NotificationPreferences() {
           {isSaving ? "Saving..." : "Save notifications"}
         </button>
       </div>
-    </section>
+    </PreferencesSection>
   );
 }

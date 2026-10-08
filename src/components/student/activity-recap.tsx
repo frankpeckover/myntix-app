@@ -124,7 +124,7 @@ function WeekdayMovementChart({
       <ResponsiveContainer height="100%" width="100%">
         <BarChart
           data={movement}
-          margin={{ bottom: 0, left: 0, right: 4, top: 12 }}
+          margin={{ bottom: 0, left: 4, right: 4, top: 12 }}
         >
           <CartesianGrid horizontal={false} vertical={false} />
           <XAxis
@@ -139,7 +139,7 @@ function WeekdayMovementChart({
             tick={{ fill: "var(--text-muted)", fontSize: 10 }}
             tickLine={false}
             ticks={ticks}
-            width={34}
+            width={56}
           />
           {ticks.map((tick) => (
             <ReferenceLine

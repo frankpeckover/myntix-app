@@ -1,7 +1,6 @@
 export type TableDensity = "compact" | "default" | "roomy";
 
 export const defaultTableDensity: TableDensity = "default";
-export const tableDensityStorageKey = "app-table-density";
 export const tableDensityOptions: Array<{
   description: string;
   label: string;

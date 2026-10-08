@@ -478,3 +478,14 @@ export function XIcon(props: IconProps) {
     </IconBase>
   );
 }
+
+export function MicrophoneIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <rect height="11" rx="4" width="8" x="8" y="2" />
+      <path d="M5 10a7 7 0 0 0 14 0" />
+      <path d="M12 17v5" />
+      <path d="M8 22h8" />
+    </IconBase>
+  );
+}

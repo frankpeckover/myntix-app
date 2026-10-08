@@ -76,7 +76,7 @@ function withSecurityHeaders(response: NextResponse, protocol: string) {
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   response.headers.set(
     "Permissions-Policy",
-    "camera=(), microphone=(), geolocation=(), payment=()",
+    "camera=(), microphone=(self), geolocation=(), payment=()",
   );
 
   if (process.env.NODE_ENV === "production" && protocol === httpsProtocol) {

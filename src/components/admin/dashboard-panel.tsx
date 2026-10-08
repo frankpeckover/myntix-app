@@ -56,6 +56,7 @@ import {
 import { PageHeader } from "@/components/ui/page-header";
 import { AdminSetupChecklist } from "@/components/admin/setup-checklist";
 import type { NavigationItem } from "@/components/layout/app-nav";
+import { ledgerChangeEventName } from "@/lib/ledger/ledger-change-event";
 
 type AdminDashboardPanelProps = {
   currencyName: string;
@@ -87,6 +88,19 @@ export function AdminDashboardPanel({
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    function refreshAfterExternalAdjustment() {
+      setReloadKey((current) => current + 1);
+    }
+
+    window.addEventListener(ledgerChangeEventName, refreshAfterExternalAdjustment);
+    return () =>
+      window.removeEventListener(
+        ledgerChangeEventName,
+        refreshAfterExternalAdjustment,
+      );
+  }, []);
 
   useEffect(() => {
     let isMounted = true;

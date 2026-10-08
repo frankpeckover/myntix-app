@@ -9,15 +9,18 @@ import { sessionExpiredEventName } from "@/lib/auth/session-expiry-event";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { LoginCard } from "@/components/auth/login-card";
 import { ToastViewport } from "@/components/ui/toast-viewport";
+import type { UserPreferences } from "@/lib/theme/user-preferences";
 
 type AppEntryProps = {
   initialUser: SessionUser | null;
+  initialPreferences: UserPreferences | null;
   maintenanceMessage: string;
   returnTo?: string | null;
 };
 
 export function AppEntry({
   initialUser,
+  initialPreferences,
   maintenanceMessage,
   returnTo=null,
 }: AppEntryProps) {
@@ -79,6 +82,7 @@ export function AppEntry({
     <>
       <ToastViewport />
       <DashboardShell
+        initialPreferences={user === initialUser ? initialPreferences : null}
         maintenanceMessage={maintenanceMessage}
         onLogout={handleLogout}
         user={user}

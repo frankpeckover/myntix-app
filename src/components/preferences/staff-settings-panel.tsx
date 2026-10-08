@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/icons";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { PreferencesSection } from "@/components/preferences/preferences-section";
+import { SlidersHorizontalIcon } from "@/components/ui/icons";
 
 const defaultQuickAdjustments = getDefaultQuickAdjustments(
   defaultTransactionPresets,
@@ -119,10 +121,15 @@ export function StaffSettingsPanel() {
 
   return (
     <>
-      <form className="theme-panel p-5" onSubmit={handleSubmit}>
-        {isLoading ? (
-          <LoadingSkeleton className="px-0 py-0" lines={5} />
-        ) : (
+      <form onSubmit={handleSubmit}>
+        <PreferencesSection
+          description="Personalise the one-click credit adjustments and shortcuts you use while teaching."
+          icon={<SlidersHorizontalIcon />}
+          title="Quick actions"
+        >
+          {isLoading ? (
+            <LoadingSkeleton className="px-0 py-0" lines={5} />
+          ) : (
           <>
             <QuickAdjustmentDefaults
               addAmount={quickAddAmount}
@@ -190,7 +197,8 @@ export function StaffSettingsPanel() {
               </button>
             </div>
           </>
-        )}
+          )}
+        </PreferencesSection>
       </form>
       <NotificationPreferences />
     </>

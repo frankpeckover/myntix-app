@@ -7,7 +7,11 @@ import {
   TenantNotFoundError,
 } from "@/lib/database/db";
 import { getActiveMaintenanceMessage } from "@/domains/operations/platform-announcement-service";
+import { UserPreferenceService } from "@/domains/users/user-preference-service";
+import type { UserPreferences } from "@/lib/theme/user-preferences";
 import { notFound } from "next/navigation";
+
+const userPreferenceService = new UserPreferenceService();
 
 export default async function Home({searchParams}:{searchParams:Promise<{returnTo?:string}>}) {
   try {
@@ -25,6 +29,14 @@ export default async function Home({searchParams}:{searchParams:Promise<{returnT
   }
 
   const currentUser = await getCurrentSessionUser();
+  let initialPreferences: UserPreferences | null = null;
+  if (currentUser) {
+    try {
+      initialPreferences = await userPreferenceService.getPreferences(currentUser);
+    } catch (error) {
+      console.error("Load initial user preferences failed", error);
+    }
+  }
   const maintenanceMessage = await getActiveMaintenanceMessage();
   const requestedReturnTo=(await searchParams).returnTo;
   const returnTo = requestedReturnTo?.startsWith("/") ? requestedReturnTo : null;
@@ -32,6 +44,7 @@ export default async function Home({searchParams}:{searchParams:Promise<{returnT
   return (
     <AppEntry
       initialUser={currentUser}
+      initialPreferences={initialPreferences}
       maintenanceMessage={maintenanceMessage}
       returnTo={returnTo}
     />

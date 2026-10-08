@@ -155,7 +155,7 @@ export function DataTableSelectionCell({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <DataTableCell className="w-10 pr-3">
+    <DataTableCell className="table-selection-cell w-10 pr-3">
       <RowSelectionCheckbox
         checked={checked}
         disabled={disabled}

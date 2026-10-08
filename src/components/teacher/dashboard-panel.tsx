@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { LedgerAdjustmentForm } from "@/components/transactions/ledger-adjustment-form";
 import { FixedNotification } from "@/components/ui/fixed-notification";
@@ -42,6 +42,8 @@ import type { GroupListItem } from "@/domains/groups/group-service";
 import type { CurrentClass } from "@/domains/timetable/timetable-service";
 import type { StudentBalanceItem } from "@/domains/ledger/transaction-service";
 import type { StudentListItem } from "@/domains/users/user-service";
+import { ledgerChangeEventName } from "@/lib/ledger/ledger-change-event";
+import { useCurrentClassRefresh } from "@/components/teacher/use-current-class-refresh";
 
 type TeacherDashboardPanelProps = {
   currencyName: string;
@@ -120,6 +122,29 @@ export function TeacherDashboardPanel({
     useState<AdjustmentTargetSelection | null>(null);
   const quickActionPendingRef = useRef(false);
   const selectionVersionRef = useRef(0);
+
+  const refreshCurrentClass = useCallback(async () => {
+    try {
+      setCurrentClass(await getCurrentTeacherClass());
+    } catch {
+      // Keep the last known class if a background refresh briefly fails.
+    }
+  }, []);
+
+  useCurrentClassRefresh(() => void refreshCurrentClass());
+
+  useEffect(() => {
+    function refreshAfterExternalAdjustment() {
+      setReloadKey((current) => current + 1);
+    }
+
+    window.addEventListener(ledgerChangeEventName, refreshAfterExternalAdjustment);
+    return () =>
+      window.removeEventListener(
+        ledgerChangeEventName,
+        refreshAfterExternalAdjustment,
+      );
+  }, []);
 
   useEffect(() => {
     let isMounted = true;

@@ -1,99 +1,32 @@
 import type { Metadata } from "next";
-import { Lato } from "next/font/google";
+import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import { appConfig } from "@/lib/config/app-config";
-import {
-  accentThemeStorageKey,
-  customAccentColorStorageKey,
-  defaultCustomAccentColor,
-  defaultAccentTheme,
-} from "@/lib/theme/accent-theme-config";
-import { themeStorageKey } from "@/lib/theme/theme-config";
-import {
-  dashboardThemeStorageKey,
-  defaultDashboardTheme,
-} from "@/lib/theme/dashboard-theme-config";
-import {
-  defaultWalletStyle,
-  defaultWalletPattern,
-  walletPatternStorageKey,
-  walletStyleStorageKey,
-} from "@/lib/theme/wallet-style-config";
 import "./globals.css";
 import { SessionChecker } from "@/components/auth/session-checker";
 
-const lato = Lato({
+const inter = Inter({
   display: "swap",
   subsets: ["latin"],
-  variable: "--font-lato",
-  weight: ["300", "400", "700", "900"],
+  variable: "--font-inter",
+  weight: ["300", "400", "500", "600", "700", "800", "900"],
+});
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  display: "swap",
+  subsets: ["latin"],
+  variable: "--font-plus-jakarta",
+  weight: ["500", "600", "700", "800"],
 });
 
 const themeInitScript = `
 (() => {
-  try {
-    const savedTheme = window.localStorage.getItem(${JSON.stringify(
-      themeStorageKey,
-    )});
-    document.documentElement.dataset.theme =
-      savedTheme === "dark" ? "dark" : "light";
-    const savedAccent = window.localStorage.getItem(${JSON.stringify(
-      accentThemeStorageKey,
-    )});
-    const savedCustomAccent = window.localStorage.getItem(${JSON.stringify(
-      customAccentColorStorageKey,
-    )});
-    const customAccent =
-      /^#[0-9a-f]{6}$/i.test(savedCustomAccent || "")
-        ? savedCustomAccent
-        : ${JSON.stringify(defaultCustomAccentColor)};
-    document.documentElement.dataset.accent =
-      ["teal", "blue", "purple", "orange", "custom"].includes(savedAccent)
-        ? savedAccent
-        : ${JSON.stringify(defaultAccentTheme)};
-    document.documentElement.style.setProperty(
-      "--custom-accent-primary",
-      customAccent
-    );
-    const savedWalletStyle = window.localStorage.getItem(${JSON.stringify(
-      walletStyleStorageKey,
-    )});
-    document.documentElement.dataset.walletStyle =
-      ["classic", "mint", "graphite", "accent", "ocean", "berry"].includes(savedWalletStyle)
-        ? savedWalletStyle
-        : ${JSON.stringify(defaultWalletStyle)};
-    const savedWalletPattern = window.localStorage.getItem(${JSON.stringify(
-      walletPatternStorageKey,
-    )});
-    document.documentElement.dataset.walletPattern =
-      ["none", "pinstripe", "grid", "dots", "orbit", "contour"].includes(savedWalletPattern)
-        ? savedWalletPattern
-        : ${JSON.stringify(defaultWalletPattern)};
-    const savedDashboardTheme = window.localStorage.getItem(${JSON.stringify(
-      dashboardThemeStorageKey,
-    )});
-    document.documentElement.dataset.dashboardTheme =
-      ["clean", "soft-grid", "notebook", "confetti"].includes(savedDashboardTheme)
-        ? savedDashboardTheme
-        : ${JSON.stringify(defaultDashboardTheme)};
-  } catch {
-    document.documentElement.dataset.theme = "light";
-    document.documentElement.dataset.accent = ${JSON.stringify(
-      defaultAccentTheme,
-    )};
-    document.documentElement.style.setProperty(
-      "--custom-accent-primary",
-      ${JSON.stringify(defaultCustomAccentColor)}
-    );
-    document.documentElement.dataset.walletStyle = ${JSON.stringify(
-      defaultWalletStyle,
-    )};
-    document.documentElement.dataset.walletPattern = ${JSON.stringify(
-      defaultWalletPattern,
-    )};
-    document.documentElement.dataset.dashboardTheme = ${JSON.stringify(
-      defaultDashboardTheme,
-    )};
-  }
+  document.documentElement.dataset.theme = "light";
+  document.documentElement.dataset.accent = "teal";
+  document.documentElement.dataset.walletStyle = "classic";
+  document.documentElement.dataset.walletPattern = "none";
+  document.documentElement.dataset.dashboardTheme = "clean";
+  document.documentElement.dataset.tableDensity = "default";
+  document.documentElement.style.setProperty("--custom-accent-primary", "#7ae4b7");
 })();
 `;
 
@@ -120,11 +53,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} ${plusJakartaSans.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body className={`${lato.variable} min-h-full flex flex-col`}>
+      <body className="min-h-full flex flex-col">
         <a
           className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[200] focus:rounded-md focus:bg-surface focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-foreground focus:shadow-lg focus:ring-2 focus:ring-brand"
           href="#main-content"

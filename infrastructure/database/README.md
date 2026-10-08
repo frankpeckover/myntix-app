@@ -28,6 +28,7 @@ infrastructure/database/tenant/04-rewards.sql
 infrastructure/database/tenant/05-sso.sql
 infrastructure/database/tenant/06-api-clients.sql
 infrastructure/database/tenant/07-notifications.sql
+infrastructure/database/tenant/08-user-preferences.sql
 infrastructure/database/tenant/09-directory-sync.sql
 infrastructure/database/tenant/10-timetable-cycles.sql
 infrastructure/database/tenant/99-access.sql
@@ -76,3 +77,6 @@ role model.
   production migration system. Use explicit forward migrations after launch.
 - The initial local admin from `01-auth.sql` is `admin` / `admin`; change it
   immediately.
+- For an existing tenant, apply `08-user-preferences.sql` once per schema or
+  dedicated database. Rerun `99-access.sql` if the web role lacks access to
+  newly created tables.

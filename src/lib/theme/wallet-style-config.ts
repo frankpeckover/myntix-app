@@ -25,8 +25,6 @@ export type WalletPatternOption = {
   value: WalletPattern;
 };
 
-export const walletStyleStorageKey = "app-wallet-style";
-export const walletPatternStorageKey = "app-wallet-pattern";
 export const defaultWalletStyle: WalletStyle = "classic";
 export const defaultWalletPattern: WalletPattern = "none";
 
