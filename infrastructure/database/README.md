@@ -1,8 +1,10 @@
 # Database setup
 
-The SQL is split into independent modules and can be run from DBeaver. Create
-each database before running its module; these files do not contain `psql`
-connection commands.
+The SQL is split into independent modules and can be run from DBeaver or
+`psql`. Create each database before running its module; these files do not
+contain connection commands or passwords. Platform and backup catalogues are
+separate databases. Tenant scripts run either in a dedicated tenant database
+or with the tenant schema selected in a shared database.
 
 ## Modules
 
@@ -17,7 +19,10 @@ connection commands.
 
 ## Tenant setup
 
-The full tenant module order is:
+Run the tenant modules in this order. The numbered files are the current
+bootstrap/setup baseline; on existing production tenants, apply new numbered
+modules as explicit forward migrations and do not rerun older bootstrap SQL
+without reviewing its effects.
 
 ```txt
 infrastructure/database/tenant/00-core-settings.sql
@@ -34,11 +39,13 @@ infrastructure/database/tenant/10-timetable-cycles.sql
 infrastructure/database/tenant/99-access.sql
 ```
 
-Scripts `00`, `01`, and `02` are the core application. Run only the optional
-feature scripts used by the organisation. Run `99-access.sql` last when doing
-a manual setup.
+Scripts `00` through `04` establish the core organisation, identity, ledger,
+groups/timetable, and rewards features. Apply `05` through `10` for SSO, API
+clients, notifications, account preferences, directory sync, and timetable
+cycles. Run `99-access.sql` last after all tenant tables exist.
 
-For a schema tenant:
+For a schema tenant, set the schema on the same connection before running each
+tenant module:
 
 ```sql
 create schema if not exists springfield;
@@ -46,8 +53,9 @@ set search_path to springfield, public;
 ```
 
 For a dedicated tenant, connect directly to its database. In both modes,
-register the target in the platform `organisations` table after applying the
-tenant scripts.
+register the target in the platform `organisations` table. The seeded local
+platform example is in `platform/00-core.sql`; inspect its domain and database
+values and edit them for your environment before using that seed pattern.
 
 ## Database accounts
 
@@ -58,9 +66,11 @@ npm run db:configure-access
 ```
 
 The command creates or updates `myntix_web` and `myntix_backup`, applies
-least-privilege access to every active tenant, and updates dedicated tenant
-connection records. For a one-time migration from the former per-purpose
-accounts, run:
+least-privilege access to registered platform, tenant, and backup catalogue
+databases, and updates dedicated tenant connection records. Supply the
+administrator and new login passwords as environment variables; see
+`infrastructure/docs/DATABASE_ACCESS.md`. For a one-time migration from the
+former per-purpose accounts, run:
 
 ```bash
 npm run db:configure-access -- --remove-legacy-roles
@@ -76,7 +86,10 @@ role model.
 - The bootstrap scripts are idempotent for initial setup, but they are not a
   production migration system. Use explicit forward migrations after launch.
 - The initial local admin from `01-auth.sql` is `admin` / `admin`; change it
-  immediately.
-- For an existing tenant, apply `08-user-preferences.sql` once per schema or
-  dedicated database. Rerun `99-access.sql` if the web role lacks access to
-  newly created tables.
+  immediately. Never use this seed password for a public or real organisation.
+- `08-user-preferences.sql` creates persisted account preferences and is part
+  of the numbered tenant setup above.
+- Rerun `99-access.sql` after any newly created tenant table if the web or
+  backup roles need grants on it.
+- `infrastructure/database/demo/seed-demo-data.sql` is fictional demo data and
+  must never be run against a real school tenant.

@@ -61,6 +61,7 @@ import {
 import { TableToolbar } from "@/components/ui/table-toolbar";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { sortTableItems, type TableSortDirection } from "@/components/ui/table-sorting";
 
 type ShopPanelProps = {
   currencyName: string;
@@ -85,6 +86,7 @@ export function ShopPanel({ currencyName, currentUser }: ShopPanelProps) {
     priceMin: "",
     showArchivedItems: false,
   });
+  const [tableSort, setTableSort] = useState<{ column: string; direction: TableSortDirection } | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
   const [requestedItemIds, setRequestedItemIds] = useState<string[]>([]);
   const [duplicatingItem, setDuplicatingItem] = useState<ShopItem | null>(null);
@@ -365,12 +367,25 @@ export function ShopPanel({ currencyName, currentUser }: ShopPanelProps) {
       ),
     [canManage, filters, items],
   );
+  const sortedItems = useMemo(
+    () => sortTableItems(visibleItems, tableSort, (item, column) => {
+      switch (column) {
+        case "name": return item.name;
+        case "description": return item.description;
+        case "cost": return item.price;
+        case "quantity": return item.isQuantityUnlimited ? Number.POSITIVE_INFINITY : item.quantity;
+        case "status": return item.isActive ? "Active" : "Archived";
+        default: return "";
+      }
+    }),
+    [tableSort, visibleItems],
+  );
   const {
     page,
     pageItems,
     setPage,
     totalPages,
-  } = usePagedList(visibleItems);
+  } = usePagedList(sortedItems);
 
   return (
     <section className="motion-panel mt-5">
@@ -386,10 +401,12 @@ export function ShopPanel({ currencyName, currentUser }: ShopPanelProps) {
           filters={filters}
           isLoading={isLoading}
           items={pageItems}
+          onSortChange={(column, direction) => setTableSort(direction ? { column, direction } : null)}
+          tableSort={tableSort}
           onDuplicate={openDuplicateItemModal}
           onEdit={openEditItemModal}
           onImportItems={() => setIsImportModalOpen(true)}
-          onItemsExport={() => downloadShopItems(visibleItems)}
+          onItemsExport={() => downloadShopItems(sortedItems)}
           onNewItem={openNewItemModal}
           onClearFilters={clearShopFilters}
           onPriceMaxChange={(value) => updateFilter("priceMax", value)}
@@ -498,6 +515,8 @@ function ShopManagementList({
   filters,
   isLoading,
   items,
+  onSortChange,
+  tableSort,
   onDuplicate,
   onEdit,
   onImportItems,
@@ -521,6 +540,8 @@ function ShopManagementList({
   filters: ShopFiltersState;
   isLoading: boolean;
   items: ShopItem[];
+  onSortChange: (column: string, direction: TableSortDirection | null) => void;
+  tableSort: { column: string; direction: TableSortDirection } | null;
   onDuplicate: (item: ShopItem) => void;
   onEdit: (item: ShopItem) => void;
   onImportItems: () => void;
@@ -642,7 +663,7 @@ function ShopManagementList({
           <col className="w-28" />
           <col className="w-24" />
           <col className="w-24" />
-          <col className="w-32" />
+          <col className="table-action-column" />
         </colgroup>
         <thead>
           <tr className="border-b border-border-subtle text-text-muted">
@@ -660,6 +681,8 @@ function ShopManagementList({
                 isActive={Boolean(filters.name)}
                 label="Reward"
                 onClear={() => onSearchChange("name", "")}
+                onSortDirectionChange={(direction) => onSortChange("name", direction)}
+                sortDirection={tableSort?.column === "name" ? tableSort.direction : null}
               >
                 <TableHeaderFilterInput
                   label="Search items"
@@ -673,6 +696,8 @@ function ShopManagementList({
                 isActive={Boolean(filters.description)}
                 label="Description"
                 onClear={() => onSearchChange("description", "")}
+                onSortDirectionChange={(direction) => onSortChange("description", direction)}
+                sortDirection={tableSort?.column === "description" ? tableSort.direction : null}
               >
                 <TableHeaderFilterInput
                   label="Search descriptions"
@@ -689,6 +714,8 @@ function ShopManagementList({
                   onPriceMaxChange("");
                   onPriceMinChange("");
                 }}
+                onSortDirectionChange={(direction) => onSortChange("cost", direction)}
+                sortDirection={tableSort?.column === "cost" ? tableSort.direction : null}
               >
                 <div className="grid gap-3">
                   <TableHeaderFilterInput
@@ -706,12 +733,16 @@ function ShopManagementList({
                 </div>
               </TableHeaderFilter>
             </th>
-            <th scope="col" className="py-2 pr-4 text-right font-semibold">Quantity</th>
+            <th scope="col" className="py-2 pr-4 text-right font-semibold">
+              <TableHeaderFilter label="Quantity" onSortDirectionChange={(direction) => onSortChange("quantity", direction)} sortDirection={tableSort?.column === "quantity" ? tableSort.direction : null} />
+            </th>
             <th scope="col" className="py-2 pr-4 font-semibold">
               <TableHeaderFilter
                 isActive={filters.showArchivedItems}
                 label="Status"
                 onClear={() => onShowArchivedItemsChange(false)}
+                onSortDirectionChange={(direction) => onSortChange("status", direction)}
+                sortDirection={tableSort?.column === "status" ? tableSort.direction : null}
               >
                 <TableHeaderFilterSelect
                   label="Status"
@@ -741,6 +772,12 @@ function ShopManagementList({
               <DataTableSelectionCell
                 checked={selectedItemIds.includes(item.id)}
                 label={`Select ${item.name}`}
+                rangeKey="rewards-table"
+                rowId={item.id}
+                selectableRowIds={items.map((row) => row.id)}
+                onRangeChange={(ids, isSelected) =>
+                  ids.forEach((id) => onSelectionChange(id, isSelected))
+                }
                 onChange={(isSelected) =>
                   onSelectionChange(item.id, isSelected)
                 }

@@ -1226,10 +1226,18 @@ html[data-theme="dark"] .app-modal.theme-panel {
   width: 100%;
 }
 
+.app-data-table col.table-action-column {
+  width: 7rem;
+}
+
 :root[data-table-density="compact"] .app-data-table {
   --table-action-size: 22px;
   --table-cell-block-padding: 0.25rem;
   --table-row-height: 40px;
+}
+
+:root[data-table-density="compact"] .app-data-table col.table-action-column {
+  width: 9rem;
 }
 
 :root[data-table-density="compact"] .table-action-grid {
@@ -1241,6 +1249,10 @@ html[data-theme="dark"] .app-modal.theme-panel {
 :root[data-table-density="compact"] .table-action-grid button svg {
   height: 14px;
   width: 14px;
+}
+
+:root[data-table-density="compact"] .table-action-grid button {
+  flex: 0 0 var(--table-action-size, 22px);
 }
 
 :root[data-table-density="roomy"] .app-data-table {
@@ -1284,8 +1296,7 @@ html[data-theme="dark"] .app-modal.theme-panel {
 }
 
 .app-data-table thead,
-.app-data-table thead tr,
-.app-data-table thead th {
+.app-data-table thead tr {
   border-top: 0 !important;
 }
 
@@ -1311,6 +1322,8 @@ html[data-theme="dark"] .app-modal.theme-panel {
 }
 
 .app-data-table td:has(> .table-action-grid) {
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
   padding-bottom: 3px !important;
   padding-top: 3px !important;
 }
@@ -1498,6 +1511,8 @@ html[data-theme="dark"] .app-modal.theme-panel {
 }
 
 .professional-shell .app-data-table th {
+  background: var(--brand-soft);
+  border: 0;
   color: var(--text-label);
   font-size: 0.72rem;
   letter-spacing: 0.04em;
@@ -1535,7 +1550,16 @@ html[data-theme="dark"] .app-modal.theme-panel {
 }
 
 .professional-shell .app-data-table tbody tr:hover {
-  background: color-mix(in srgb, var(--brand-soft) 42%, transparent);
+  background: color-mix(in srgb, var(--brand-soft) 30%, var(--surface));
+}
+
+.professional-shell .app-data-table tbody tr:has(.table-selection-cell input:checked),
+.professional-shell .app-data-table tbody tr:has(.table-selection-cell input:checked):hover {
+  background: color-mix(in srgb, var(--brand-soft) 68%, var(--surface));
+}
+
+.professional-shell .app-data-table tbody tr:has(.table-selection-cell input:checked) > td:first-child {
+  background-image: linear-gradient(to right, var(--brand) 3px, transparent 3px);
 }
 
 .professional-shell .admin-recent-activity-table tbody tr:hover {
@@ -1581,11 +1605,6 @@ html[data-theme="dark"] .app-modal.theme-panel {
   opacity: 0.34;
   position: absolute;
   width: 2rem;
-}
-
-.status-badge-dot {
-  background: currentColor;
-  box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 12%, transparent);
 }
 
 @media (max-width: 639px) {

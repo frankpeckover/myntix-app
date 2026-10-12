@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/data-table";
 import { BulkSelectionControls } from "@/components/ui/bulk-selection-controls";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
+import { sortTableItems, type TableSortDirection } from "@/components/ui/table-sorting";
 
 type ShopRequestTableFilters = {
   decisionNote: string;
@@ -67,6 +68,7 @@ export function ShopRequestsPanel({
   const [filters, setFilters] = useState<ShopRequestTableFilters>(
     emptyShopRequestTableFilters,
   );
+  const [tableSort, setTableSort] = useState<{ column: string; direction: TableSortDirection } | null>(null);
   const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isConfirmingBulkApproval, setIsConfirmingBulkApproval] = useState(false);
@@ -229,8 +231,19 @@ export function ShopRequestsPanel({
     maxVisibleRequests === undefined
       ? filteredRequests
       : filteredRequests.slice(0, maxVisibleRequests);
-  const displayedRequests = visibleRequests.filter((request) =>
-    matchesShopRequestTableFilters(request, filters),
+  const displayedRequests = sortTableItems(
+    visibleRequests.filter((request) => matchesShopRequestTableFilters(request, filters)),
+    tableSort,
+    (request, column) => {
+      switch (column) {
+        case "item": return request.itemName;
+        case "student": return request.studentName;
+        case "cost": return request.price;
+        case "status": return request.status;
+        case "comment": return request.decisionNote;
+        default: return "";
+      }
+    },
   );
   const selectableRequestIds = displayedRequests
     .filter((request) => request.status === "pending")
@@ -343,9 +356,11 @@ export function ShopRequestsPanel({
             onDeny={(requestId) => setDenyingRequestIds([requestId])}
             onFiltersChange={setFilters}
             onRequestSelectionChange={handleRequestSelectionChange}
+            onSortChange={(column, direction) => setTableSort(direction ? { column, direction } : null)}
             onVisibleSelectionChange={handleVisibleSelectionChange}
             requests={displayedRequests}
             selectedRequestIds={selectedRequestIds}
+            tableSort={tableSort}
             showDecisionNote={activeView === "recent"}
             visibleRequestsSelected={areAllVisibleRequestsSelected}
           />
@@ -384,9 +399,11 @@ function ShopRequestList({
   onDeny,
   onFiltersChange,
   onRequestSelectionChange,
+  onSortChange,
   onVisibleSelectionChange,
   requests,
   selectedRequestIds,
+  tableSort,
   showDecisionNote,
   visibleRequestsSelected,
 }: {
@@ -397,9 +414,11 @@ function ShopRequestList({
   onDeny: (purchaseId: string) => void;
   onFiltersChange: (filters: ShopRequestTableFilters) => void;
   onRequestSelectionChange: (requestId: string, isSelected: boolean) => void;
+  onSortChange: (column: string, direction: TableSortDirection | null) => void;
   onVisibleSelectionChange: (isSelected: boolean) => void;
   requests: ShopPurchaseRequest[];
   selectedRequestIds: string[];
+  tableSort: { column: string; direction: TableSortDirection } | null;
   showDecisionNote: boolean;
   visibleRequestsSelected: boolean;
 }) {
@@ -412,9 +431,11 @@ function ShopRequestList({
       onDeny={onDeny}
       onFiltersChange={onFiltersChange}
       onRequestSelectionChange={onRequestSelectionChange}
+      onSortChange={onSortChange}
       onVisibleSelectionChange={onVisibleSelectionChange}
       requests={requests}
       selectedRequestIds={selectedRequestIds}
+      tableSort={tableSort}
       showDecisionNote={showDecisionNote}
       visibleRequestsSelected={visibleRequestsSelected}
     />
@@ -429,9 +450,11 @@ function CompactShopRequestList({
   onDeny,
   onFiltersChange,
   onRequestSelectionChange,
+  onSortChange,
   onVisibleSelectionChange,
   requests,
   selectedRequestIds,
+  tableSort,
   showDecisionNote,
   visibleRequestsSelected,
 }: {
@@ -442,9 +465,11 @@ function CompactShopRequestList({
   onDeny: (purchaseId: string) => void;
   onFiltersChange: (filters: ShopRequestTableFilters) => void;
   onRequestSelectionChange: (requestId: string, isSelected: boolean) => void;
+  onSortChange: (column: string, direction: TableSortDirection | null) => void;
   onVisibleSelectionChange: (isSelected: boolean) => void;
   requests: ShopPurchaseRequest[];
   selectedRequestIds: string[];
+  tableSort: { column: string; direction: TableSortDirection } | null;
   showDecisionNote: boolean;
   visibleRequestsSelected: boolean;
 }) {
@@ -485,6 +510,8 @@ function CompactShopRequestList({
                   isActive={Boolean(filters.item)}
                   label="Request"
                   onClear={() => updateFilter("item", "")}
+                  onSortDirectionChange={(direction) => onSortChange("item", direction)}
+                  sortDirection={tableSort?.column === "item" ? tableSort.direction : null}
                 >
                   <TableHeaderFilterInput
                     label="Request"
@@ -498,6 +525,8 @@ function CompactShopRequestList({
                   isActive={Boolean(filters.student)}
                   label="Student"
                   onClear={() => updateFilter("student", "")}
+                  onSortDirectionChange={(direction) => onSortChange("student", direction)}
+                  sortDirection={tableSort?.column === "student" ? tableSort.direction : null}
                 >
                   <TableHeaderFilterInput
                     label="Student"
@@ -506,12 +535,16 @@ function CompactShopRequestList({
                   />
                 </TableHeaderFilter>
               </th>
-              <th scope="col" className="hidden py-3 pr-4 text-right font-semibold sm:table-cell">Cost</th>
+              <th scope="col" className="hidden py-3 pr-4 text-right font-semibold sm:table-cell">
+                <TableHeaderFilter label="Cost" onSortDirectionChange={(direction) => onSortChange("cost", direction)} sortDirection={tableSort?.column === "cost" ? tableSort.direction : null} />
+              </th>
               <th scope="col" className="hidden py-3 pr-4 font-semibold lg:table-cell">
                 <TableHeaderFilter
                   isActive={Boolean(filters.status)}
                   label="Status"
                   onClear={() => updateFilter("status", "")}
+                  onSortDirectionChange={(direction) => onSortChange("status", direction)}
+                  sortDirection={tableSort?.column === "status" ? tableSort.direction : null}
                 >
                   <TableHeaderFilterSelect
                     label="Status"
@@ -537,6 +570,8 @@ function CompactShopRequestList({
                     isActive={Boolean(filters.decisionNote)}
                     label="Comment"
                     onClear={() => updateFilter("decisionNote", "")}
+                    onSortDirectionChange={(direction) => onSortChange("comment", direction)}
+                    sortDirection={tableSort?.column === "comment" ? tableSort.direction : null}
                   >
                     <TableHeaderFilterInput
                       label="Comment"
@@ -558,6 +593,12 @@ function CompactShopRequestList({
                   checked={selectedRequestIds.includes(request.id)}
                   disabled={request.status !== "pending"}
                   label={`Select ${request.itemName} for ${request.studentName}`}
+                  rangeKey="reward-requests-table"
+                  rowId={request.id}
+                  selectableRowIds={requests.filter((row) => row.status === "pending").map((row) => row.id)}
+                  onRangeChange={(ids, isSelected) =>
+                    ids.forEach((id) => onRequestSelectionChange(id, isSelected))
+                  }
                   onChange={(isSelected) =>
                     onRequestSelectionChange(request.id, isSelected)
                   }

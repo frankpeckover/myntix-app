@@ -2,7 +2,8 @@ export type ParsedVoiceCreditCommand = {
   amount: number;
   direction: "add" | "remove";
   reason: string;
-  studentName: string;
+  recipientName: string;
+  recipientType: "student" | "group";
 };
 
 export type VoiceCreditCommandParseResult =
@@ -83,14 +84,16 @@ export function parseVoiceCreditCommand(
     if (!match) continue;
 
     const usesNameFirst = pattern.direction === "add" && /give|award/i.test(match[0]);
-    const studentName = (usesNameFirst ? match[1] : match[2])?.trim() ?? "";
+    const recipientName = (usesNameFirst ? match[1] : match[2])?.trim() ?? "";
     const amountText = (usesNameFirst ? match[2] : match[1])?.trim() ?? "";
     const reason = match[3]?.trim() ?? "";
     const amount = parseSpokenAmount(amountText);
 
-    if (!studentName || amount === null || amount <= 0) {
+    if (!recipientName || amount === null || amount <= 0) {
       break;
     }
+
+    const groupMatch = recipientName.match(/^(?:group|class)\s+(.+)$/i);
 
     return {
       ok: true,
@@ -98,7 +101,8 @@ export function parseVoiceCreditCommand(
         amount,
         direction: pattern.direction,
         reason,
-        studentName,
+        recipientName: groupMatch?.[1]?.trim() ?? recipientName,
+        recipientType: groupMatch ? "group" : "student",
       },
     };
   }
@@ -106,7 +110,7 @@ export function parseVoiceCreditCommand(
   return {
     ok: false,
     message:
-      'Try “Give Jordan Lee 10 credits for helping” or “Take 5 credits from Jordan Lee for being late”.',
+      'Try “Give Jordan Lee 10 credits for helping”, “Give group 4 10 credits for teamwork”, or “Take 5 credits from class 4B for being late”.',
   };
 }
 

@@ -160,7 +160,7 @@ export function DashboardShell({
         />
 
         <main
-          className="mx-auto flex min-w-0 flex-1 flex-col px-3 py-1.5 sm:px-6 sm:py-2 lg:max-w-[calc(96rem-17rem)] lg:px-8"
+          className="mx-auto flex min-w-0 flex-1 flex-col px-3 py-1.5 sm:px-6 sm:py-2 lg:max-w-[calc(104rem-17rem)] lg:px-8"
           id="main-content"
           tabIndex={-1}
         >

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { ChevronLeftIcon, ChevronRightIcon } from "@/components/ui/icons";
 
 const mobileListPageSize = 15;
 const desktopListPageSize = 50;
@@ -48,29 +49,35 @@ export function ListPagination({
   totalCount: number;
   totalPages: number;
 }) {
+  const pageSize = useResponsiveListPageSize();
+
   if (totalPages <= 1) {
     return null;
   }
 
+  const rangeStart = (page - 1) * pageSize + 1;
+  const rangeEnd = Math.min(page * pageSize, totalCount);
+
   return (
-    <div className="mt-4 flex flex-col gap-2 text-sm text-text-muted sm:flex-row sm:items-center sm:justify-between">
-      <p className="font-semibold">
-        Page {page} of {totalPages} - {totalCount} total
+    <div className="mt-3 flex flex-col gap-2 border-t border-border-subtle pt-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-xs font-medium text-text-muted">
+        Showing <span className="tabular-nums text-text-control">{rangeStart}-{rangeEnd}</span> of {totalCount}
       </p>
-      <div className="grid grid-cols-[1fr_auto_1fr] gap-2 sm:flex sm:items-center">
+      <div className="inline-flex h-9 w-fit items-center rounded-md border border-button-border bg-surface p-0.5">
         <button
-          className="rounded-md border border-button-border px-3 py-2 font-semibold text-text-control transition hover:bg-panel-soft disabled:cursor-not-allowed disabled:opacity-50"
+          aria-label="Previous page"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-sm text-text-control transition hover:bg-panel-soft disabled:cursor-not-allowed disabled:text-text-subtle"
           disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
           type="button"
         >
-          Previous
+          <ChevronLeftIcon className="h-4 w-4" />
         </button>
         <label className="sr-only" htmlFor="paginationPage">
-          Page
+          Go to page
         </label>
         <select
-          className="rounded-md border border-button-border bg-surface px-2 py-2 text-center font-semibold text-text-control outline-none ring-brand transition focus:ring-2"
+          className="h-8 min-w-12 appearance-none rounded-sm bg-transparent px-2 text-center text-xs font-semibold tabular-nums text-text-control outline-none transition hover:bg-panel-soft focus-visible:ring-2 focus-visible:ring-brand"
           id="paginationPage"
           onChange={(event) => onPageChange(Number(event.target.value))}
           value={page}
@@ -83,13 +90,15 @@ export function ListPagination({
             ),
           )}
         </select>
+        <span className="px-1 text-xs text-text-subtle">of {totalPages}</span>
         <button
-          className="rounded-md border border-button-border px-3 py-2 font-semibold text-text-control transition hover:bg-panel-soft disabled:cursor-not-allowed disabled:opacity-50"
+          aria-label="Next page"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-sm text-text-control transition hover:bg-panel-soft disabled:cursor-not-allowed disabled:text-text-subtle"
           disabled={page >= totalPages}
           onClick={() => onPageChange(page + 1)}
           type="button"
         >
-          Next
+          <ChevronRightIcon className="h-4 w-4" />
         </button>
       </div>
     </div>

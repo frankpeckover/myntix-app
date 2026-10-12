@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/data-table";
 import { formatDateTime } from "@/lib/presentation/formatters";
 import type { UserListItem } from "@/domains/users/user-service";
+import type { TableSortDirection } from "@/components/ui/table-sorting";
 
 type UsersTableProps = {
   filters: UserFilters;
@@ -32,11 +33,13 @@ type UsersTableProps = {
   onEdit: (user: UserListItem) => void;
   onPasswordReset: (user: UserListItem) => void;
   onShowInactiveUsersChange: (showInactiveUsers: boolean) => void;
+  onSortChange: (column: string, direction: TableSortDirection | null) => void;
   onUserSelectionChange: (userId: string, isSelected: boolean) => void;
   onUserActiveChange: (user: UserListItem, isActive: boolean) => void;
   onVisibleUsersSelectionChange: (isSelected: boolean) => void;
   selectedUserIds: string[];
   showInactiveUsers: boolean;
+  tableSort: { column: string; direction: TableSortDirection } | null;
   toolbar?: ReactNode;
   users: UserListItem[];
 };
@@ -48,11 +51,13 @@ export function UsersTable({
   onEdit,
   onPasswordReset,
   onShowInactiveUsersChange,
+  onSortChange,
   onUserSelectionChange,
   onUserActiveChange,
   onVisibleUsersSelectionChange,
   selectedUserIds,
   showInactiveUsers,
+  tableSort,
   toolbar,
   users,
 }: UsersTableProps) {
@@ -87,13 +92,14 @@ export function UsersTable({
       <DataTable ariaLabel="Users" responsive="desktop">
         <colgroup>
           <col className="w-10" />
-          <col className="w-[22%]" />
-          <col className="w-[15%]" />
+          <col className="w-14" />
+          <col className="w-[18%]" />
+          <col className="w-[14%]" />
           <col />
           <col className="w-24" />
           <col className="w-36" />
           <col className="w-24" />
-          <col className="w-32" />
+          <col className="table-action-column" />
         </colgroup>
         <thead>
           <tr className="border-b border-border-subtle text-text-muted">
@@ -106,6 +112,9 @@ export function UsersTable({
               }
               onChange={onVisibleUsersSelectionChange}
             />
+            <th scope="col" className="py-3 pr-3 text-center font-semibold">
+              <span className="sr-only">Photo</span>
+            </th>
             <th scope="col" className="py-3 pr-4 font-semibold">
               <TableHeaderFilter
                 isActive={Boolean(filters.firstName || filters.lastName)}
@@ -113,6 +122,8 @@ export function UsersTable({
                 onClear={() =>
                   onFiltersChange({ ...filters, firstName: "", lastName: "" })
                 }
+                onSortDirectionChange={(direction) => onSortChange("name", direction)}
+                sortDirection={tableSort?.column === "name" ? tableSort.direction : null}
               >
                 <div className="grid gap-3">
                   <TableHeaderFilterInput
@@ -133,6 +144,8 @@ export function UsersTable({
                 isActive={Boolean(filters.username)}
                 label="Username"
                 onClear={() => updateFilter("username", "")}
+                onSortDirectionChange={(direction) => onSortChange("username", direction)}
+                sortDirection={tableSort?.column === "username" ? tableSort.direction : null}
               >
                 <TableHeaderFilterInput
                   label="Username"
@@ -146,6 +159,8 @@ export function UsersTable({
                 isActive={Boolean(filters.email)}
                 label="Email"
                 onClear={() => updateFilter("email", "")}
+                onSortDirectionChange={(direction) => onSortChange("email", direction)}
+                sortDirection={tableSort?.column === "email" ? tableSort.direction : null}
               >
                 <TableHeaderFilterInput
                   label="Email"
@@ -159,6 +174,8 @@ export function UsersTable({
                 isActive={Boolean(filters.role)}
                 label="Role"
                 onClear={() => updateFilter("role", "")}
+                onSortDirectionChange={(direction) => onSortChange("role", direction)}
+                sortDirection={tableSort?.column === "role" ? tableSort.direction : null}
               >
                 <TableHeaderFilterSelect
                   label="Role"
@@ -179,6 +196,8 @@ export function UsersTable({
                 isActive={Boolean(filters.lastActivity)}
                 label="Last activity"
                 onClear={() => updateFilter("lastActivity", "")}
+                onSortDirectionChange={(direction) => onSortChange("activity", direction)}
+                sortDirection={tableSort?.column === "activity" ? tableSort.direction : null}
               >
                 <TableHeaderFilterSelect
                   label="Last activity"
@@ -202,6 +221,8 @@ export function UsersTable({
                 isActive={showInactiveUsers}
                 label="Status"
                 onClear={() => onShowInactiveUsersChange(false)}
+                onSortDirectionChange={(direction) => onSortChange("status", direction)}
+                sortDirection={tableSort?.column === "status" ? tableSort.direction : null}
               >
                 <TableHeaderFilterSelect
                   label="Status"
@@ -227,12 +248,27 @@ export function UsersTable({
               <DataTableSelectionCell
                 checked={selectedUserIds.includes(user.id)}
                 label={`Select ${user.displayName}`}
+                rangeKey="users-table"
+                rowId={user.id}
+                selectableRowIds={users.map((row) => row.id)}
+                onRangeChange={(ids, isSelected) =>
+                  ids.forEach((id) => onUserSelectionChange(id, isSelected))
+                }
                 onChange={(isSelected) =>
                   onUserSelectionChange(user.id, isSelected)
                 }
               />
+              <td className="py-3 pr-3">
+                <div className="flex justify-center">
+                  <UserAvatar
+                    displayName={user.displayName}
+                    imageUrl={user.profileImageUrl}
+                    size="sm"
+                  />
+                </div>
+              </td>
               <td className="py-3 pr-4">
-                <UserIdentity user={user} />
+                <UserName user={user} />
               </td>
               <td className="py-3 pr-4 text-text-muted">{user.username}</td>
               <td className="py-3 pr-4 text-text-muted">{user.email}</td>
@@ -365,13 +401,9 @@ function UserActions({
   );
 }
 
-function UserIdentity({ user }: { user: UserListItem }) {
+function UserName({ user }: { user: UserListItem }) {
   return (
-    <div className="flex min-w-0 items-center gap-3">
-      <UserAvatar
-        displayName={user.displayName}
-        imageUrl={user.profileImageUrl}
-      />
+    <div className="min-w-0">
       <span className="truncate font-semibold text-text-control">{user.displayName}</span>
     </div>
   );

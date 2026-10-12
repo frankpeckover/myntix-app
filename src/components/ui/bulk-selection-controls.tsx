@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import {
   type TableActionMenuItem,
 } from "@/components/ui/table-action-menu";
@@ -64,7 +64,7 @@ type RowSelectionCheckboxProps = {
   checked: boolean;
   disabled?: boolean;
   label: string;
-  onChange: (checked: boolean) => void;
+  onChange: (checked: boolean, shiftKey: boolean) => void;
 };
 
 export function RowSelectionCheckbox({
@@ -73,13 +73,24 @@ export function RowSelectionCheckbox({
   label,
   onChange,
 }: RowSelectionCheckboxProps) {
+  const shiftKeyRef = useRef(false);
+
   return (
     <input
       aria-label={label}
       checked={checked}
       className="h-4 w-4 shrink-0 rounded-sm border border-border-strong bg-surface accent-[var(--color-brand)]"
       disabled={disabled}
-      onChange={(event) => onChange(event.target.checked)}
+      onClick={(event) => {
+        shiftKeyRef.current = event.shiftKey;
+      }}
+      onKeyDown={(event) => {
+        shiftKeyRef.current = event.shiftKey;
+      }}
+      onChange={(event) => {
+        onChange(event.target.checked, shiftKeyRef.current);
+        shiftKeyRef.current = false;
+      }}
       type="checkbox"
     />
   );

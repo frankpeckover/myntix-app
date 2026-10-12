@@ -44,7 +44,9 @@ The app should feel like a simple, trustworthy bank account without implying tha
 - This is not a real bank, payment processor, accounting package, or store of legal tender.
 - It does not allow student-to-student transfers.
 - It does not allow arbitrary negative student balances.
-- It does not automatically create local users after SSO authentication.
+- SSO just-in-time (JIT) account creation is optional per organisation and is
+  restricted to explicitly allowed email domains; administrator privileges are
+  never granted by JIT.
 - It is not currently a microservice system. It is a modular monolith.
 - Custom roles, behavioural intervention, investments, interest, and term deposits are not current core features.
 - Optional engagement modules should not be embedded into the core ledger without an explicit product decision.
@@ -78,14 +80,15 @@ The current system roles are `student`, `teacher`, and `admin`. The database dis
 | Capability | Student | Teacher/staff | Admin |
 | --- | --- | --- | --- |
 | View own balance and ledger | Yes | Not applicable | Not applicable |
-| View all student balances and ledger entries | No | Yes | Yes |
-| Add or remove currency | No | Yes | No through the admin dashboard |
+| View student balances and ledger entries | No | Yes | Yes |
+| Add or remove currency | No | Yes | Yes, through Credit Management |
 | Request rewards | Yes | No | No |
-| Approve or deny reward requests | No | Yes | No |
+| Approve or deny reward requests | No | Yes | Yes, through Reward Requests |
 | Manage reward catalogue | No | Yes | Yes |
 | View staff analytics | No | Yes | Yes |
 | Manage users | No | No | Yes |
 | Manage groups and memberships | No | No | Yes |
+| View own timetable | No | Yes | Not applicable |
 | Manage timetable | No | No | Yes |
 | Void ledger entries | No | No | Yes |
 | View audit and error logs | No | No | Yes |
@@ -99,7 +102,9 @@ Important permission rules:
 - Never trust a user ID, role, organisation, amount, price, scope, or status supplied by the browser.
 - A disabled user or disabled role must not log in or retain a usable existing session.
 - Students must never be able to widen a query from their own account to the cohort.
-- Reward approval remains a teacher/staff responsibility, not an admin dashboard action.
+- Administrators can perform the staff credit and reward-request workflows as
+  well as organisation management; one person does not need separate teacher
+  and admin accounts.
 
 The database contains `roles`, `permissions`, and `role_permissions`. Current TypeScript capability helpers still map the resolved role key to named capabilities. Do not assume that adding a database permission automatically changes application authorisation until the permission resolution layer is explicitly completed.
 
@@ -123,8 +128,9 @@ The student experience may be warmer and more rewarding than staff/admin views, 
 
 Core student dashboard content:
 
-- A bank-card-inspired wallet showing current balance, configured currency name, and subtle organisation name.
+- A bank-card-inspired wallet showing current balance, configured currency name, the student's name, date-style card number, and organisation logo.
 - Balance history over time.
+- A student-scoped transaction history with all of that student's ledger activity.
 - A savings-style goal with an animated progress ring and concise progress wording.
 - Small personal account metrics such as average movement over a selected period.
 - Recent activity showing description first, then less-prominent date/time, and one signed colour-coded amount.
@@ -146,12 +152,19 @@ Core teacher workflow:
 - Default the student list to the currently timetabled group when one exists.
 - Search students and groups from one compact control.
 - Support multiple search terms separated by semicolons.
-- Keep individual add/remove actions directly on student cards.
-- Keep an always-visible `Issue all` workflow for the currently filtered set.
+- The Credit Management view is a shared-style table with each student's
+  balance and compact add, adjust, and take actions; keep the workflow fast on
+  mobile. The separate teacher dashboard may use student cards for at-a-glance
+  work and one-click personal quick actions.
+- Keep the `Issue all` workflow for the currently filtered set, with an explicit
+  recipient/amount/reason review before submission.
 - Show circular student photos or initials, name, current balance, and subtle recent trend.
 - Refresh balances immediately after a successful adjustment and close the completed modal.
-- Show pending reward approvals in a compact table above the student search.
-- Provide analytics, rewards management, and the transaction log through navigation.
+- Provide a voice shortcut (F2, F8, Ctrl+Shift+Space, or microphone-only) that
+  listens only after explicit activation and requires review/confirmation before
+  writing a transaction. Ignore shortcuts while the user is typing.
+- Provide timetable, analytics, reward requests, rewards, and transaction
+  history through separate navigation items.
 
 Teacher transaction forms must collect recipients, direction, amount, and reason before creating any ledger entry. Never write a partial adjustment while the sequential form is still in progress.
 
@@ -171,6 +184,9 @@ Core areas:
 - Audit log: administrative/security/configuration actions, excluding ordinary ledger activity that already belongs in the transaction log.
 - Error log: actionable server errors with source, time, message, and context.
 - Settings: Account, Organisation, Auth, API, Rewards, and Appearance sections, each with its own save action where applicable.
+- Credit Management and Reward Requests are separate staff workflows. Admins
+  also see them so they can issue credits or handle requests without changing
+  roles.
 - Export all school data: deliberate ZIP of human-readable CSV files.
 
 ## Navigation and responsive structure
@@ -188,25 +204,29 @@ Current navigation:
 
 | Role | Navigation |
 | --- | --- |
-| Student | Dashboard, Rewards |
-| Teacher | Dashboard, Analytics, Rewards, Transaction Log |
-| Admin | Dashboard, Users, Groups, Timetable, Analytics, Rewards, Transaction Log, Audit Log, Error Log, Settings |
+| Student | Dashboard, Rewards, Transaction History, Preferences |
+| Teacher/staff | Dashboard, Credit Management, Reward Requests, Timetable, Analytics, Rewards, Transaction Log, Preferences |
+| Admin | Dashboard, Credit Management, Reward Requests, Users, Groups, Timetable, Analytics, Rewards, Transaction Log, Audit Log, Error Log, Settings, Preferences |
 
 ## Visual design system
 
 ### Brand
 
-- Product: Myntix Ledger
-- Company/product family: Myntix
-- Positioning: internal currency, made simple
-- Brand personality: trustworthy, modern, calm, capable, and lightly optimistic
+- Product name: Myntix Ledger; product family: Myntix.
+- Positioning: internal currency, made simple.
+- Brand character: trustworthy, modern, calm, capable, and lightly optimistic.
+- Use the coin-stack mark for the favicon and compact brand placements; use the
+  wordmark in navigation and the lockup on the login screen.
+- Organisation identity should be visible in tenant login, relevant dashboard
+  context, and the student's wallet without competing with Myntix branding.
+
 - Avoid: toy-like controls, excessive rounded bubbles, loud gradients, oversized copy, or a classroom clip-art aesthetic
 
-Brand assets live under `public/brand`. Public naming and asset URLs are configured through `src/lib/app-config.ts` and `NEXT_PUBLIC_APP_*` environment values. Do not scatter brand names or asset paths through components.
+Brand assets live under `public/brand`. Public naming and asset URLs are configured through `src/lib/config/app-config.ts` and `NEXT_PUBLIC_APP_*` environment values. Do not scatter brand names or asset paths through components.
 
 ### Typography
 
-- Primary UI font: Lato.
+- Primary UI font: Inter, with Plus Jakarta Sans used for headings.
 - Numeric values use the `App Numerals` face, currently backed by Sora glyphs, through `--font-numeric`.
 - Use lighter weights for navigation and secondary copy.
 - Use weight and size hierarchy deliberately: important number first, concise label beneath it.
@@ -226,8 +246,8 @@ Use semantic CSS variables and Tailwind theme aliases. Do not add literal colour
 | Primary brand | `--accent-primary: #183f3d` |
 | Secondary brand | `--accent-secondary: #70b895` |
 | Highlight mint | `--accent-highlight: #7ae4b7` |
-| Positive/increase | `--success: rgb(89, 188, 146)` |
-| Negative/decrease | `--danger: rgb(246, 155, 99)` |
+| Positive/increase | `--success: #10b981`; soft surface `#e8f5ee`, ink `#166534` |
+| Negative/decrease | `--danger: #ef4444`; soft surface `#feecec`, ink `#991b1b` |
 | Warning | `--warning: #9a6700` |
 | Wallet base | `--balance-bg: #173b40` |
 
@@ -258,7 +278,8 @@ Users may select teal, blue, purple, orange, or a custom accent. Accent choices 
 
 - Prefer familiar icons over long action labels when space is constrained.
 - Desktop primary creation/import actions may show icon plus text; mobile may show icons with accessible labels and tooltips.
-- Row actions use a vertical three-dot menu.
+- Row and bulk actions use a compact icon-button grid in the table toolbar/action
+  area; reveal row actions on hover or keyboard focus where supported.
 - Use pencil/edit, archive, restore, duplicate, eye/view, trash/delete, cog/settings, and clear close icons consistently.
 - Never rely on icon colour alone to communicate meaning.
 
@@ -276,18 +297,20 @@ Users may select teal, blue, purple, orange, or a custom accent. Accent choices 
 
 All administrative tables should follow the shared table pattern:
 
-- One integrated toolbar/header band containing the count, bulk actions, search where relevant, and an overflow menu for secondary tools.
+- One integrated toolbar/header band containing the count, bulk actions, and search where relevant. Table actions use the shared compact icon-button grid.
 - A square select-all checkbox in the header and square row checkboxes.
 - Column-level filters opened from their corresponding header.
 - Each independent column gets an independent filter; do not combine name and description filters.
-- Every active filter has an obvious clear action.
+- Active filters are visibly indicated in their column headers and can be cleared without removing unrelated filters.
 - Static finite fields such as status/day may use selects; names such as teacher/group use searchable text unless explicitly designed otherwise.
 - The table remains visible when filters return zero results so filters can be cleared.
 - The action column has a narrow fixed width and no visible `Actions` label.
-- Individual actions live in a vertical three-dot menu.
-- Archive/restore belongs in the row action menu, not hidden only inside edit forms.
+- Individual actions use a compact icon-button grid in the right action column;
+  show clear hover/focus borders and keep row height stable.
+- Archive/restore belongs in the row action grid, not hidden only inside edit forms.
 - Bulk actions are limited to operations that are safe and understandable across all selected rows.
 - Pagination is required for large datasets. Current product preference is approximately 50 rows on desktop and 15 on mobile, with previous/next and direct page selection.
+- Table headers remain sticky while scrolling. Long text truncates with access to the full value; numeric values do not truncate.
 - Table content should fill the available section without unnecessary wrapper panels or dead space.
 
 Destructive or high-impact actions use the reusable confirmation modal. Routine reversible actions should not be burdened with unnecessary confirmation.
@@ -385,15 +408,19 @@ Database credentials are server-only. They must never be sent to the browser or 
 
 | Domain | Tables | Ownership |
 | --- | --- | --- |
-| Core/organisation | `school_info` | Organisation profile, currency name, logo, balance cap |
+| Core/organisation | `school_info` | Organisation profile, currency name, logo, balance cap, transaction cap, timetable cycle settings |
 | Audit | `audit_log`, `server_error_log` | Administrative/security events and actionable server errors |
 | Auth | `roles`, `permissions`, `role_permissions`, `users`, `password_reset_tokens`, `user_sessions` | Identity, access, passwords, sessions |
 | Ledger | `accounts`, `ledger_entries`, `transaction_presets`, `student_goals` | Accounts, movements, balances, quick actions, goals |
 | Groups | `student_groups`, `student_group_memberships` | Group records and many-to-many student membership |
 | Timetable | `timetable_entries` | Teacher-to-group day/time assignments |
 | Rewards | `shop_items`, `shop_purchases` | Reward catalogue and request lifecycle; table names are legacy implementation names |
-| SSO | `sso_identity_providers` | Per-organisation Google/Microsoft configuration |
-| External API | `api_clients`, `api_client_scopes`, `api_idempotency_keys` | Hashed keys, scopes, and replay protection |
+| SSO | `sso_identity_providers` | Per-organisation Google/Microsoft configuration and optional domain-restricted JIT |
+| External API | `api_clients`, `api_client_scopes`, `api_idempotency_keys`, `api_request_log` | Hashed keys, scopes, replay protection, and request activity |
+| Notifications | `notifications`, `notification_preferences`, `notification_digest_deliveries` | In-app alerts, user choices, and email digest deduplication |
+| Account preferences | `user_preferences`, `user_transaction_preset_preferences` | Persisted appearance, dashboard, table density, voice shortcut, and personal quick-action choices |
+| Directory sync | `directory_sync_sources`, `directory_sync_runs`, `directory_sync_*_mappings` | Integration configuration, run history, and ownership for sync-managed users/groups/timetable |
+| Admin onboarding | `admin_setup_checklist_preferences` | Checklist completion and dismiss state |
 
 The application supports:
 
@@ -429,7 +456,10 @@ Browser
 - `analytics`: dashboards, reports, goals, and exports.
 - `organisation`: organisation profile and settings.
 - `audit`: audit and error records.
-- `integrations`: API clients, idempotency, finance API operations, and email.
+- `integrations`: API clients, idempotency, finance API operations, and directory sync.
+- `notifications`: in-app notifications, preferences, and email digests.
+- `users`: user-specific preferences and transaction preset preferences; authentication remains under `auth`.
+- `operations`: tenant backups and restores.
 
 Preferred dependency direction:
 
@@ -449,7 +479,7 @@ The external API is a controlled interface to ledger operations, not a second fi
 - API clients authenticate with generated keys; only the prefix is identifiable later and the secret is never shown again.
 - Store only keyed hashes of API secrets.
 - Scope each key to the minimum required operations.
-- Current scopes: `balances:read`, `ledger:credit`, `ledger:debit`, `ledger:hold`, and `ledger:void`.
+- Current scopes: `accounts:read`, `ledger:read`, `ledger:credit`, `ledger:debit`, `holds:read`, `holds:write`, `ledger:void`, `rewards:read`, `purchases:read`, and `purchases:write`.
 - Require idempotency for balance-changing requests so retries do not duplicate ledger entries.
 - The server resolves the student, validates the client scope, enforces tenant isolation, balance rules, caps, and ledger invariants.
 - Prefer a stable organisation-specific API hostname or tenant resolution mechanism; never accept an unrestricted database target from a client.
@@ -466,7 +496,11 @@ The external API is a controlled interface to ledger operations, not a second fi
 - Password changes, admin password resets, and user disabling invalidate old sessions.
 - Password reset tokens are single-use, hashed, expire, and invalidate earlier reset tokens.
 - Local and SSO login only allow active users with active roles.
-- SSO uses authorisation code flow, validates state/nonce, issuer, audience, expiry, signature, and allowed email domains, then signs in an existing local user only.
+- SSO uses authorisation code flow and validates state/nonce, issuer, audience, expiry, signature, and allowed email domains. It signs in a matching local user or, when enabled, creates a permitted JIT account.
+- Optional SSO JIT can create an account only when enabled and the verified
+  identity matches an allowed email domain. New JIT accounts are students;
+  staff and admin accounts are provisioned separately, and admin rights remain
+  manually assigned. Existing users are matched before creating a new account.
 - Provider client secrets are encrypted at rest using the configured server key.
 - Server actions assert same-origin requests before executing authenticated work.
 - API keys are hashed, scoped, revocable, and only displayed once.
@@ -487,10 +521,16 @@ Organisation-controlled data includes:
 - Google and Microsoft SSO settings and allowed domains.
 - External API clients and scopes.
 
-User-controlled local preferences include:
+User-controlled account preferences are stored per user in the tenant database
+and cached in the browser for fast startup. Appearance, dashboard, density, and
+voice shortcut choices live in `user_preferences`; personal transaction presets
+and notification modes have their own domain tables. They include:
 
-- Light/dark mode.
-- Accent preset or custom accent colour.
+- Light/dark mode, accent preset/custom colour, and table density.
+- Student wallet finish, wallet pattern, and dashboard background.
+- Staff voice-command shortcut (F2, F8, Ctrl+Shift+Space, or microphone-only).
+- Staff personal quick amounts/reasons and one-click add/take defaults.
+- Staff reward-request notification mode (`Off`, `In-app`, or weekly digest).
 
 Developer/platform-controlled settings include:
 

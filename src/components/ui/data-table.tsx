@@ -11,6 +11,8 @@ type DataTableProps = {
   responsive?: "always" | "desktop";
 };
 
+const selectionAnchors = new Map<string, string>();
+
 export function DataTable({
   ariaLabel,
   children,
@@ -148,11 +150,19 @@ export function DataTableSelectionCell({
   disabled = false,
   label,
   onChange,
+  onRangeChange,
+  rangeKey,
+  rowId,
+  selectableRowIds,
 }: {
   checked: boolean;
   disabled?: boolean;
   label: string;
   onChange: (checked: boolean) => void;
+  onRangeChange?: (rowIds: string[], checked: boolean) => void;
+  rangeKey?: string;
+  rowId?: string;
+  selectableRowIds?: string[];
 }) {
   return (
     <DataTableCell className="table-selection-cell w-10 pr-3">
@@ -160,7 +170,22 @@ export function DataTableSelectionCell({
         checked={checked}
         disabled={disabled}
         label={label}
-        onChange={onChange}
+        onChange={(isSelected, shiftKey) => {
+          if (shiftKey && rangeKey && rowId && selectableRowIds && onRangeChange) {
+            const anchorId = selectionAnchors.get(rangeKey);
+            const anchorIndex = anchorId ? selectableRowIds.indexOf(anchorId) : -1;
+            const rowIndex = selectableRowIds.indexOf(rowId);
+            if (anchorIndex >= 0 && rowIndex >= 0) {
+              const start = Math.min(anchorIndex, rowIndex);
+              const end = Math.max(anchorIndex, rowIndex);
+              onRangeChange(selectableRowIds.slice(start, end + 1), isSelected);
+              return;
+            }
+          }
+
+          if (rangeKey && rowId) selectionAnchors.set(rangeKey, rowId);
+          onChange(isSelected);
+        }}
       />
     </DataTableCell>
   );

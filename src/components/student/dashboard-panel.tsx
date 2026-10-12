@@ -241,21 +241,22 @@ export function StudentDashboardPanel({
 
       <section className="student-dashboard-section dashboard-grid mt-5">
         <StudentActivityRecap
+          className="dashboard-unit-3"
           currencyName={currencyName}
           isLoading={isTransactionsLoading && !transactionsError}
+          transactions={transactions}
+        />
+        <StudentMetricStrip
+          className="dashboard-unit-1"
+          currencyName={currencyName}
           transactions={transactions}
         />
       </section>
 
       <section className="student-dashboard-section dashboard-grid mt-5">
         <StudentShopRequestsPanel
-          className="dashboard-unit-2"
+          className="dashboard-unit-4"
           onBrowseRewards={onBrowseRewards}
-        />
-        <StudentMetricStrip
-          className="student-dashboard-card student-metric-strip dashboard-unit-2"
-          currencyName={currencyName}
-          transactions={transactions}
         />
       </section>
 
@@ -529,74 +530,98 @@ function StudentMetricStrip({
   const metrics = getStudentMetrics(transactions, timeframeDays);
 
   return (
-    <section className={`rounded-3xl bg-surface p-4 ${className}`}>
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <PanelTitle title="Activity insights" />
+    <section className={`student-dashboard-card student-metric-strip min-w-0 rounded-3xl bg-surface p-4 sm:p-5 ${className}`}>
+      <div className="flex items-center justify-between gap-2">
+        <PanelTitle title="Activity snapshot" />
         <InlineSelectMenu
-          ariaLabel="Change activity insight timeframe"
+          ariaLabel="Change activity snapshot timeframe"
           onChange={setTimeframeDays}
           options={studentMetricTimeframeOptions}
           value={timeframeDays}
         />
       </div>
-      <div className="border-b border-border-subtle pb-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs font-medium text-text-muted">Average net per day</p>
-            <div className="mt-1 flex min-w-0 items-baseline gap-1.5">
-              <p className={`font-number text-2xl font-semibold leading-none ${metrics.averageDailyNet >= 0 ? "text-positive-ink" : "text-negative-ink"}`}>
-                {metrics.averageDailyNet > 0 ? "+" : ""}{formatAmount(metrics.averageDailyNet)}
-              </p>
-              <span className="truncate text-[11px] text-text-muted">{currencyName}</span>
-            </div>
-            <p className={`mt-1.5 truncate text-[11px] font-medium ${metrics.comparison >= 0 ? "text-positive-ink" : "text-negative-ink"}`}>
-              {formatMetricComparison(metrics.comparison, currencyName)}
-            </p>
-          </div>
-          <MiniMetricSparkline values={metrics.trend} />
+
+      <div className="mt-4 flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[11px] text-text-muted">Average net per day</p>
+          <p className={`mt-1 font-number text-2xl font-semibold leading-none ${metrics.averageDailyNet >= 0 ? "text-positive-ink" : "text-negative-ink"}`}>
+            {metrics.averageDailyNet > 0 ? "+" : ""}{formatAmount(metrics.averageDailyNet)}
+            <span className="ml-1 text-xs font-medium text-text-muted">{currencyName}</span>
+          </p>
+          <p className={`mt-1.5 text-[11px] font-medium ${metrics.comparison >= 0 ? "text-positive-ink" : "text-negative-ink"}`}>
+            {formatMetricComparison(metrics.comparison, currencyName)}
+          </p>
         </div>
+        <MiniMetricSparkline values={metrics.trend} />
       </div>
 
-      <div className="mt-3 space-y-3">
-        <InsightBar label="Average gain" tone="positive" value={metrics.averageDailyGain} maximum={metrics.maximumAverage} currencyName={currencyName} />
-        <InsightBar label="Average loss" tone="negative" value={metrics.averageDailyLoss} maximum={metrics.maximumAverage} currencyName={currencyName} />
+      <div className="mt-4 grid grid-cols-2 gap-x-3 border-y border-border-subtle py-3">
+        <MetricReadout label="Average earned" tone="positive" value={metrics.averageDailyGain} currencyName={currencyName} />
+        <MetricReadout label="Average spent" tone="negative" value={metrics.averageDailyLoss} currencyName={currencyName} />
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-2 border-t border-border-subtle pt-3">
-        <InsightDetail label="Best day" value={metrics.bestDay} detail={metrics.bestDayAmount === 0 ? "No gains yet" : `+${formatAmount(metrics.bestDayAmount)} ${currencyName}`} showCrown />
-        <InsightDetail label="Most active" value={metrics.mostActiveDay} detail={`${metrics.mostActiveCount} ${metrics.mostActiveCount === 1 ? "entry" : "entries"}`} />
+      <div className="mt-3 space-y-2 text-xs">
+        <div className="flex min-w-0 items-center justify-between gap-2">
+          <span className="inline-flex items-center gap-1 text-text-muted">
+            <CrownIcon className="h-3.5 w-3.5 shrink-0 text-accent" /> Best day
+          </span>
+          <span className="truncate text-right font-medium text-text-control">
+            {metrics.bestDay}{metrics.bestDayAmount > 0 ? ` · +${formatAmount(metrics.bestDayAmount)}` : ""}
+          </span>
+        </div>
+        <div className="flex min-w-0 items-center justify-between gap-2">
+          <span className="text-text-muted">Most active</span>
+          <span className="truncate text-right font-medium text-text-control">
+            {metrics.mostActiveDay}{metrics.mostActiveCount > 0 ? ` · ${metrics.mostActiveCount} ${metrics.mostActiveCount === 1 ? "entry" : "entries"}` : ""}
+          </span>
+        </div>
       </div>
 
       <div className="mt-3 border-t border-border-subtle pt-3">
-        <div className="flex items-center justify-between gap-3 text-xs">
-          <span className="inline-flex items-center gap-1 font-medium text-text-control">
-            School-day consistency
-            <InfoTooltip label="The number of weekdays in this period where you had at least one credit transaction." />
+        <div className="flex items-center justify-between gap-2 text-[11px]">
+          <span className="inline-flex items-center gap-1 text-text-muted">
+            Weekday consistency
+            <InfoTooltip label="Weekdays in this period with at least one credit transaction." />
           </span>
-          <span className="text-text-muted">{metrics.activeSchoolDays} of {metrics.schoolDays} days</span>
+          <span className="shrink-0 font-medium text-text-control">{metrics.activeSchoolDays}/{metrics.schoolDays}</span>
         </div>
-        <div className="mt-2 grid gap-1" style={{ gridTemplateColumns: `repeat(${Math.max(metrics.schoolDays, 1)}, minmax(0, 1fr))` }}>
-          {Array.from({ length: Math.max(metrics.schoolDays, 1) }, (_, index) => (
-            <span className={`h-2 rounded-full ${index < metrics.activeSchoolDays ? "bg-brand" : "bg-panel-soft"}`} key={index} />
-          ))}
+        <div
+          aria-label={`${metrics.activeSchoolDays} of ${metrics.schoolDays} school days with activity`}
+          aria-valuemax={metrics.schoolDays}
+          aria-valuemin={0}
+          aria-valuenow={metrics.activeSchoolDays}
+          className="mt-2 h-1.5 overflow-hidden rounded-full bg-panel-soft"
+          role="progressbar"
+        >
+          <span
+            className="block h-full rounded-full bg-brand transition-[width] duration-500"
+            style={{ width: `${Math.min((metrics.activeSchoolDays / Math.max(metrics.schoolDays, 1)) * 100, 100)}%` }}
+          />
         </div>
       </div>
     </section>
   );
 }
 
-function InsightBar({ currencyName, label, maximum, tone, value }: { currencyName: string; label: string; maximum: number; tone: "negative" | "positive"; value: number }) {
-  const width = maximum > 0 ? Math.max(5, (value / maximum) * 100) : 0;
+function MetricReadout({
+  currencyName,
+  label,
+  tone,
+  value,
+}: {
+  currencyName: string;
+  label: string;
+  tone: "negative" | "positive";
+  value: number;
+}) {
   return (
-    <div>
-      <div className="flex items-center justify-between gap-3 text-xs"><span className="text-text-muted">{label}</span><span className={tone === "positive" ? "font-medium text-positive-ink" : "font-medium text-negative-ink"}>{formatAmount(value)} {currencyName}</span></div>
-      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-panel-soft"><span className={`block h-full rounded-full transition-[width] duration-500 ${tone === "positive" ? "bg-positive-ink" : "bg-negative-ink"}`} style={{ width: `${width}%` }} /></div>
+    <div className="min-w-0">
+      <p className="truncate text-[10px] text-text-muted">{label}</p>
+      <p className={`mt-1 truncate text-sm font-semibold ${tone === "positive" ? "text-positive-ink" : "text-negative-ink"}`}>
+        {tone === "positive" ? "+" : "−"}{formatAmount(value)} <span className="text-[10px] font-medium">{currencyName}</span>
+      </p>
     </div>
   );
-}
-
-function InsightDetail({ detail, label, showCrown = false, value }: { detail: string; label: string; showCrown?: boolean; value: string }) {
-  return <div className="min-w-0 rounded-xl bg-panel-soft px-3 py-2.5"><p className="flex items-center gap-1 text-[11px] font-medium uppercase text-text-muted">{showCrown && <CrownIcon className="h-3.5 w-3.5 text-accent" />}{label}</p><p className="mt-1 truncate text-sm font-semibold text-text-control">{value}</p><p className="mt-0.5 truncate text-[11px] text-text-muted">{detail}</p></div>;
 }
 
 function MiniMetricSparkline({ values }: { values: number[] }) {
@@ -815,7 +840,6 @@ function getStudentMetrics(
     bestDay: bestDay?.net > 0 ? bestDay.label : "No gain yet",
     bestDayAmount: Math.max(bestDay?.net ?? 0, 0),
     comparison: averageDailyNet - previousAverageDailyNet,
-    maximumAverage: Math.max(averageDailyGain, averageDailyLoss, 1),
     mostActiveCount: mostActiveDay?.count ?? 0,
     mostActiveDay: mostActiveDay?.count ? mostActiveDay.label : "No activity",
     schoolDays,

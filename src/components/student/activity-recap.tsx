@@ -18,6 +18,7 @@ import type { TransactionLogItem } from "@/domains/ledger/transaction-service";
 import { formatAmount } from "@/lib/presentation/formatters";
 
 type StudentActivityRecapProps = {
+  className?: string;
   currencyName: string;
   isLoading: boolean;
   transactions: TransactionLogItem[];
@@ -41,6 +42,7 @@ type MovementTooltipProps = {
 const millisecondsPerDay = 24 * 60 * 60 * 1000;
 
 export function StudentActivityRecap({
+  className = "",
   currencyName,
   isLoading,
   transactions,
@@ -60,7 +62,7 @@ export function StudentActivityRecap({
   const comparison = weeklyNet - previousWeeklyNet;
 
   return (
-    <section className="student-dashboard-card student-activity-recap dashboard-unit-4 overflow-hidden rounded-3xl bg-surface px-4 py-4 sm:px-5">
+    <section className={`student-dashboard-card student-activity-recap min-w-0 overflow-hidden rounded-3xl bg-surface px-4 py-4 sm:px-5 ${className}`}>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div>
           <div className="flex items-center gap-2">

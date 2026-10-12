@@ -1,143 +1,54 @@
 # Myntix Ledger
 
-Myntix Ledger is an internal currency ledger for organisations. The core loop is:
+Myntix Ledger is a multi-tenant internal currency ledger for schools and similar organisations. Staff award or deduct credits, students follow their balance and rewards, and administrators manage users, groups, timetables, policies, and oversight.
 
-- teachers award or deduct internal currency
-- students see balances, goals, and store options
-- admins manage the economy rules and review the ledger
+The application is a Next.js 16 / React 19 modular monolith backed by PostgreSQL. Tenants are resolved through a platform database and may use either a dedicated database or a schema in a shared database. See [Project documentation](infrastructure/docs/README.md) for product, API, database, operations, notification, TASS sync, and backup guides.
 
-The app is a Next.js application backed by PostgreSQL. Tenants are resolved through a platform database and can use either a dedicated database or a schema inside a shared app database.
+## Local Development
 
-Product, API, notification, operations, and backup documentation is indexed in [infrastructure/docs/README.md](infrastructure/docs/README.md).
-Fresh Debian/Ubuntu containers can be provisioned with the
-[deployment installer](infrastructure/deployment/README.md).
-
-## Tech Stack
-
-- Next.js
-- TypeScript
-- Tailwind CSS
-- ESLint
-
-## Getting Started
-
-Install Node.js 20.19 or newer. Node.js 22 LTS is preferred for new installs.
-
-Create `.env.local` from `.env.example` and adjust the platform database credentials:
-
-```txt
-NEXT_PUBLIC_APP_NAME=Myntix Ledger
-NEXT_PUBLIC_APP_INITIALS=ML
-NEXT_PUBLIC_APP_LOGO_URL=/brand/myntix-stacked-coins.png
-NEXT_PUBLIC_APP_LOCKUP_URL=/brand/myntix-lockup.png
-NEXT_PUBLIC_APP_WORDMARK_URL=/brand/myntix-wordmark.png
-NEXT_PUBLIC_APP_TAGLINE=Internal currency, made simple.
-
-PLATFORM_POSTGRES_HOST=localhost
-PLATFORM_POSTGRES_PORT=5432
-PLATFORM_POSTGRES_DATABASE=app_platform
-PLATFORM_POSTGRES_USER=myntix_web
-PLATFORM_POSTGRES_PASSWORD=change_me
-
-LOCAL_ORGANISATION_SLUG=dev
-APP_ROOT_DOMAIN=app.local
-```
+Use Node.js 24.x to match the production installer. PostgreSQL must be reachable and the platform and tenant databases must be initialized; follow [Database setup](infrastructure/database/README.md). The initial tenant admin is `admin` / `admin`; change this immediately and never use it outside a disposable development tenant.
 
 ```bash
-npm install
-npm run dev
+cp .env.example .env.local
 ```
 
-Open http://localhost:3000.
-
-Initial admin login after running the school database setup script:
-
-```txt
-username: admin
-password: admin
-```
-
-## Production Deployment
-
-Create a production env file before building:
-
-```bash
-cp .env.example .env.production
-nano .env.production
-```
-
-At minimum, production needs these values:
-
-```txt
-APP_BASE_URL=https://your-domain.example
-APP_ROOT_DOMAIN=your-domain.example
-APP_HOST=0.0.0.0
-APP_PORT=3000
-LOCAL_ORGANISATION_SLUG=dev
-
-PLATFORM_POSTGRES_HOST=your-postgres-host
-PLATFORM_POSTGRES_PORT=5432
-PLATFORM_POSTGRES_DATABASE=your-platform-database
-PLATFORM_POSTGRES_USER=myntix_web
-PLATFORM_POSTGRES_PASSWORD=your-platform-password
-
-APP_POSTGRES_HOST=your-postgres-host
-APP_POSTGRES_PORT=5432
-APP_POSTGRES_DATABASE=your-shared-app-database
-APP_POSTGRES_USER=myntix_web
-APP_POSTGRES_PASSWORD=your-shared-app-password
-
-SESSION_TOKEN_HASH_SECRET=long-random-secret
-SSO_SECRET_ENCRYPTION_KEY=long-random-secret
-API_KEY_HASH_SECRET=long-random-secret
-```
-
-Validate the environment before building:
-
-```bash
-npm run check:env
-```
-
-Then build and start:
+Set the real local PostgreSQL host, database names, and credentials in `.env.local`. For a local tenant, set `APP_ROOT_DOMAIN=app.local`, `APP_BASE_URL=http://localhost:3000`, and `LOCAL_ORGANISATION_SLUG=local` to match the seeded platform record. Generate independent secrets for `SESSION_TOKEN_HASH_SECRET`, `SSO_SECRET_ENCRYPTION_KEY`, and `API_KEY_HASH_SECRET`; do not reuse production credentials.
 
 ```bash
 npm ci
+npm run dev
+```
+
+Open http://localhost:3000. The server reads `.env.local`; restart it after changing environment values.
+
+## Production
+
+For a Debian/Ubuntu Proxmox LXC, use the maintained [deployment installer](infrastructure/deployment/README.md). It provisions Node.js 24, PostgreSQL client tools, systemd services, protected environment files, builds the app, and restarts it. PostgreSQL stays on its own server. The application listens on `APP_PORT` (default `3000`) behind a reverse proxy or Cloudflare Tunnel; do not expose the Node port publicly.
+
+For a manual install, copy `.env.example` to `.env.production`, configure all required variables, then run:
+
+```bash
+npm ci
+npm run check:env
 npm run build
 npm run start
 ```
 
-`APP_PORT` is the internal port the Next.js process listens on. It can stay as `3000` behind Nginx, Caddy, Traefik, or Cloudflare Tunnel. Do not expose the app port directly to the internet.
+Production requires platform and shared-tenant PostgreSQL connection settings (`PLATFORM_POSTGRES_*` and `APP_POSTGRES_*`), a valid tenant domain/root domain, and three independent random server secrets. The app currently requires the shared-tenant connection configuration even when all registered tenants use dedicated databases. The backup catalogue is optional for the app, but all four `BACKUP_CATALOG_*` values must be configured together to enable backup UI/API access. Backup worker credentials and R2/age configuration belong in the separate worker environment; see [Backups](infrastructure/docs/BACKUPS.md).
 
-If you see this during build:
+Keep `.env.local`, `.env.production`, worker environment files, database dumps, encryption keys, and runtime uploads out of Git. The app's production service reads `/etc/myntix/app.env`; the backup worker reads `/etc/myntix/backup-worker.env`.
 
-```txt
-Missing required environment variable: APP_ROOT_DOMAIN
-```
-
-the server does not have `APP_ROOT_DOMAIN` available to `npm run build`. Add it to `.env.production`, `.env.local`, or the systemd service environment, then rebuild from a clean `.next` directory:
+## Useful Commands
 
 ```bash
-rm -rf .next
+npm run lint
 npm run check:env
-npm run build
+npm run db:check
+npm run db:configure-access
+npm run organisation:offboard
 ```
 
-For an LXC/Proxmox deployment, clone the repository into the application
-directory and run it as a systemd service with that directory as
-`WorkingDirectory`. Load `.env.production` from the service and execute
-`npm run start`. Change ports through `APP_PORT`, not the service command.
+`npm run organisation:offboard` lists active organisations. Deletion requires the
+explicit `--execute <slug> --confirm <slug>` form; see the [deployment guide](infrastructure/deployment/README.md).
 
-Keep production secrets out of git. `.env`, `.env.local`, `.env.production`, `.env.production.local`, and uploaded runtime files are ignored.
-
-## Deployment Checklist
-
-1. Node.js 20.19+ installed.
-2. PostgreSQL reachable from the app server.
-3. Platform database created.
-4. Tenant database or schema created.
-5. `.env.production` or `.env.local` present on the server.
-6. `npm run check:env` passes.
-7. `npm run build` passes.
-8. Reverse proxy passes `Host`, `X-Forwarded-Host`, `X-Forwarded-Proto`, and `X-Forwarded-For`.
-9. HTTPS is terminated by the reverse proxy or Cloudflare Tunnel.
-10. Postgres is not exposed publicly.
+See [the documentation index](infrastructure/docs/README.md) for operating procedures and feature-specific setup.

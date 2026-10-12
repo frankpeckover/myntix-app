@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   CheckIcon,
   CopyIcon,
@@ -29,6 +29,7 @@ import {
   TableHeaderFilterSelect,
 } from "@/components/ui/table-header-filter";
 import type { GroupListItem } from "@/domains/groups/group-service";
+import { sortTableItems, type TableSortDirection } from "@/components/ui/table-sorting";
 import {
   DataTable,
   DataTableSelectionCell,
@@ -87,12 +88,22 @@ export function GroupListPanel({
   toolbar,
   totalGroupsCount,
 }: GroupListPanelProps) {
+  const [tableSort, setTableSort] = useState<{ column: string; direction: TableSortDirection } | null>(null);
+  const sortedGroups = sortTableItems(groups, tableSort, (group, column) => {
+    switch (column) {
+      case "name": return group.name;
+      case "description": return group.description;
+      case "members": return group.memberCount;
+      case "status": return group.isActive ? "Active" : "Archived";
+      default: return "";
+    }
+  });
   const {
     page,
     pageItems: visibleGroups,
     setPage,
     totalPages,
-  } = usePagedList(groups);
+  } = usePagedList(sortedGroups);
 
   return (
     <div>
@@ -113,6 +124,8 @@ export function GroupListPanel({
             <GroupList
               filters={filters}
               groups={visibleGroups}
+              onSortChange={(column, direction) => setTableSort(direction ? { column, direction } : null)}
+              tableSort={tableSort}
               onDuplicateGroup={onDuplicateGroup}
               onEditGroup={onEditGroup}
               onEditMembers={onEditMembers}
@@ -172,9 +185,11 @@ function GroupList({
   onVisibleGroupsSelectionChange,
   onFiltersChange,
   onShowArchivedChange,
+  onSortChange,
   selectedGroupId,
   selectedGroupIds,
   showArchived,
+  tableSort,
   toolbar,
 }: {
   filters: GroupFilters;
@@ -188,9 +203,11 @@ function GroupList({
   onVisibleGroupsSelectionChange: (isSelected: boolean) => void;
   onFiltersChange: (filters: GroupFilters) => void;
   onShowArchivedChange: (showArchived: boolean) => void;
+  onSortChange: (column: string, direction: TableSortDirection | null) => void;
   selectedGroupId: string;
   selectedGroupIds: string[];
   showArchived: boolean;
+  tableSort: { column: string; direction: TableSortDirection } | null;
   toolbar?: ReactNode;
 }) {
   const areAllVisibleGroupsSelected =
@@ -229,7 +246,7 @@ function GroupList({
           <col />
           <col className="w-28" />
           <col className="w-24" />
-          <col className="w-32" />
+          <col className="table-action-column" />
         </colgroup>
         <thead>
           <tr className="border-b border-border-subtle text-text-muted">
@@ -247,6 +264,8 @@ function GroupList({
                 isActive={Boolean(filters.name)}
                 label="Name"
                 onClear={() => updateFilter("name", "")}
+                onSortDirectionChange={(direction) => onSortChange("name", direction)}
+                sortDirection={tableSort?.column === "name" ? tableSort.direction : null}
               >
                 <TableHeaderFilterInput
                   label="Search names"
@@ -260,6 +279,8 @@ function GroupList({
                 isActive={Boolean(filters.description)}
                 label="Description"
                 onClear={() => updateFilter("description", "")}
+                onSortDirectionChange={(direction) => onSortChange("description", direction)}
+                sortDirection={tableSort?.column === "description" ? tableSort.direction : null}
               >
                 <TableHeaderFilterInput
                   label="Search descriptions"
@@ -279,6 +300,8 @@ function GroupList({
                     memberMin: "",
                   })
                 }
+                onSortDirectionChange={(direction) => onSortChange("members", direction)}
+                sortDirection={tableSort?.column === "members" ? tableSort.direction : null}
               >
                 <div className="grid gap-3">
                   <TableHeaderFilterInput
@@ -301,6 +324,8 @@ function GroupList({
                 isActive={showArchived}
                 label="Status"
                 onClear={() => onShowArchivedChange(false)}
+                onSortDirectionChange={(direction) => onSortChange("status", direction)}
+                sortDirection={tableSort?.column === "status" ? tableSort.direction : null}
               >
                 <TableHeaderFilterSelect
                   label="Status"
@@ -331,6 +356,12 @@ function GroupList({
               <DataTableSelectionCell
                 checked={selectedGroupIds.includes(group.id)}
                 label={`Select ${group.name}`}
+                rangeKey="groups-table"
+                rowId={group.id}
+                selectableRowIds={groups.map((row) => row.id)}
+                onRangeChange={(ids, isSelected) =>
+                  ids.forEach((id) => onGroupSelectionChange(id, isSelected))
+                }
                 onChange={(isSelected) =>
                   onGroupSelectionChange(group.id, isSelected)
                 }

@@ -3,7 +3,8 @@
 Myntix has one tenant-backup system:
 
 1. The web app queues scheduled, manual, and restore jobs.
-2. One private worker uses `pg_dump` or `pg_restore`, encrypts each dump locally
+2. One private worker, installed on the application container by the Myntix
+   installer, uses `pg_dump` or `pg_restore`, encrypts each dump locally
    with `age`, retains a short-lived encrypted local copy, and uploads that same
    encrypted artifact to R2 with rclone.
 3. The separate `myntix_backup` database stores the job and restore-point list.
@@ -29,7 +30,9 @@ The web app never receives R2 or database-restore credentials.
    `/etc/myntix/backup-age.key` (or set `BACKUP_AGE_IDENTITY_SOURCE` before
    running the installer). Without it, neither local nor R2 backups can be
    restored. Do not generate a separate identity for each worker.
-7. Install `age`, `pg_dump`, `pg_restore`, `rclone`, and Node.js on the worker host.
+7. The installer installs `age`, PostgreSQL client tools, rclone, and Node.js
+   on the application container. The worker connects over the network to the
+   separate PostgreSQL server; it does not run inside the database container.
 8. Install and start `infrastructure/config/backup-worker/myntix-backup-worker.service`.
 
 The worker environment now has one PostgreSQL connection block:
@@ -67,14 +70,9 @@ In Myntix, open **Admin > Settings > Backups** and select **Backup Now**. A
 successful job appears as an available restore point and creates an encrypted
 object in R2.
 
-To process one queued job interactively:
-
-```bash
-set -a
-. /etc/myntix/backup-worker.env
-set +a
-BACKUP_WORKER_ONCE=true npm run backup:worker
-```
+For testing, queue **Backup Now** from the admin portal and follow the worker
+with `journalctl`. Run the worker under its dedicated systemd service identity;
+do not start an ad-hoc second worker as root or as the web-app user.
 
 ## Behaviour
 

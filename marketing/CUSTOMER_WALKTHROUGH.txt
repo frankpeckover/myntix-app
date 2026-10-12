@@ -1,0 +1,202 @@
+MYNTIX CUSTOMER WALKTHROUGH GUIDE
+=================================
+
+Purpose
+-------
+Use this guide for a 15-20 minute introduction to Myntix with a school leader,
+teacher, or business manager. Keep the conversation focused on their current
+process and show only the parts that address their needs. Ask questions and let
+the customer do some of the talking; this should feel like a conversation, not
+a feature recital.
+
+
+BEFORE THE MEETING
+------------------
+
+[ ] Use a demo organisation with realistic, fictional data only.
+[ ] Confirm the demo login works and the right roles are available.
+[ ] Have one admin, one staff member, and one student account ready if possible.
+[ ] Prepare a few groups, timetable entries, students, rewards, and transactions.
+[ ] Confirm the demo organisation name and logo look presentable.
+[ ] Check the app on the device and browser you will use for the walkthrough.
+[ ] Avoid showing real student or staff information.
+[ ] Know which features are live, which require setup, and which are planned.
+[ ] Ask permission before recording or taking notes about the customer's setup.
+
+Do not promise integrations, security certifications, service levels, or
+features that have not been confirmed. If a question needs checking, write it
+down and follow up with an accurate answer.
+
+
+1. OPEN AND DISCOVER (2-3 MINUTES)
+----------------------------------
+
+Say:
+"Thanks for making time. I’ll give you a quick look at how Myntix helps a
+school run a simple internal credits system: staff can recognise students,
+students can track and spend credits, and administrators can manage the rules
+and oversight. Before I show it, could I ask how you currently recognise
+positive contributions or manage reward points?"
+
+Ask one or two questions:
+- "What takes the most effort in your current process?"
+- "Who would use a system like this: classroom teachers, wellbeing staff,
+  administrators, students?"
+- "How do students currently redeem rewards, if they can?"
+- "What would make this useful and safe for your school?"
+
+Reflect back what you heard:
+"It sounds like the main thing you want to improve is [their stated need]. I’ll
+focus the demo on that and show where the relevant controls sit."
+
+
+2. SHOW THE STAFF EXPERIENCE (4-5 MINUTES)
+------------------------------------------
+
+Open the staff credit-management view. Explain that staff can find a student
+or group, see balances, and make an adjustment with a reason. Use fictional
+demo data.
+
+Suggested narration:
+"The aim here is to make the everyday action quick. A staff member finds the
+student or class, chooses an increase or decrease, enters an amount and reason,
+then confirms it. The reason becomes part of the transaction history, so the
+student and authorised staff can understand what changed."
+
+Demonstrate:
+- Finding an individual student and viewing their current balance.
+- Issuing a small credit with a clear reason.
+- If useful, showing the group workflow and explaining how it applies to the
+  selected students.
+- Where configured, point out transaction limits and the visible feedback if
+  an adjustment would exceed the organisation's rules.
+- The teacher timetable, if relevant, and how selecting a class can take staff
+  to the relevant students.
+
+Ask:
+"Would this fit the way your staff recognise students, or would your team need
+a different workflow?"
+
+
+3. SHOW THE STUDENT EXPERIENCE (3-4 MINUTES)
+-------------------------------------------
+
+Switch to the student demo account. Show the dashboard and explain it from the
+student's point of view.
+
+Suggested narration:
+"Students can see their balance, recent activity, and how their credits are
+changing over time. They can also browse the school's rewards and make a
+request using their balance. The goal is for the system to feel clear and
+encouraging, rather than like a spreadsheet students never want to open."
+
+Demonstrate:
+- Balance and recent transaction history.
+- A simple weekly activity view, if available in this demo.
+- Rewards catalogue, item details, and adding an item to the cart/request flow.
+- Any student personalisation options that are enabled for this organisation.
+
+Avoid implying that credits have cash value. Explain that the school defines
+what credits mean and what rewards are available.
+
+Ask:
+"Would students at your school find these rewards motivating? What would they
+actually want to earn?"
+
+
+4. SHOW REWARD MANAGEMENT AND OVERSIGHT (2-3 MINUTES)
+----------------------------------------------------
+
+Return to a staff or admin account. Show the reward request queue and the
+administrative controls that are relevant to the customer.
+
+Suggested narration:
+"When a student requests a reward, staff can review the request and approve
+or deny it. The school remains in control of its catalogue, quantities, and
+rules. This keeps the student experience engaging while giving staff a clear
+way to manage fulfilment."
+
+Show only the settings that answer the customer's questions, such as:
+- Currency rules and optional transaction limits.
+- Reward setup and stock/quantity rules.
+- Groups, users, timetable, or imports if these matter to their operations.
+- Organisation branding and appearance settings, if relevant.
+- Audit history for understanding important changes.
+
+Do not spend time touring every admin page. Ask which controls they would need
+to own and which they would expect staff to manage.
+
+
+5. DATA, SETUP, AND FIT (2-3 MINUTES)
+------------------------------------
+
+Say:
+"Every school has a different setup, so the next step would be to understand
+your user and class data, who should have each role, and what your reward
+process looks like. We can then confirm the appropriate setup and any
+integration requirements before discussing a rollout."
+
+Discuss only what is relevant:
+- User and group setup, including supported import or sync options.
+- Authentication/SSO requirements and whether the school's identity provider
+  is supported for the intended setup.
+- Roles and permissions: who administers the organisation, who issues
+  credits, who manages rewards, and what students can see.
+- Data handling, hosting, backups, and support questions. Give verified
+  answers only; capture anything that needs technical or policy confirmation.
+- A small pilot with a defined cohort, success criteria, and review date.
+
+Useful pilot measures might include staff adoption, time required for common
+actions, student participation, reward requests, and feedback from staff and
+students. Agree measures with the school rather than assuming what success
+means to them.
+
+
+6. CLOSE WITH A CLEAR NEXT STEP (1-2 MINUTES)
+--------------------------------------------
+
+Summarise:
+"From what you’ve shared, the most relevant parts are [need one], [need two],
+and [need three]. The main questions to resolve before a pilot are [open item
+one] and [open item two]."
+
+Offer a concrete next step, for example:
+- A follow-up focused on their identity, data, and rollout requirements.
+- A limited pilot with named stakeholders and agreed success criteria.
+- A technical review for integrations, security, and data-handling questions.
+
+Ask:
+"Would it be useful to set up that next conversation with the person who owns
+[relevant area]?"
+
+Record after the meeting:
+- Their current process and main pain points.
+- Who would use Myntix and who would approve a pilot.
+- Required integrations, identity provider, and data constraints.
+- Questions you promised to verify.
+- Agreed next step, owner, and date.
+
+
+QUICK DEMO CHECKLIST
+--------------------
+
+1. Understand their current process.
+2. Show a staff member issuing a reasoned credit.
+3. Show what the student sees and how a reward request works.
+4. Show the review and admin controls relevant to their needs.
+5. Discuss setup, data, and unanswered requirements honestly.
+6. Agree one specific next step.
+
+
+PRESENTATION TIPS
+-----------------
+
+- Keep the demo to the customer's workflow, not a tour of every feature.
+- Use realistic fictional examples and avoid sensitive real-world data.
+- Let the customer interrupt and ask questions; adapt the order as needed.
+- Use plain language. Explain "credits" as a school-defined internal system.
+- Be clear about what is available now versus what needs configuration or
+  further verification.
+- If the app behaves unexpectedly, narrate calmly, note the issue, and follow
+  up rather than improvising a promise.
+- End on the customer's likely first use case, not on a long list of features.

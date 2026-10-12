@@ -36,7 +36,11 @@ POST /api/internal/jobs/notification-digests
 Authorization: Bearer {INTERNAL_JOB_SECRET}
 ```
 
-Invoke it once each morning with cron, a systemd timer, or another trusted scheduler. It processes all active platform tenants. Delivery records make retries safe, and each opted-in teacher receives at most one email every seven days while reward requests are awaiting approval.
+Invoke it once each morning with cron, a systemd timer, or another trusted
+scheduler. The app does not schedule this endpoint itself. It processes active
+platform tenants; delivery records make retries safe, and each opted-in teacher
+receives at most one email every seven days while reward requests are awaiting
+approval.
 
 Example manual test:
 
@@ -46,5 +50,3 @@ curl -X POST https://school.example.com/api/internal/jobs/notification-digests \
 ```
 
 Students receive in-app reward updates only. Staff can choose `Off`, `In-app`, or `In-app + weekly digest` from Preferences. Reward request alerts are grouped into one work-queue notification and default to off.
-
-Teachers also receive an in-app reminder after each timetabled class ends to record any promised credit changes. These reminders are created per class and day, expire after 24 hours, and are never included in email digests.

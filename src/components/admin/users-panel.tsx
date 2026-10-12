@@ -39,6 +39,7 @@ import { showToast } from "@/components/ui/toast-viewport";
 import { downloadCsv } from "@/lib/csv/client";
 import { formatDateTime } from "@/lib/presentation/formatters";
 import type { UserListItem } from "@/domains/users/user-service";
+import { sortTableItems, type TableSortDirection } from "@/components/ui/table-sorting";
 import type { UserFormState } from "@/components/admin/users/user-modal-types";
 
 type AdminUsersPanelProps = {
@@ -48,6 +49,7 @@ type AdminUsersPanelProps = {
 export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
   const [users, setUsers] = useState<UserListItem[]>([]);
   const [filters, setFilters] = useState<UserFilters>(emptyFilters);
+  const [tableSort, setTableSort] = useState<{ column: string; direction: TableSortDirection } | null>(null);
   const [showInactiveUsers, setShowInactiveUsers] = useState(false);
   const [duplicatingUserForm, setDuplicatingUserForm] =
     useState<Partial<UserFormState> | null>(null);
@@ -248,12 +250,26 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
       ),
     [filters, showInactiveUsers, users],
   );
+  const sortedUsers = useMemo(
+    () => sortTableItems(filteredUsers, tableSort, (user, column) => {
+      switch (column) {
+        case "name": return user.displayName;
+        case "username": return user.username;
+        case "email": return user.email;
+        case "role": return user.role;
+        case "activity": return user.lastActivityAt;
+        case "status": return user.isActive ? "Active" : "Archived";
+        default: return "";
+      }
+    }),
+    [filteredUsers, tableSort],
+  );
   const {
     page,
     pageItems: visibleUsers,
     setPage,
     totalPages,
-  } = usePagedList(filteredUsers);
+  } = usePagedList(sortedUsers);
 
   function clearUserFilters() {
     setFilters(emptyFilters);
@@ -282,6 +298,8 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
               onEdit={setEditingUser}
               onPasswordReset={setResettingPasswordUser}
               onShowInactiveUsersChange={setShowInactiveUsers}
+              onSortChange={(column, direction) => setTableSort(direction ? { column, direction } : null)}
+              tableSort={tableSort}
               onUserSelectionChange={handleUserSelectionChange}
               onUserActiveChange={handleSetUserActive}
               onVisibleUsersSelectionChange={handleVisibleUsersSelectionChange}
@@ -303,10 +321,10 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
                         label="Open user table tools"
                         items={[
                           {
-                            disabled: filteredUsers.length === 0,
+                            disabled: sortedUsers.length === 0,
                             icon: <FileDownIcon />,
                             label: "Export users: CSV",
-                            onSelect: () => downloadUsers(filteredUsers),
+                            onSelect: () => downloadUsers(sortedUsers),
                           },
                           {
                             icon: <FileUpIcon />,
@@ -322,7 +340,7 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
                     <ListCount
                       count={visibleUsers.length}
                       label="users"
-                      totalCount={filteredUsers.length}
+                      totalCount={sortedUsers.length}
                     />
                     <BulkSelectionControls
                       actions={[
@@ -384,7 +402,7 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
               <ListPagination
                 onPageChange={setPage}
                 page={page}
-                totalCount={filteredUsers.length}
+                totalCount={sortedUsers.length}
                 totalPages={totalPages}
               />
             )}

@@ -1,8 +1,9 @@
 # Myntix deployment installer
 
-`install-myntix.sh` provisions a fresh Debian or Ubuntu application container.
-It is intentionally limited to the app container; PostgreSQL remains on its
-separate server.
+`install-myntix.sh` provisions a Debian or Ubuntu application container. It is
+intentionally limited to the app container; PostgreSQL remains on its separate
+server. The installer targets Node.js 24.x and the `main` branch; edit the
+configuration block at the top of the script before using a different layout.
 
 ## What it configures
 
@@ -21,10 +22,12 @@ separate server.
 
 ## Usage
 
-1. Review the variables at the top of `install-myntix.sh`.
-2. Optionally set `APP_ENV_SOURCE`, `BACKUP_ENV_SOURCE`, and
-   `RCLONE_CONFIG_SOURCE` to existing files before running it.
-3. Run as root:
+1. Review the variables at the top of `install-myntix.sh`, especially the
+   repository branch, app port, and whether to install the backup worker.
+2. Optionally set `APP_ENV_SOURCE`, `BACKUP_ENV_SOURCE`,
+   `RCLONE_CONFIG_SOURCE`, `BACKUP_AGE_IDENTITY_SOURCE`, and
+   `OFFBOARD_ENV_SOURCE` to existing files before running it.
+3. Run from the checkout, as root:
 
 ```bash
 chmod +x infrastructure/deployment/install-myntix.sh
@@ -32,29 +35,65 @@ sudo infrastructure/deployment/install-myntix.sh
 ```
 
 If no environment sources are supplied, the first run creates protected
-templates under `/etc/myntix`, installs the dependencies and services, then
-prints the remaining environment-file action at the end. The production build
-and application startup are deferred until the placeholders are replaced and
-the installer is rerun. Existing env files are preserved unless an explicit
-source file is configured.
+templates under `/etc/myntix`, installs dependencies and service definitions,
+then prints the remaining environment-file action at the end. The production
+build and application startup are deferred until required placeholders are
+replaced and the installer is rerun. Existing env files are preserved unless
+an explicit source file is configured. The app env file is `/etc/myntix/app.env`
+and is linked as `.env.production` in the checkout; do not keep a second live
+copy of secrets in the repository.
 
 For backup storage, the installer preserves `/etc/myntix/rclone.conf`, copies
 an explicitly configured `RCLONE_CONFIG_SOURCE`, or automatically imports
 `/root/.config/rclone/rclone.conf` when one already exists. If none exists, run
-it creates a protected file from `rclone.conf.example`; enter the account ID
-and R2 credentials, then rerun the installer. Provision one shared age identity
-at `/etc/myntix/backup-age.key`, or set `BACKUP_AGE_IDENTITY_SOURCE` in the
-installer. Every backup worker must receive the same identity; keep a separate
-offline copy of it.
-The web app can
-still be deployed while backup-worker startup remains deferred.
+it creates a protected file from `rclone.conf.example`; enter the Cloudflare
+account ID and R2 credentials, then rerun the installer. Provision one shared
+age identity at `/etc/myntix/backup-age.key`, or set
+`BACKUP_AGE_IDENTITY_SOURCE` in the installer. Every backup worker must receive
+the same identity; keep a separate offline copy of it. The web app can still be
+deployed while backup-worker startup remains deferred.
 An already-installed backup worker is stopped when either its environment or
 rclone configuration is incomplete, preventing queued jobs from failing while
 storage is unavailable.
 
-The script is idempotent: later runs pull the configured branch using a
-fast-forward update, reinstall exact dependencies, rebuild, and restart the
-services. It refuses to overwrite a checkout containing local modifications.
+The script is idempotent: later runs fetch and fast-forward the configured
+branch, install exact dependencies, remove and recreate `.next`, rebuild, and
+restart the services. It refuses to overwrite local modifications. Next.js can
+rewrite the tracked `next-env.d.ts` during a build. If that file is the only
+local change and exactly matches the incoming branch, the installer restores
+the current revision before pulling so the new commit can update it. Any other
+local or staged changes still stop deployment for review.
+
+## Manual deployment troubleshooting
+
+If you update with `git pull` instead of the installer and Git reports a local
+change to `next-env.d.ts`, compare it first:
+
+```bash
+git diff -- next-env.d.ts
+```
+
+Next.js 16 may generate imports for `.next/types/routes.d.ts` and
+`.next/types/root-params.d.ts` during a build. Git compares the working file to
+the server's current `HEAD`, not directly to the incoming commit, so the local
+file may block `git pull` even when it already matches the new GitHub version.
+If the diff contains only generated Next references and no hand edits, run
+`git restore -- next-env.d.ts`, then pull, build, and restart. Do not restore it
+if the diff contains intentional edits.
+
+After a manual update, verify all three stages completed:
+
+```bash
+git rev-parse --short HEAD
+npm ci
+npm run check:env
+npm run build
+sudo systemctl restart myntix-app
+sudo systemctl status myntix-app --no-pager
+```
+
+The commit hash should match the release being deployed. A Git pull alone does
+not rebuild the app or replace the running Node.js process.
 
 ## Organisation offboarding
 

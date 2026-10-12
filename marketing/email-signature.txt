@@ -1,0 +1,4 @@
+{{YOUR_NAME}}
+{{YOUR_ROLE}} | Myntix
+{{CONTACT_EMAIL}}
+https://myntix.com

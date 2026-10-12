@@ -1,0 +1,46 @@
+MYNTIX SCHOOL OUTREACH - SENDING NOTES
+======================================
+
+FILES
+-----
+- townsville-school-outreach.html: branded HTML email template.
+- townsville-school-outreach.txt: plain-text fallback.
+- email-signature.html: HTML signature using the Myntix wordmark.
+- email-signature.txt: plain-text signature.
+
+BEFORE SENDING
+--------------
+Replace every {{PLACEHOLDER}} with accurate, personalised details. Address a
+specific person where possible and explain briefly why Myntix may be relevant
+to their role or school. Do not send the template unchanged to a bulk list.
+
+The logo images are loaded from:
+https://myntix.com/brand/myntix-lockup.png
+https://myntix.com/brand/myntix-wordmark.png
+
+Confirm those URLs are publicly available over HTTPS before sending. Some
+email clients block images until the recipient chooses to display them, so the
+email must still make sense with images disabled.
+
+AUSTRALIAN EMAIL OUTREACH
+-------------------------
+Promotional email is generally a commercial electronic message. Australian
+spam rules require an appropriate consent basis before sending; the email must
+identify the sender, include contact details, and provide a clear, functional
+unsubscribe method. A publicly listed work email is not blanket permission;
+any inferred consent should be relevant to the recipient's role and the
+message. Keep a suppression list and honour opt-out requests promptly. Check
+current ACMA guidance or obtain legal advice if unsure.
+
+Official guidance: https://www.acma.gov.au/avoid-sending-spam
+
+The template's reply-with-unsubscribe line is intended to be monitored. Keep
+the sender mailbox active and process opt-out requests. Do not use these files
+as justification to send unsolicited bulk email.
+
+CLAIMS
+------
+The copy describes current product capabilities at a high level and does not
+claim security certifications, guaranteed outcomes, customer testimonials,
+pricing, or specific integration availability. Verify any school-specific
+integration, hosting, privacy, security, or support answer before promising it.

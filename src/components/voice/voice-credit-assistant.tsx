@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { StudentListItem } from "@/domains/users/user-service";
-import { createLedgerAdjustment, searchStudents } from "@/lib/actions";
+import type { GroupListItem } from "@/domains/groups/group-service";
+import {
+  createGroupLedgerAdjustment,
+  createLedgerAdjustment,
+  listGroups,
+  searchStudents,
+} from "@/lib/actions";
 import { notifyLedgerChanged } from "@/lib/ledger/ledger-change-event";
 import { formatAmount } from "@/lib/presentation/formatters";
 import {
@@ -21,8 +27,10 @@ type VoiceCreditAssistantProps = {
 
 type ReviewState = ParsedVoiceCreditCommand & {
   candidates: StudentListItem[];
+  groupCandidates: GroupListItem[];
   requestId: string;
   selectedStudentId: string;
+  selectedGroupId: string;
   transcript: string;
 };
 
@@ -109,26 +117,57 @@ export function VoiceCreditAssistant({
     setIsResolving(true);
 
     try {
-      const candidates = await searchStudents(parsed.command.studentName);
-      if (candidates.length === 0) {
-        setVoiceNotice({
-          message: `Command understood, but no active student matched “${parsed.command.studentName}”.`,
-          tone: "warning",
+      if (parsed.command.recipientType === "group") {
+        const allGroups = await listGroups();
+        const groupCandidates = findGroupCandidates(
+          allGroups,
+          parsed.command.recipientName,
+        );
+        if (groupCandidates.length === 0) {
+          setVoiceNotice({
+            message: `Command understood, but no active group matched “${parsed.command.recipientName}”.`,
+            tone: "warning",
+            transcript,
+          });
+          return;
+        }
+
+        setReview({
+          ...parsed.command,
+          candidates: [],
+          groupCandidates,
+          requestId: crypto.randomUUID(),
+          selectedStudentId: "",
+          selectedGroupId: getInitialGroupId(
+            groupCandidates,
+            parsed.command.recipientName,
+          ),
           transcript,
         });
-        return;
-      }
+      } else {
+        const candidates = await searchStudents(parsed.command.recipientName);
+        if (candidates.length === 0) {
+          setVoiceNotice({
+            message: `Command understood, but no active student matched “${parsed.command.recipientName}”.`,
+            tone: "warning",
+            transcript,
+          });
+          return;
+        }
 
-      setReview({
-        ...parsed.command,
-        candidates,
-        requestId: crypto.randomUUID(),
-        selectedStudentId: getInitialStudentId(
+        setReview({
+          ...parsed.command,
           candidates,
-          parsed.command.studentName,
-        ),
-        transcript,
-      });
+          groupCandidates: [],
+          requestId: crypto.randomUUID(),
+          selectedStudentId: getInitialStudentId(
+            candidates,
+            parsed.command.recipientName,
+          ),
+          selectedGroupId: "",
+          transcript,
+        });
+      }
       setReviewError(null);
     } catch {
       setVoiceNotice({
@@ -170,7 +209,7 @@ export function VoiceCreditAssistant({
     cancelledRef.current = false;
     transcriptRef.current = "";
     setVoiceNotice({
-      message: "Listening. Say a command such as “Give Jordan Lee 10 credits for helping”.",
+      message: "Listening. Try “Give Jordan Lee 10 credits for helping” or “Give group 4 10 credits for teamwork”.",
       tone: "info",
     });
     setIsListening(true);
@@ -207,7 +246,7 @@ export function VoiceCreditAssistant({
       const transcript = transcriptRef.current.trim();
       if (!transcript) {
         setVoiceNotice({
-          message: "No speech was transcribed. Try again with a short command, for example: “Give Jordan Lee 10 credits for helping”.",
+          message: "No speech was transcribed. Try a short command, for example: “Give Jordan Lee 10 credits for helping” or “Give group 4 10 credits for teamwork”.",
           tone: "warning",
         });
         return;
@@ -295,12 +334,20 @@ export function VoiceCreditAssistant({
     try {
       const signedAmount =
         review.direction === "add" ? review.amount : -review.amount;
-      const result = await createLedgerAdjustment({
-        amount: signedAmount,
-        reason: review.reason.trim(),
-        requestId: review.requestId,
-        studentUserId: review.selectedStudentId,
-      });
+      const result =
+        review.recipientType === "group"
+          ? await createGroupLedgerAdjustment({
+              amount: signedAmount,
+              groupId: review.selectedGroupId,
+              reason: review.reason.trim(),
+              requestId: review.requestId,
+            })
+          : await createLedgerAdjustment({
+              amount: signedAmount,
+              reason: review.reason.trim(),
+              requestId: review.requestId,
+              studentUserId: review.selectedStudentId,
+            });
 
       if (!result.ok) {
         setReviewError(result.message);
@@ -418,9 +465,8 @@ function VoiceCreditReviewModal({
 }) {
   const exceedsCap =
     transactionCap !== null && review.amount > transactionCap;
-  const selectedStudent = review.candidates.find(
-    (student) => student.id === review.selectedStudentId,
-  );
+  const selectedStudent = review.candidates.find((student) => student.id === review.selectedStudentId);
+  const selectedGroup = review.groupCandidates.find((group) => group.id === review.selectedGroupId);
   const actionLabel = review.direction === "add" ? "Add" : "Take";
 
   return (
@@ -465,24 +511,31 @@ function VoiceCreditReviewModal({
         </div>
 
         <label className="block text-sm font-semibold text-text-control">
-          Student
+          {review.recipientType === "group" ? "Group" : "Student"}
           <select
             className="mt-1.5 w-full rounded-md border border-border bg-surface px-3 py-2.5 font-normal text-foreground outline-none ring-brand transition focus:border-brand focus:ring-2"
             onChange={(event) =>
-              onChange({ ...review, selectedStudentId: event.target.value })
+              review.recipientType === "group"
+                ? onChange({ ...review, selectedGroupId: event.target.value })
+                : onChange({ ...review, selectedStudentId: event.target.value })
             }
-            value={review.selectedStudentId}
+            value={review.recipientType === "group" ? review.selectedGroupId : review.selectedStudentId}
           >
-            {review.selectedStudentId === "" && (
-              <option value="">Choose the matching student</option>
-            )}
-            {review.candidates.map((student) => (
-              <option key={student.id} value={student.id}>
-                {student.displayName} ({student.username})
+            {(review.recipientType === "group" ? review.groupCandidates : review.candidates).map((candidate) => (
+              <option key={candidate.id} value={candidate.id}>
+                {review.recipientType === "group"
+                  ? `${(candidate as GroupListItem).name} (${(candidate as GroupListItem).memberCount} listed members)`
+                  : `${(candidate as StudentListItem).displayName} (${(candidate as StudentListItem).username})`}
               </option>
             ))}
           </select>
         </label>
+
+        {selectedGroup && (
+          <p className="rounded-md border border-border-subtle bg-panel-soft px-3 py-2 text-sm text-text-muted">
+            This will apply {formatAmount(review.amount)} {currencyName} per active student in this group. The group has {selectedGroup.memberCount} listed members.
+          </p>
+        )}
 
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block text-sm font-semibold text-text-control">
@@ -535,8 +588,10 @@ function VoiceCreditReviewModal({
             The organisation limit is {formatAmount(transactionCap)} {currencyName} per transaction.
           </p>
         )}
-        {!selectedStudent && (
-          <p className="text-sm text-warning">Choose a student to continue.</p>
+        {!(review.recipientType === "group" ? selectedGroup : selectedStudent) && (
+          <p className="text-sm text-warning">
+            Choose a {review.recipientType === "group" ? "group" : "student"} to continue.
+          </p>
         )}
         {reviewError && (
           <p className="rounded-md border border-danger-border bg-danger-soft px-3 py-2 text-sm text-danger-strong">
@@ -550,12 +605,26 @@ function VoiceCreditReviewModal({
 
 function canSubmitReview(review: ReviewState, transactionCap: number | null) {
   return (
-    Boolean(review.selectedStudentId) &&
+    Boolean(review.recipientType === "group" ? review.selectedGroupId : review.selectedStudentId) &&
     Number.isInteger(review.amount) &&
     review.amount > 0 &&
     Boolean(review.reason.trim()) &&
     (transactionCap === null || review.amount <= transactionCap)
   );
+}
+
+function findGroupCandidates(groups: GroupListItem[], spokenName: string) {
+  const query = normaliseName(spokenName);
+  const exactMatches = groups.filter((group) => normaliseName(group.name) === query);
+  if (exactMatches.length > 0) return exactMatches;
+  return groups.filter((group) => normaliseName(group.name).includes(query));
+}
+
+function getInitialGroupId(groups: GroupListItem[], spokenName: string) {
+  if (groups.length === 1) return groups[0]?.id ?? "";
+  const query = normaliseName(spokenName);
+  const exactMatches = groups.filter((group) => normaliseName(group.name) === query);
+  return exactMatches.length === 1 ? exactMatches[0]?.id ?? "" : "";
 }
 
 function getInitialStudentId(

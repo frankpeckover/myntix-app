@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table-header-filter";
 import type { TimetableFiltersState } from "@/components/admin/timetable/timetable-types";
 import type { TimetableEntry } from "@/domains/timetable/timetable-service";
+import type { TableSortDirection } from "@/components/ui/table-sorting";
 import {
   DataTable,
   DataTableSelectionCell,
@@ -22,6 +23,8 @@ import {
 
 export function TimetableEntryTable({
   entries,
+  onSortChange,
+  tableSort,
   filters,
   onDeleteEntry,
   onDuplicateEntry,
@@ -33,6 +36,8 @@ export function TimetableEntryTable({
   toolbar,
 }: {
   entries: TimetableEntry[];
+  onSortChange: (column: string, direction: TableSortDirection | null) => void;
+  tableSort: { column: string; direction: TableSortDirection } | null;
   filters: TimetableFiltersState;
   onDeleteEntry: (entry: TimetableEntry) => void;
   onDuplicateEntry: (entry: TimetableEntry) => void;
@@ -79,7 +84,7 @@ export function TimetableEntryTable({
           <col className="w-28" />
           <col className="w-32" />
           <col className="w-24" />
-          <col className="w-32" />
+          <col className="table-action-column" />
         </colgroup>
         <thead>
           <tr className="border-b border-border-subtle text-text-muted">
@@ -97,6 +102,8 @@ export function TimetableEntryTable({
                 isActive={Boolean(filters.groupName)}
                 label="Group"
                 onClear={() => updateFilter("groupName", "")}
+                onSortDirectionChange={(direction) => onSortChange("group", direction)}
+                sortDirection={tableSort?.column === "group" ? tableSort.direction : null}
               >
                 <TableHeaderFilterInput
                   label="Search groups"
@@ -110,6 +117,8 @@ export function TimetableEntryTable({
                 isActive={Boolean(filters.teacherName)}
                 label="Teacher"
                 onClear={() => updateFilter("teacherName", "")}
+                onSortDirectionChange={(direction) => onSortChange("teacher", direction)}
+                sortDirection={tableSort?.column === "teacher" ? tableSort.direction : null}
               >
                 <TableHeaderFilterInput
                   label="Search teachers"
@@ -123,6 +132,8 @@ export function TimetableEntryTable({
                 isActive={Boolean(filters.dayOfWeek)}
                 label="Day"
                 onClear={() => updateFilter("dayOfWeek", "")}
+                onSortDirectionChange={(direction) => onSortChange("day", direction)}
+                sortDirection={tableSort?.column === "day" ? tableSort.direction : null}
               >
                 <TableHeaderFilterSelect
                   label="Day"
@@ -138,12 +149,16 @@ export function TimetableEntryTable({
                 />
               </TableHeaderFilter>
             </th>
-            <th scope="col" className="py-2 pr-4 font-semibold">Time</th>
+            <th scope="col" className="py-2 pr-4 font-semibold">
+              <TableHeaderFilter label="Time" onSortDirectionChange={(direction) => onSortChange("time", direction)} sortDirection={tableSort?.column === "time" ? tableSort.direction : null} />
+            </th>
             <th scope="col" className="py-2 pr-4 font-semibold">
               <TableHeaderFilter
                 isActive={Boolean(filters.status)}
                 label="Status"
                 onClear={() => updateFilter("status", "")}
+                onSortDirectionChange={(direction) => onSortChange("status", direction)}
+                sortDirection={tableSort?.column === "status" ? tableSort.direction : null}
               >
                 <TableHeaderFilterSelect
                   label="Status"
@@ -170,6 +185,12 @@ export function TimetableEntryTable({
               <DataTableSelectionCell
                 checked={selectedEntryIds.includes(entry.id)}
                 label={`Select ${entry.groupName} timetable entry`}
+                rangeKey="timetable-table"
+                rowId={entry.id}
+                selectableRowIds={entries.map((row) => row.id)}
+                onRangeChange={(ids, isSelected) =>
+                  ids.forEach((id) => onEntrySelectionChange(id, isSelected))
+                }
                 onChange={(isSelected) =>
                   onEntrySelectionChange(entry.id, isSelected)
                 }

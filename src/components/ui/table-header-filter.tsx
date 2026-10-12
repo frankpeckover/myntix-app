@@ -3,13 +3,16 @@
 import { createContext, useCallback, useContext, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ReactNode } from "react";
-import { FilterIcon } from "@/components/ui/icons";
+import { ArrowDownIcon, ArrowUpIcon } from "@/components/ui/icons";
+import type { TableSortDirection } from "@/components/ui/table-sorting";
 
 type TableHeaderFilterProps = {
-  children: ReactNode;
+  children?: ReactNode;
   isActive?: boolean;
   label: string;
   onClear?: () => void;
+  onSortDirectionChange?: (direction: TableSortDirection | null) => void;
+  sortDirection?: TableSortDirection | null;
 };
 
 const TableFilterCloseContext = createContext<() => void>(() => undefined);
@@ -19,8 +22,9 @@ export function TableHeaderFilter({
   isActive = false,
   label,
   onClear,
+  onSortDirectionChange,
+  sortDirection = null,
 }: TableHeaderFilterProps) {
-  const filterRef = useRef<HTMLDivElement | null>(null);
   const filterPanelRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -56,7 +60,7 @@ export function TableHeaderFilter({
 
     function handlePointerDown(event: PointerEvent) {
       if (
-        !filterRef.current?.contains(event.target as Node) &&
+        !triggerRef.current?.contains(event.target as Node) &&
         !filterPanelRef.current?.contains(event.target as Node)
       ) {
         setIsOpen(false);
@@ -109,23 +113,27 @@ export function TableHeaderFilter({
   }, [isOpen]);
 
   return (
-    <div className="relative inline-flex items-center gap-1.5" ref={filterRef}>
-      <span>{label}</span>
+    <div className="relative inline-flex items-center whitespace-nowrap">
       <button
         aria-expanded={isOpen}
         aria-controls={isOpen ? panelId : undefined}
         aria-haspopup="dialog"
-        aria-label={`Filter ${label}`}
-        className={`inline-flex h-6 w-6 items-center justify-center rounded-md transition ${
-          isActive
-            ? "bg-brand-soft text-brand-ink"
-            : "text-text-muted hover:bg-panel-soft hover:text-text-control"
+        aria-label={`Open ${label} filter and sort options${sortDirection ? `, sorted ${sortDirection}` : ""}`}
+        className={`inline-flex min-h-7 items-center gap-1.5 rounded-md px-1.5 py-1 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
+          isActive || sortDirection
+            ? "text-brand-ink hover:bg-brand-soft"
+            : "text-inherit hover:bg-panel-soft hover:text-text-control"
         }`}
         onClick={() => setIsOpen((currentValue) => !currentValue)}
         ref={triggerRef}
         type="button"
       >
-        <FilterIcon className="h-3.5 w-3.5" />
+        <span>{label}</span>
+        {sortDirection && (
+          <span aria-hidden="true" className="text-brand-ink">
+            {sortDirection === "ascending" ? <ArrowUpIcon className="h-3 w-3" /> : <ArrowDownIcon className="h-3 w-3" />}
+          </span>
+        )}
       </button>
 
       {isOpen && createPortal(
@@ -138,20 +146,87 @@ export function TableHeaderFilter({
           style={panelPosition}
         >
           <TableFilterCloseContext.Provider value={() => setIsOpen(false)}>
+            {onSortDirectionChange && (
+              <TableSortControls
+                direction={sortDirection}
+                onChange={onSortDirectionChange}
+              />
+            )}
             {children}
+            {onClear && (
+              <button
+                className="mt-3 w-full rounded-md border border-button-border px-3 py-2 text-sm font-normal text-text-control transition hover:bg-panel-soft disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!isActive}
+                onClick={onClear}
+                type="button"
+              >
+                Clear filters
+              </button>
+            )}
           </TableFilterCloseContext.Provider>
-          {onClear && (
-            <button
-              className="mt-3 w-full rounded-md border border-button-border px-3 py-2 text-sm font-normal text-text-control transition hover:bg-panel-soft disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={!isActive}
-              onClick={onClear}
-              type="button"
-            >
-              Clear
-            </button>
-          )}
         </div>,
         document.body,
+      )}
+    </div>
+  );
+}
+
+function TableSortControls({
+  direction,
+  onChange,
+}: {
+  direction: TableSortDirection | null;
+  onChange: (direction: TableSortDirection | null) => void;
+}) {
+  const closeFilter = useContext(TableFilterCloseContext);
+
+  function chooseDirection(nextDirection: TableSortDirection) {
+    onChange(nextDirection);
+    closeFilter();
+  }
+
+  return (
+    <div className="mb-3 border-b border-border-subtle pb-3">
+      <p className="mb-2 text-xs font-semibold text-text-muted">Sort</p>
+      <div className="grid grid-cols-2 gap-1.5">
+        <button
+          aria-pressed={direction === "ascending"}
+          className={`inline-flex items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-xs font-medium transition ${
+            direction === "ascending"
+              ? "border-brand bg-brand-soft text-brand-ink"
+              : "border-button-border text-text-control hover:bg-panel-soft"
+          }`}
+          onClick={() => chooseDirection("ascending")}
+          type="button"
+        >
+          <ArrowUpIcon className="h-3.5 w-3.5" />
+          Ascending
+        </button>
+        <button
+          aria-pressed={direction === "descending"}
+          className={`inline-flex items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-xs font-medium transition ${
+            direction === "descending"
+              ? "border-brand bg-brand-soft text-brand-ink"
+              : "border-button-border text-text-control hover:bg-panel-soft"
+          }`}
+          onClick={() => chooseDirection("descending")}
+          type="button"
+        >
+          <ArrowDownIcon className="h-3.5 w-3.5" />
+          Descending
+        </button>
+      </div>
+      {direction && (
+        <button
+          className="mt-2 w-full rounded-md px-2 py-1.5 text-left text-xs text-text-muted transition hover:bg-panel-soft hover:text-text-control"
+          onClick={() => {
+            onChange(null);
+            closeFilter();
+          }}
+          type="button"
+        >
+          Clear sort
+        </button>
       )}
     </div>
   );

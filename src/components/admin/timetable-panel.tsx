@@ -52,6 +52,7 @@ import type {
   TimetableTeacher,
   TimetableCycleSettings,
 } from "@/domains/timetable/timetable-service";
+import { sortTableItems, type TableSortDirection } from "@/components/ui/table-sorting";
 
 const emptyEntryForm: CreateTimetableEntryInput = {
   dayOfWeek: defaultTimetableDayIndex,
@@ -79,6 +80,7 @@ export function AdminTimetablePanel() {
     useState<CreateTimetableEntryInput>(emptyEntryForm);
   const [filters, setFilters] =
     useState<TimetableFiltersState>(emptyTimetableFilters);
+  const [tableSort, setTableSort] = useState<{ column: string; direction: TableSortDirection } | null>(null);
   const [editingEntry, setEditingEntry] = useState<TimetableEntry | null>(null);
   const [deletingEntry, setDeletingEntry] = useState<TimetableEntry | null>(null);
   const [deletingEntryIds, setDeletingEntryIds] = useState<string[]>([]);
@@ -98,12 +100,25 @@ export function AdminTimetablePanel() {
     () => entries.filter((entry) => matchesTimetableFilters(entry, filters)),
     [entries, filters],
   );
+  const sortedEntries = useMemo(
+    () => sortTableItems(filteredEntries, tableSort, (entry, column) => {
+      switch (column) {
+        case "group": return entry.groupName;
+        case "teacher": return entry.teacherName;
+        case "day": return entry.dayOfWeek;
+        case "time": return entry.startTime;
+        case "status": return entry.isActive ? "Active" : "Archived";
+        default: return "";
+      }
+    }),
+    [filteredEntries, tableSort],
+  );
   const {
     page,
     pageItems: visibleEntries,
     setPage,
     totalPages,
-  } = usePagedList(filteredEntries);
+  } = usePagedList(sortedEntries);
 
   useEffect(() => {
     refreshTimetable();
@@ -447,6 +462,8 @@ export function AdminTimetablePanel() {
           <>
             <TimetableEntryTable
               entries={visibleEntries}
+            onSortChange={(column, direction) => setTableSort(direction ? { column, direction } : null)}
+            tableSort={tableSort}
               filters={filters}
               onDeleteEntry={handleDeleteEntry}
               onDuplicateEntry={handleDuplicateEntry}

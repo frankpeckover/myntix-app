@@ -13,14 +13,17 @@ Rules:
 - `analytics` owns dashboards, reporting, goals, and exports.
 - `organisation` owns school/profile/settings data.
 - `audit` owns audit and error log records.
-- `integrations` owns external API clients, API finance endpoints, idempotency, and email.
-- `operations` owns system monitoring, tenant backup scheduling, and backup requests.
+- `integrations` owns external API clients, API contracts, idempotency, and directory-sync integrations such as TASS.
+- `notifications` owns in-app notification records, notification preferences, digest delivery, and email notification workflows.
+- `operations` owns tenant backup scheduling, backup requests, and restore workflows. Host/container monitoring remains outside the tenant domain layer.
+- `users` owns user-specific preferences and transaction preset preferences; identity and credentials remain under `auth`.
 
 Dependency direction should stay one-way where possible:
 
 - `auth` should not depend on ledger, rewards, groups, or analytics.
 - `ledger` should not depend on rewards or analytics.
 - `rewards` may call ledger.
+- `notifications` owns the delivery workflow; feature domains may publish notification events but should not send email directly.
 - `analytics` may read from ledger, groups, users, rewards, and audit.
 - UI components should call actions, not repositories or database code directly.
 

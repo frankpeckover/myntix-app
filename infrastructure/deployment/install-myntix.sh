@@ -190,11 +190,24 @@ create_service_accounts() {
 checkout_application() {
   if [[ -d "$APP_DIRECTORY/.git" ]]; then
     log "Updating existing application checkout"
-    if [[ -n "$(runuser -u "$APP_USER" -- git -C "$APP_DIRECTORY" status --porcelain)" ]]; then
-      log "ERROR: ${APP_DIRECTORY} contains local changes. Commit or remove them before deploying."
-      exit 1
-    fi
     runuser -u "$APP_USER" -- git -C "$APP_DIRECTORY" fetch --prune origin
+
+    local modified_files staged_files untracked_files
+    modified_files="$(runuser -u "$APP_USER" -- git -C "$APP_DIRECTORY" diff --name-only)"
+    staged_files="$(runuser -u "$APP_USER" -- git -C "$APP_DIRECTORY" diff --cached --name-only)"
+    untracked_files="$(runuser -u "$APP_USER" -- git -C "$APP_DIRECTORY" ls-files --others --exclude-standard)"
+
+    if [[ -n "$(runuser -u "$APP_USER" -- git -C "$APP_DIRECTORY" status --porcelain)" ]]; then
+      if [[ "$modified_files" == "next-env.d.ts" && -z "$staged_files" && -z "$untracked_files" ]] && \
+        runuser -u "$APP_USER" -- git -C "$APP_DIRECTORY" diff --quiet "origin/${REPOSITORY_BRANCH}" -- next-env.d.ts; then
+        log "Reverting the Next.js-generated next-env.d.ts copy that already matches origin/${REPOSITORY_BRANCH}"
+        runuser -u "$APP_USER" -- git -C "$APP_DIRECTORY" restore --source=HEAD --worktree -- next-env.d.ts
+      else
+        log "ERROR: ${APP_DIRECTORY} contains local changes. Commit or remove them before deploying."
+        exit 1
+      fi
+    fi
+
     runuser -u "$APP_USER" -- git -C "$APP_DIRECTORY" checkout "$REPOSITORY_BRANCH"
     runuser -u "$APP_USER" -- git -C "$APP_DIRECTORY" pull --ff-only origin "$REPOSITORY_BRANCH"
   else

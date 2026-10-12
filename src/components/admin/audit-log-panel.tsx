@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/table-header-filter";
 import { TableToolbar } from "@/components/ui/table-toolbar";
 import { DataTable } from "@/components/ui/data-table";
+import { sortTableItems, type TableSortDirection } from "@/components/ui/table-sorting";
 
 type AuditFilters = {
   action: string;
@@ -45,6 +46,7 @@ const emptyAuditFilters: AuditFilters = {
 export function AdminAuditLogPanel() {
   const [entries, setEntries] = useState<AuditLogItem[]>([]);
   const [filters, setFilters] = useState<AuditFilters>(emptyAuditFilters);
+  const [tableSort, setTableSort] = useState<{ column: string; direction: TableSortDirection } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
@@ -83,12 +85,25 @@ export function AdminAuditLogPanel() {
     () => entries.filter((entry) => matchesAuditFilters(entry, filters)),
     [entries, filters],
   );
+  const sortedEntries = useMemo(
+    () => sortTableItems(filteredEntries, tableSort, (entry, column) => {
+      switch (column) {
+        case "time": return entry.createdAt;
+        case "action": return entry.action;
+        case "actor": return entry.actorName ?? entry.actorUsername;
+        case "record": return entry.entityType;
+        case "details": return JSON.stringify(entry.details);
+        default: return "";
+      }
+    }),
+    [filteredEntries, tableSort],
+  );
   const {
     page,
     pageItems: visibleEntries,
     setPage,
     totalPages,
-  } = usePagedList(filteredEntries);
+  } = usePagedList(sortedEntries);
 
   function clearAuditFilters() {
     setFilters(emptyAuditFilters);
@@ -118,6 +133,8 @@ export function AdminAuditLogPanel() {
               filters={filters}
               onDetailsClick={setViewingEntry}
               onFiltersChange={setFilters}
+              onSortChange={(column, direction) => setTableSort(direction ? { column, direction } : null)}
+              tableSort={tableSort}
               toolbar={
                 <TableToolbar
                   actions={
@@ -125,22 +142,22 @@ export function AdminAuditLogPanel() {
                       label="Open audit log tools"
                       items={[
                         {
-                          disabled: isLoading || filteredEntries.length === 0,
+                          disabled: isLoading || sortedEntries.length === 0,
                           icon: <FileDownIcon />,
                           label: "Export audit log: CSV",
-                          onSelect: () => downloadAuditLog(filteredEntries),
+                          onSelect: () => downloadAuditLog(sortedEntries),
                         },
                       ]}
                     />
                   }
                 >
                   <p className="text-sm font-semibold text-text-muted">
-                    Showing {visibleEntries.length} of {filteredEntries.length} audit events.
+                    Showing {visibleEntries.length} of {sortedEntries.length} audit events.
                   </p>
                 </TableToolbar>
               }
             />
-            {filteredEntries.length === 0 && (
+            {sortedEntries.length === 0 && (
               <EmptyState
                 action={
                   <IconButton
@@ -155,11 +172,11 @@ export function AdminAuditLogPanel() {
                 title="No matching audit events"
               />
             )}
-            {filteredEntries.length > 0 && (
+            {sortedEntries.length > 0 && (
               <ListPagination
                 onPageChange={setPage}
                 page={page}
-                totalCount={filteredEntries.length}
+                totalCount={sortedEntries.length}
                 totalPages={totalPages}
               />
             )}
@@ -182,12 +199,16 @@ function AuditLogList({
   filters,
   onDetailsClick,
   onFiltersChange,
+  onSortChange,
   toolbar,
+  tableSort,
 }: {
   entries: AuditLogItem[];
   filters: AuditFilters;
   onDetailsClick: (entry: AuditLogItem) => void;
   onFiltersChange: (filters: AuditFilters) => void;
+  onSortChange: (column: string, direction: TableSortDirection | null) => void;
+  tableSort: { column: string; direction: TableSortDirection } | null;
   toolbar?: ReactNode;
 }) {
   function updateFilter(field: keyof AuditFilters, value: string) {
@@ -220,12 +241,20 @@ function AuditLogList({
           </colgroup>
           <thead>
             <tr className="border-b border-border-subtle text-text-muted">
-              <th scope="col" className="py-2 pr-4 font-semibold">Time</th>
+              <th scope="col" className="py-2 pr-4 font-semibold">
+                <TableHeaderFilter
+                  onSortDirectionChange={(direction) => onSortChange("time", direction)}
+                  sortDirection={tableSort?.column === "time" ? tableSort.direction : null}
+                  label="Time"
+                />
+              </th>
               <th scope="col" className="py-2 pr-4 font-semibold">
                 <TableHeaderFilter
                   isActive={Boolean(filters.action)}
                   label="Action"
                   onClear={() => updateFilter("action", "")}
+                  onSortDirectionChange={(direction) => onSortChange("action", direction)}
+                  sortDirection={tableSort?.column === "action" ? tableSort.direction : null}
                 >
                   <TableHeaderFilterInput
                     label="Action"
@@ -239,6 +268,8 @@ function AuditLogList({
                   isActive={Boolean(filters.actor)}
                   label="Actor"
                   onClear={() => updateFilter("actor", "")}
+                  onSortDirectionChange={(direction) => onSortChange("actor", direction)}
+                  sortDirection={tableSort?.column === "actor" ? tableSort.direction : null}
                 >
                   <TableHeaderFilterInput
                     label="Actor"
@@ -252,6 +283,8 @@ function AuditLogList({
                   isActive={Boolean(filters.record)}
                   label="Record"
                   onClear={() => updateFilter("record", "")}
+                  onSortDirectionChange={(direction) => onSortChange("record", direction)}
+                  sortDirection={tableSort?.column === "record" ? tableSort.direction : null}
                 >
                   <TableHeaderFilterInput
                     label="Record"
@@ -265,6 +298,8 @@ function AuditLogList({
                   isActive={Boolean(filters.details)}
                   label="Details"
                   onClear={() => updateFilter("details", "")}
+                  onSortDirectionChange={(direction) => onSortChange("details", direction)}
+                  sortDirection={tableSort?.column === "details" ? tableSort.direction : null}
                 >
                   <TableHeaderFilterInput
                     label="Details"

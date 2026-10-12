@@ -53,6 +53,7 @@ import { TableToolbar } from "@/components/ui/table-toolbar";
 import { TextReasonModal } from "@/components/ui/text-reason-modal";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { ledgerChangeEventName } from "@/lib/ledger/ledger-change-event";
+import { sortTableItems, type TableSortDirection } from "@/components/ui/table-sorting";
 
 type TransactionLogPanelProps = {
   className?: string;
@@ -108,6 +109,7 @@ export function TransactionLogPanel({
   const [filters, setFilters] = useState<TransactionFilters>(
     emptyTransactionFilters,
   );
+  const [tableSort, setTableSort] = useState<{ column: string; direction: TableSortDirection } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -198,12 +200,26 @@ export function TransactionLogPanel({
       ),
     [filters, transactions],
   );
+  const sortedTransactions = useMemo(
+    () => sortTableItems(filteredTransactions, tableSort, (transaction, column) => {
+      switch (column) {
+        case "description": return transaction.reason;
+        case "account": return transaction.studentName;
+        case "type": return transaction.type;
+        case "time": return transaction.createdAt;
+        case "status": return transaction.entryStatus;
+        case "amount": return transaction.amount;
+        default: return "";
+      }
+    }),
+    [filteredTransactions, tableSort],
+  );
   const {
     page,
     pageItems: visibleTransactions,
     setPage,
     totalPages,
-  } = usePagedList(filteredTransactions);
+  } = usePagedList(sortedTransactions);
 
   function clearTransactionFilters() {
     setFilters(emptyTransactionFilters);
@@ -244,7 +260,9 @@ export function TransactionLogPanel({
               isPreview={isPreview}
               onDetailsClick={setViewingTransaction}
               onFiltersChange={setFilters}
+              onSortChange={(column, direction) => setTableSort(direction ? { column, direction } : null)}
               onVoidClick={setVoidingTransaction}
+              tableSort={tableSort}
               toolbar={
                 <TableToolbar
                   actions={
@@ -262,12 +280,12 @@ export function TransactionLogPanel({
                         items={[
                           {
                             disabled:
-                              isLoading || filteredTransactions.length === 0,
+                              isLoading || sortedTransactions.length === 0,
                             icon: <FileDownIcon />,
                             label: "Export transactions: CSV",
                             onSelect: () =>
                               downloadTransactions(
-                                filteredTransactions,
+                                sortedTransactions,
                                 currencyName,
                               ),
                           },
@@ -279,13 +297,13 @@ export function TransactionLogPanel({
                   <p className="text-sm font-semibold text-text-muted">
                     {isPreview
                       ? `Latest ${displayedTransactions.length} transactions`
-                      : `Showing ${visibleTransactions.length} of ${filteredTransactions.length} transactions.`}
+                      : `Showing ${visibleTransactions.length} of ${sortedTransactions.length} transactions.`}
                   </p>
                 </TableToolbar>
               }
               transactions={displayedTransactions}
             />
-            {!isPreview && filteredTransactions.length === 0 && (
+            {!isPreview && sortedTransactions.length === 0 && (
               <EmptyState
                 action={
                   <IconButton
@@ -301,11 +319,11 @@ export function TransactionLogPanel({
                 title="No matching transactions"
               />
             )}
-            {!isPreview && filteredTransactions.length > 0 && (
+            {!isPreview && sortedTransactions.length > 0 && (
               <ListPagination
                 onPageChange={setPage}
                 page={page}
-                totalCount={filteredTransactions.length}
+                totalCount={sortedTransactions.length}
                 totalPages={totalPages}
               />
             )}
@@ -342,8 +360,10 @@ function TransactionList({
   isPreview,
   onDetailsClick,
   onFiltersChange,
+  onSortChange,
   onVoidClick,
   toolbar,
+  tableSort,
   transactions,
 }: {
   canViewAllTransactions: boolean;
@@ -352,9 +372,11 @@ function TransactionList({
   isPreview: boolean;
   onDetailsClick: (transaction: TransactionLogItem) => void;
   onFiltersChange: (filters: TransactionFilters) => void;
+  onSortChange: (column: string, direction: TableSortDirection | null) => void;
   onVoidClick: (transaction: TransactionLogItem) => void;
   toolbar?: ReactNode;
   transactions: TransactionLogItem[];
+  tableSort: { column: string; direction: TableSortDirection } | null;
 }) {
   function updateFilter<Field extends keyof TransactionFilters>(
     field: Field,
@@ -390,6 +412,8 @@ function TransactionList({
                   isActive={Boolean(filters.reason)}
                   label="Description"
                   onClear={() => updateFilter("reason", "")}
+                  onSortDirectionChange={(direction) => onSortChange("description", direction)}
+                  sortDirection={tableSort?.column === "description" ? tableSort.direction : null}
                 >
                   <TableHeaderFilterInput
                     label="Reason"
@@ -404,6 +428,8 @@ function TransactionList({
                     isActive={Boolean(filters.student)}
                     label="Account"
                     onClear={() => updateFilter("student", "")}
+                    onSortDirectionChange={(direction) => onSortChange("account", direction)}
+                    sortDirection={tableSort?.column === "account" ? tableSort.direction : null}
                   >
                     <TableHeaderFilterInput
                       label="Student"
@@ -418,6 +444,8 @@ function TransactionList({
                   isActive={Boolean(filters.type)}
                   label="Type"
                   onClear={() => updateFilter("type", "")}
+                  onSortDirectionChange={(direction) => onSortChange("type", direction)}
+                  sortDirection={tableSort?.column === "type" ? tableSort.direction : null}
                 >
                   <TableHeaderFilterSelect
                     label="Type"
@@ -429,7 +457,9 @@ function TransactionList({
                   />
                 </TableHeaderFilter>}
               </th>
-              <th scope="col" className="py-2 pr-4 font-semibold">Time</th>
+              <th scope="col" className="py-2 pr-4 font-semibold">
+                {isPreview ? "Time" : <TableHeaderFilter label="Time" onSortDirectionChange={(direction) => onSortChange("time", direction)} sortDirection={tableSort?.column === "time" ? tableSort.direction : null} />}
+              </th>
               <th scope="col" className="py-2 pr-4 font-semibold">
                 {isPreview ? "Status" : <TableHeaderFilter
                   isActive={Boolean(
@@ -443,6 +473,8 @@ function TransactionList({
                       voidedStatus: "active",
                     })
                   }
+                  onSortDirectionChange={(direction) => onSortChange("status", direction)}
+                  sortDirection={tableSort?.column === "status" ? tableSort.direction : null}
                 >
                   <div className="grid gap-3">
                     <TableHeaderFilterSelect
@@ -486,6 +518,8 @@ function TransactionList({
                       amountMin: "",
                     })
                   }
+                  onSortDirectionChange={(direction) => onSortChange("amount", direction)}
+                  sortDirection={tableSort?.column === "amount" ? tableSort.direction : null}
                 >
                   <div className="grid gap-3">
                     <TableHeaderFilterSelect

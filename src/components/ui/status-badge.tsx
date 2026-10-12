@@ -8,9 +8,8 @@ type StatusBadgeProps = {
 export function StatusBadge({ label, tone = "neutral" }: StatusBadgeProps) {
   return (
     <span
-      className={`status-badge inline-flex w-fit shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[0.7rem] font-semibold leading-none ${getToneClasses(tone)}`}
+      className={`status-badge inline-flex w-fit shrink-0 items-center whitespace-nowrap rounded-full border px-2.5 py-1 text-[0.7rem] font-semibold leading-none ${getToneClasses(tone)}`}
     >
-      <span aria-hidden="true" className="status-badge-dot h-1.5 w-1.5 rounded-full" />
       {label}
     </span>
   );
