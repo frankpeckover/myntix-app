@@ -59,6 +59,7 @@ type TransactionLogPanelProps = {
   className?: string;
   currencyName: string;
   currentUser: SessionUser;
+  initialDateFilter?: string;
   onViewAll?: () => void;
   previewLimit?: number;
 };
@@ -100,15 +101,17 @@ export function TransactionLogPanel({
   className = "",
   currencyName,
   currentUser,
+  initialDateFilter,
   onViewAll,
   previewLimit,
 }: TransactionLogPanelProps) {
   const canViewAllTransactionsForUser = canViewAllTransactions(currentUser);
   const canVoidTransactionsForUser = canVoidTransactions(currentUser);
   const [transactions, setTransactions] = useState<TransactionLogItem[]>([]);
-  const [filters, setFilters] = useState<TransactionFilters>(
-    emptyTransactionFilters,
-  );
+  const [filters, setFilters] = useState<TransactionFilters>(() => ({
+    ...emptyTransactionFilters,
+    createdDate: initialDateFilter ?? "",
+  }));
   const [tableSort, setTableSort] = useState<{ column: string; direction: TableSortDirection } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -253,6 +256,20 @@ export function TransactionLogPanel({
         )}
         {!isLoading && transactions.length > 0 && (
           <>
+            {!isPreview && filters.createdDate && (
+              <div className="mx-3 mb-3 flex items-center justify-between gap-3 rounded-md bg-panel-soft px-3 py-2 text-sm md:hidden">
+                <span className="min-w-0 truncate text-text-control">
+                  {formatTransactionDateFilter(filters.createdDate)}
+                </span>
+                <button
+                  className="shrink-0 font-semibold text-brand underline-offset-2 hover:underline"
+                  onClick={() => setFilters({ ...filters, createdDate: "" })}
+                  type="button"
+                >
+                  Clear date
+                </button>
+              </div>
+            )}
             <TransactionList
               canViewAllTransactions={canViewAllTransactionsForUser}
               canVoidTransactions={canVoidTransactionsForUser}
@@ -351,6 +368,15 @@ export function TransactionLogPanel({
       )}
     </section>
   );
+}
+
+function formatTransactionDateFilter(dateValue: string) {
+  const date = new Date(`${dateValue}T00:00:00`);
+  return `Transactions for ${new Intl.DateTimeFormat("en-AU", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(date)}`;
 }
 
 function TransactionList({
@@ -458,7 +484,20 @@ function TransactionList({
                 </TableHeaderFilter>}
               </th>
               <th scope="col" className="py-2 pr-4 font-semibold">
-                {isPreview ? "Time" : <TableHeaderFilter label="Time" onSortDirectionChange={(direction) => onSortChange("time", direction)} sortDirection={tableSort?.column === "time" ? tableSort.direction : null} />}
+                {isPreview ? "Time" : <TableHeaderFilter
+                  isActive={Boolean(filters.createdDate)}
+                  label="Time"
+                  onClear={() => updateFilter("createdDate", "")}
+                  onSortDirectionChange={(direction) => onSortChange("time", direction)}
+                  sortDirection={tableSort?.column === "time" ? tableSort.direction : null}
+                >
+                  <TableHeaderFilterInput
+                    label="Date"
+                    onChange={(value) => updateFilter("createdDate", value)}
+                    type="date"
+                    value={filters.createdDate}
+                  />
+                </TableHeaderFilter>}
               </th>
               <th scope="col" className="py-2 pr-4 font-semibold">
                 {isPreview ? "Status" : <TableHeaderFilter

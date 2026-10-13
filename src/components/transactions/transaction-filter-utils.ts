@@ -6,6 +6,7 @@ export function matchesTransactionFilters(
   filters: TransactionFilters,
 ) {
   return (
+    matchesCreatedDate(transaction.createdAt, filters.createdDate) &&
     (!filters.type || transaction.type === filters.type) &&
     matchesVoidedStatus(transaction.isVoided, filters.voidedStatus) &&
     matchesPurchaseStatus(transaction.purchaseStatus, filters.purchaseStatus) &&
@@ -17,6 +18,21 @@ export function matchesTransactionFilters(
       filters.student,
     )
   );
+}
+
+function matchesCreatedDate(createdAt: string, filter: string) {
+  if (!filter) return true;
+
+  const date = new Date(createdAt);
+  if (!Number.isFinite(date.getTime())) return false;
+
+  const localDate = [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+
+  return localDate === filter;
 }
 
 function matchesPurchaseStatus(

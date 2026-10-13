@@ -795,7 +795,35 @@ function SettingsPanel({
 
   return (
     <section className="theme-panel min-w-0 overflow-hidden p-4 sm:p-5">
-      <div className="flex min-w-0 items-start justify-between gap-3">
+      {collapsible ? (
+        <div className="relative min-w-0">
+          <button
+            aria-controls={contentId}
+            aria-expanded={isExpanded}
+            className="relative flex w-full min-w-0 items-start gap-3 rounded-md pr-16 text-left transition hover:bg-surface-muted/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            onClick={() => setIsExpanded((current) => !current)}
+            type="button"
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-brand-soft text-brand">
+              {icon}
+            </span>
+            <span className="min-w-0 pt-1">
+              <span className="block text-lg font-semibold">{title}</span>
+            </span>
+            <ChevronDownIcon
+              aria-hidden="true"
+              className={`absolute right-3 top-3 h-4 w-4 text-text-muted transition-transform duration-200 ${
+                isExpanded ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+          {info && (
+            <span className="absolute right-9 top-1.5">
+              <InfoTooltip label={info} />
+            </span>
+          )}
+        </div>
+      ) : (
         <div className="flex min-w-0 items-start gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-brand-soft text-brand">
             {icon}
@@ -807,24 +835,7 @@ function SettingsPanel({
             </div>
           </div>
         </div>
-        {collapsible && (
-          <button
-            aria-controls={contentId}
-            aria-expanded={isExpanded}
-            aria-label={`${isExpanded ? "Collapse" : "Expand"} ${title}`}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-text-muted transition hover:bg-surface-muted hover:text-text-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-            onClick={() => setIsExpanded((current) => !current)}
-            type="button"
-          >
-            <ChevronDownIcon
-              aria-hidden="true"
-              className={`h-4 w-4 transition-transform duration-200 ${
-                isExpanded ? "rotate-180" : ""
-              }`}
-            />
-          </button>
-        )}
-      </div>
+      )}
       <div
         className="mt-5 min-w-0"
         hidden={collapsible && !isExpanded}

@@ -68,6 +68,8 @@ export function DashboardShell({
 }: DashboardShellProps) {
   const [activeNavItem, setActiveNavItem] =
     useState<NavigationItem>("Dashboard");
+  const [transactionHistoryDateFilter, setTransactionHistoryDateFilter] =
+    useState<string | null>(null);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [teacherGroupNavigation, setTeacherGroupNavigation] =
     useState<TeacherGroupNavigation | null>(null);
@@ -140,6 +142,13 @@ export function DashboardShell({
     setTeacherGroupNavigation(null);
   }, []);
 
+  function navigateTo(target: NavigationItem) {
+    if (target !== "Transaction History") {
+      setTransactionHistoryDateFilter(null);
+    }
+    setActiveNavItem(target);
+  }
+
   return (
     <UserPreferencesProvider
       initialPreferences={initialPreferences}
@@ -151,7 +160,7 @@ export function DashboardShell({
       <div className="flex min-h-screen w-full min-w-0 overflow-x-clip">
         <DesktopSideNav
           activeItem={activeNavItem}
-          onItemChange={setActiveNavItem}
+          onItemChange={navigateTo}
           onLogout={onLogout}
           onPasswordChange={() => setIsPasswordModalOpen(true)}
           profileImageUrl={user.profileImageUrl}
@@ -191,11 +200,11 @@ export function DashboardShell({
                   />
                 )}
                 <NotificationCentre
-                  onNavigate={(target) => setActiveNavItem(target)}
+                  onNavigate={navigateTo}
                 />
                 <HeaderNavMenu
                   activeItem={activeNavItem}
-                  onItemChange={setActiveNavItem}
+                  onItemChange={navigateTo}
                   onLogout={onLogout}
                   onPasswordChange={() => setIsPasswordModalOpen(true)}
                   profileImageUrl={user.profileImageUrl}
@@ -209,7 +218,7 @@ export function DashboardShell({
         {isAdmin(user) && activeNavItem === "Dashboard" && (
           <AdminDashboardPanel
             currencyName={schoolInfo.currencyName}
-            onNavigate={setActiveNavItem}
+            onNavigate={navigateTo}
             schoolName={schoolName}
             userId={user.id}
           />
@@ -229,16 +238,16 @@ export function DashboardShell({
 
         {isTeacher(user) && activeNavItem === "Dashboard" && (
           <TeacherHomePanel
-            onNavigateToCredits={() => setActiveNavItem("Credit Management")}
-            onNavigateToRequests={() => setActiveNavItem("Reward Requests")}
-            onNavigateToTimetable={() => setActiveNavItem("Timetable")}
+            onNavigateToCredits={() => navigateTo("Credit Management")}
+            onNavigateToRequests={() => navigateTo("Reward Requests")}
+            onNavigateToTimetable={() => navigateTo("Timetable")}
             onOpenCurrentClass={(groupId, groupName) => {
               setTeacherGroupNavigation((current) => ({
                 groupId,
                 groupName,
                 version: (current?.version ?? 0) + 1,
               }));
-              setActiveNavItem("Credit Management");
+              navigateTo("Credit Management");
             }}
           />
         )}
@@ -253,8 +262,11 @@ export function DashboardShell({
           <StudentDashboardPanel
             currencyName={schoolInfo.currencyName}
             currentUser={user}
-            onBrowseRewards={() => setActiveNavItem("Rewards")}
-            onOpenTransactionHistory={() => setActiveNavItem("Transaction History")}
+            onBrowseRewards={() => navigateTo("Rewards")}
+            onOpenTransactionHistory={(date) => {
+              setTransactionHistoryDateFilter(date ?? null);
+              setActiveNavItem("Transaction History");
+            }}
             schoolLogoUrl={schoolInfo.logoUrl}
             schoolName={schoolName}
           />
@@ -282,7 +294,7 @@ export function DashboardShell({
                 groupName,
                 version: (current?.version ?? 0) + 1,
               }));
-              setActiveNavItem("Credit Management");
+              navigateTo("Credit Management");
             }}
           />
         )}
@@ -299,6 +311,9 @@ export function DashboardShell({
           <TransactionLogPanel
             currencyName={schoolInfo.currencyName}
             currentUser={user}
+            initialDateFilter={
+              isStudent(user) ? transactionHistoryDateFilter ?? undefined : undefined
+            }
           />
         )}
 

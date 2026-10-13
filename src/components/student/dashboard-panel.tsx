@@ -16,7 +16,7 @@ import { StudentActivityRecap } from "@/components/student/activity-recap";
 import { StudentTransactionNotificationModal } from "@/components/student/transaction-notification-modal";
 import { TransactionLogPanel } from "@/components/transactions/transaction-log-panel";
 import { FixedNotification } from "@/components/ui/fixed-notification";
-import { CrownIcon, SparkleIcon, WalletIcon } from "@/components/ui/icons";
+import { CrownIcon, SparkleIcon, TrophyIcon, WalletIcon } from "@/components/ui/icons";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { InlineSelectMenu } from "@/components/ui/inline-select-menu";
 import { LoadFailure } from "@/components/ui/load-failure";
@@ -42,7 +42,7 @@ type StudentDashboardPanelProps = {
   currencyName: string;
   currentUser: SessionUser;
   onBrowseRewards: () => void;
-  onOpenTransactionHistory: () => void;
+  onOpenTransactionHistory: (date?: string) => void;
   schoolLogoUrl: string;
   schoolName: string;
 };
@@ -244,11 +244,14 @@ export function StudentDashboardPanel({
           className="dashboard-unit-3"
           currencyName={currencyName}
           isLoading={isTransactionsLoading && !transactionsError}
+          onBrowseRewards={onBrowseRewards}
+          onSelectDate={onOpenTransactionHistory}
           transactions={transactions}
         />
         <StudentMetricStrip
           className="dashboard-unit-1"
           currencyName={currencyName}
+          onBrowseRewards={onBrowseRewards}
           transactions={transactions}
         />
       </section>
@@ -392,7 +395,12 @@ function BalanceTrendCard({
     startDate: customStartDate,
   });
   const balanceTicks = getBalanceAxisTicks(chartPoints);
-  const timeTicks = getTimeAxisTicks(chartPoints);
+  const balanceLabelTicks = [
+    balanceTicks[0],
+    balanceTicks[Math.floor((balanceTicks.length - 1) / 2)],
+    balanceTicks[balanceTicks.length - 1],
+  ].filter((tick, index, values) => values.indexOf(tick) === index);
+  const timeTicks = getTimeAxisTicks(chartPoints, 4);
 
   return (
     <article className="student-dashboard-card student-balance-trend-card dashboard-unit-1 flex min-h-52 rounded-3xl border border-transparent bg-surface p-4 sm:p-5">
@@ -450,6 +458,7 @@ function BalanceTrendCard({
           <div className="mt-2 h-56 w-full flex-1">
             <ResponsiveContainer height="100%" width="100%">
               <AreaChart
+                accessibilityLayer
                 data={chartPoints}
                 margin={{ bottom: 0, left: 0, right: 8, top: 8 }}
               >
@@ -461,7 +470,8 @@ function BalanceTrendCard({
                 </defs>
                 <CartesianGrid
                   stroke="var(--border-subtle)"
-                  strokeOpacity={0.45}
+                  strokeOpacity={0.35}
+                  horizontalValues={balanceLabelTicks}
                   vertical={false}
                 />
                 <XAxis
@@ -480,11 +490,10 @@ function BalanceTrendCard({
                 <YAxis
                   axisLine={false}
                   domain={[0, balanceTicks[balanceTicks.length - 1]]}
-                  ticks={balanceTicks}
-                  tick={{ fill: "var(--text-muted)", fontSize: 11 }}
+                  tick={false}
                   tickLine={false}
                   type="number"
-                  width={40}
+                  width={8}
                 />
                 <Tooltip
                   content={<BalanceTrendTooltip currencyName={currencyName} />}
@@ -519,10 +528,12 @@ function BalanceTrendCard({
 function StudentMetricStrip({
   className = "",
   currencyName,
+  onBrowseRewards,
   transactions,
 }: {
   className?: string;
   currencyName: string;
+  onBrowseRewards: () => void;
   transactions: TransactionLogItem[];
 }) {
   const [timeframeDays, setTimeframeDays] =
@@ -541,6 +552,8 @@ function StudentMetricStrip({
         />
       </div>
 
+      {metrics.hasActivity ? (
+      <>
       <div className="mt-4 flex items-center justify-between gap-2">
         <div className="min-w-0">
           <p className="text-[11px] text-text-muted">Average net per day</p>
@@ -548,33 +561,48 @@ function StudentMetricStrip({
             {metrics.averageDailyNet > 0 ? "+" : ""}{formatAmount(metrics.averageDailyNet)}
             <span className="ml-1 text-xs font-medium text-text-muted">{currencyName}</span>
           </p>
-          <p className={`mt-1.5 text-[11px] font-medium ${metrics.comparison >= 0 ? "text-positive-ink" : "text-negative-ink"}`}>
-            {formatMetricComparison(metrics.comparison, currencyName)}
+          <p
+            aria-label={formatMetricComparison(metrics.comparison, currencyName)}
+            className={`mt-1.5 text-[11px] font-medium ${metrics.comparison > 0 ? "text-positive-ink" : metrics.comparison < 0 ? "text-negative-ink" : "text-text-muted"}`}
+            tabIndex={0}
+            title={formatMetricComparison(metrics.comparison, currencyName)}
+          >
+            {metrics.comparison > 0 ? "Improving" : metrics.comparison < 0 ? "Trending lower" : "Holding steady"}
           </p>
         </div>
         <MiniMetricSparkline values={metrics.trend} />
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-x-3 border-y border-border-subtle py-3">
-        <MetricReadout label="Average earned" tone="positive" value={metrics.averageDailyGain} currencyName={currencyName} />
-        <MetricReadout label="Average spent" tone="negative" value={metrics.averageDailyLoss} currencyName={currencyName} />
+      <div className="mt-4 space-y-3 border-y border-border-subtle py-3">
+        <MetricComparisonBar
+          label="Earned"
+          maxValue={Math.max(metrics.averageDailyGain, metrics.averageDailyLoss, 1)}
+          tone="positive"
+          value={metrics.averageDailyGain}
+          currencyName={currencyName}
+        />
+        <MetricComparisonBar
+          label="Spent"
+          maxValue={Math.max(metrics.averageDailyGain, metrics.averageDailyLoss, 1)}
+          tone="negative"
+          value={metrics.averageDailyLoss}
+          currencyName={currencyName}
+        />
       </div>
 
-      <div className="mt-3 space-y-2 text-xs">
-        <div className="flex min-w-0 items-center justify-between gap-2">
-          <span className="inline-flex items-center gap-1 text-text-muted">
-            <CrownIcon className="h-3.5 w-3.5 shrink-0 text-accent" /> Best day
-          </span>
-          <span className="truncate text-right font-medium text-text-control">
-            {metrics.bestDay}{metrics.bestDayAmount > 0 ? ` · +${formatAmount(metrics.bestDayAmount)}` : ""}
-          </span>
-        </div>
-        <div className="flex min-w-0 items-center justify-between gap-2">
-          <span className="text-text-muted">Most active</span>
-          <span className="truncate text-right font-medium text-text-control">
-            {metrics.mostActiveDay}{metrics.mostActiveCount > 0 ? ` · ${metrics.mostActiveCount} ${metrics.mostActiveCount === 1 ? "entry" : "entries"}` : ""}
-          </span>
-        </div>
+      <div className="mt-3 flex min-w-0 items-center justify-between gap-2 text-xs">
+        <span className="inline-flex items-center gap-1 text-text-muted">
+          <CrownIcon className="h-3.5 w-3.5 shrink-0 text-accent" /> Best day
+        </span>
+        <span
+          aria-label={`${metrics.bestDay}${metrics.bestDayAmount > 0 ? `, ${formatCurrencyAmount(metrics.bestDayAmount, currencyName)} earned` : ""}`}
+          className="truncate text-right font-medium text-text-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          role="img"
+          tabIndex={0}
+          title={metrics.bestDayAmount > 0 ? `+${formatCurrencyAmount(metrics.bestDayAmount, currencyName)}` : metrics.bestDay}
+        >
+          {metrics.bestDay}
+        </span>
       </div>
 
       <div className="mt-3 border-t border-border-subtle pt-3">
@@ -583,7 +611,6 @@ function StudentMetricStrip({
             Weekday consistency
             <InfoTooltip label="Weekdays in this period with at least one credit transaction." />
           </span>
-          <span className="shrink-0 font-medium text-text-control">{metrics.activeSchoolDays}/{metrics.schoolDays}</span>
         </div>
         <div
           aria-label={`${metrics.activeSchoolDays} of ${metrics.schoolDays} school days with activity`}
@@ -599,27 +626,60 @@ function StudentMetricStrip({
           />
         </div>
       </div>
+      </>
+      ) : (
+        <div className="mt-4 flex min-h-40 flex-col justify-between gap-4 rounded-xl bg-panel-soft px-4 py-3">
+          <div>
+            <p className="text-sm font-semibold text-text-control">No activity in this period</p>
+            <p className="mt-1 text-xs text-text-muted">
+              Your averages and trends will appear after your next credit activity.
+            </p>
+          </div>
+          <button
+            className="inline-flex min-h-10 items-center justify-center gap-2 self-start rounded-md bg-surface px-3 text-sm font-semibold text-text-control transition hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            onClick={onBrowseRewards}
+            type="button"
+          >
+            <TrophyIcon className="h-4 w-4" />
+            Explore rewards
+          </button>
+        </div>
+      )}
     </section>
   );
 }
 
-function MetricReadout({
+function MetricComparisonBar({
   currencyName,
   label,
+  maxValue,
   tone,
   value,
 }: {
   currencyName: string;
   label: string;
+  maxValue: number;
   tone: "negative" | "positive";
   value: number;
 }) {
   return (
-    <div className="min-w-0">
-      <p className="truncate text-[10px] text-text-muted">{label}</p>
-      <p className={`mt-1 truncate text-sm font-semibold ${tone === "positive" ? "text-positive-ink" : "text-negative-ink"}`}>
-        {tone === "positive" ? "+" : "−"}{formatAmount(value)} <span className="text-[10px] font-medium">{currencyName}</span>
-      </p>
+    <div
+      aria-label={`${label}: ${formatCurrencyAmount(value, currencyName)} per day`}
+      className="min-w-0 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+      role="img"
+      tabIndex={0}
+      title={`${label}: ${formatCurrencyAmount(value, currencyName)} per day`}
+    >
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <p className="truncate text-[10px] text-text-muted">{label}</p>
+        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${tone === "positive" ? "bg-positive-ink" : "bg-negative-ink"}`} />
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-panel-soft">
+        <span
+          className={`block h-full rounded-full transition-[width] duration-500 ${tone === "positive" ? "bg-positive-ink" : "bg-negative-ink"}`}
+          style={{ width: `${Math.min((value / Math.max(maxValue, 1)) * 100, 100)}%` }}
+        />
+      </div>
     </div>
   );
 }
@@ -820,9 +880,6 @@ function getStudentMetrics(
   const bestDay = [...dailyActivity.values()].sort(
     (first, second) => second.net - first.net,
   )[0];
-  const mostActiveDay = [...dailyActivity.values()].sort(
-    (first, second) => second.count - first.count,
-  )[0];
   const schoolDays = countSchoolDays(windowStartTime, windowEndTime);
   const activeSchoolDays = [...dailyActivity.values()].filter(
     (day) => day.isSchoolDay,
@@ -840,8 +897,7 @@ function getStudentMetrics(
     bestDay: bestDay?.net > 0 ? bestDay.label : "No gain yet",
     bestDayAmount: Math.max(bestDay?.net ?? 0, 0),
     comparison: averageDailyNet - previousAverageDailyNet,
-    mostActiveCount: mostActiveDay?.count ?? 0,
-    mostActiveDay: mostActiveDay?.count ? mostActiveDay.label : "No activity",
+    hasActivity: recentTransactions.length > 0,
     schoolDays,
     trend: buildMetricTrend(
       recentTransactions,
@@ -870,7 +926,7 @@ function getNegativeTotal(transactions: TransactionLogItem[]) {
 function getDailyActivity(transactions: TransactionLogItem[]) {
   const activity = new Map<
     string,
-    { count: number; isSchoolDay: boolean; label: string; net: number }
+    { isSchoolDay: boolean; label: string; net: number }
   >();
 
   transactions.forEach((transaction) => {
@@ -878,7 +934,6 @@ function getDailyActivity(transactions: TransactionLogItem[]) {
     const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
     const current = activity.get(key);
     activity.set(key, {
-      count: (current?.count ?? 0) + 1,
       isSchoolDay: date.getDay() >= 1 && date.getDay() <= 5,
       label: new Intl.DateTimeFormat("en-AU", {
         day: "numeric",

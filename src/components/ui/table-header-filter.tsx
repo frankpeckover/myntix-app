@@ -240,7 +240,7 @@ export function TableHeaderFilterInput({
 }: {
   label: string;
   onChange: (value: string) => void;
-  type?: "number" | "text";
+  type?: "date" | "number" | "text";
   value: string;
 }) {
   return (

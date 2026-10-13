@@ -780,7 +780,7 @@ html[data-theme="dark"] .professional-shell {
 }
 
 .student-dashboard-transaction-log.theme-panel {
-  background: var(--surface);
+  background: transparent;
   border-color: transparent;
   border-radius: 1.5rem;
   box-shadow: none;
@@ -1214,14 +1214,10 @@ html[data-theme="dark"] .app-modal.theme-panel {
   --table-action-size: 20px;
   --table-cell-block-padding: 0.5rem;
   --table-row-height: 48px;
-  background: var(--surface);
-  border: 1px solid var(--border-muted);
+  background: transparent;
+  border: 0;
   border-collapse: separate !important;
-  border-spacing: 0;
-  border-top: 0 !important;
-  border-collapse: separate !important;
-  border-radius: var(--radius-card);
-  border-spacing: 0;
+  border-spacing: 0 0.45rem;
   overflow: visible;
   width: 100%;
 }
@@ -1408,11 +1404,79 @@ html[data-theme="dark"] .app-modal.theme-panel {
 }
 
 .app-data-table thead th {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  background: var(--brand-soft);
+  border-bottom: 1px solid var(--border-subtle);
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-label);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
   position: sticky;
+  text-transform: uppercase;
   top: 0;
   z-index: 20;
+}
+
+.app-data-table thead th:first-child {
+  border-bottom-left-radius: var(--radius-card);
+  border-left: 1px solid var(--border-subtle);
+  border-top-left-radius: var(--radius-card);
+}
+
+.app-data-table thead th:last-child {
+  border-bottom-right-radius: var(--radius-card);
+  border-right: 1px solid var(--border-subtle);
+  border-top-right-radius: var(--radius-card);
+}
+
+.app-data-table tbody td {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-subtle);
+  border-top: 1px solid var(--border-subtle);
+  transition:
+    background-color var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease);
+}
+
+.app-data-table tbody td:first-child {
+  border-bottom-left-radius: var(--radius-card);
+  border-left: 1px solid var(--border-subtle);
+  border-top-left-radius: var(--radius-card);
+}
+
+.app-data-table tbody td:last-child {
+  border-bottom-right-radius: var(--radius-card);
+  border-right: 1px solid var(--border-subtle);
+  border-top-right-radius: var(--radius-card);
+}
+
+.app-data-table tbody tr:last-child td {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.app-data-table tbody tr:hover td {
+  background: color-mix(in srgb, var(--brand-soft) 38%, var(--surface));
+  border-color: color-mix(in srgb, var(--brand) 22%, var(--border-subtle));
+}
+
+.app-data-table tbody tr:has(.table-selection-cell input:checked) > td,
+.app-data-table tbody tr:has(.table-selection-cell input:checked):hover > td {
+  background: color-mix(in srgb, var(--brand-soft) 68%, var(--surface));
+  border-color: color-mix(in srgb, var(--brand) 42%, var(--border-subtle));
+}
+
+.app-data-table tbody tr:has(.table-selection-cell input:checked) > td:first-child {
+  background-image: linear-gradient(to right, var(--brand) 3px, transparent 3px);
+}
+
+.app-shell-surface .theme-panel:has(.app-data-table) {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.app-shell-surface .theme-panel:has(.app-data-table):hover {
+  border-color: transparent !important;
+  box-shadow: none !important;
 }
 
 .app-data-table[data-layout="fixed"] tbody td:not(.table-selection-cell):not(.text-right):not(:last-child):not(:has(.status-badge)) {
@@ -1512,7 +1576,6 @@ html[data-theme="dark"] .app-modal.theme-panel {
 
 .professional-shell .app-data-table th {
   background: var(--brand-soft);
-  border: 0;
   color: var(--text-label);
   font-size: 0.72rem;
   letter-spacing: 0.04em;
@@ -1541,25 +1604,6 @@ html[data-theme="dark"] .app-modal.theme-panel {
 .professional-shell .app-data-table th:last-child,
 .professional-shell .app-data-table td:last-child {
   padding-right: 1.25rem !important;
-}
-
-.professional-shell .app-data-table tbody tr {
-  transition-duration: var(--motion-fast);
-  transition-property: background-color;
-  transition-timing-function: var(--motion-ease);
-}
-
-.professional-shell .app-data-table tbody tr:hover {
-  background: color-mix(in srgb, var(--brand-soft) 30%, var(--surface));
-}
-
-.professional-shell .app-data-table tbody tr:has(.table-selection-cell input:checked),
-.professional-shell .app-data-table tbody tr:has(.table-selection-cell input:checked):hover {
-  background: color-mix(in srgb, var(--brand-soft) 68%, var(--surface));
-}
-
-.professional-shell .app-data-table tbody tr:has(.table-selection-cell input:checked) > td:first-child {
-  background-image: linear-gradient(to right, var(--brand) 3px, transparent 3px);
 }
 
 .professional-shell .admin-recent-activity-table tbody tr:hover {

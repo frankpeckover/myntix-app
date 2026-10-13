@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { SparkleIcon } from "@/components/ui/icons";
+import { SparkleIcon, TrophyIcon } from "@/components/ui/icons";
 import { PanelTitle } from "@/components/ui/panel-title";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import type { TransactionLogItem } from "@/domains/ledger/transaction-service";
@@ -21,6 +21,8 @@ type StudentActivityRecapProps = {
   className?: string;
   currencyName: string;
   isLoading: boolean;
+  onBrowseRewards: () => void;
+  onSelectDate: (date: string) => void;
   transactions: TransactionLogItem[];
 };
 
@@ -45,21 +47,18 @@ export function StudentActivityRecap({
   className = "",
   currencyName,
   isLoading,
+  onBrowseRewards,
+  onSelectDate,
   transactions,
 }: StudentActivityRecapProps) {
   const movement = buildWeekdayMovement(transactions, 0);
-  const previousMovement = buildWeekdayMovement(transactions, -7);
   const elapsedWeekdayCount = movement.filter((day) => !day.isFuture).length;
   const weeklyNet = movement
     .slice(0, elapsedWeekdayCount)
     .reduce((total, day) => total + day.net, 0);
-  const previousWeeklyNet = previousMovement
-    .slice(0, elapsedWeekdayCount)
-    .reduce(
-      (total, day) => total + day.net,
-      0,
-    );
-  const comparison = weeklyNet - previousWeeklyNet;
+  const hasWeeklyActivity = movement.some(
+    (day) => !day.isFuture && (day.earned > 0 || day.outgoing > 0),
+  );
 
   return (
     <section className={`student-dashboard-card student-activity-recap min-w-0 overflow-hidden rounded-3xl bg-surface px-4 py-4 sm:px-5 ${className}`}>
@@ -71,10 +70,10 @@ export function StudentActivityRecap({
             </span>
             <PanelTitle title="Daily movement" />
           </div>
-          <p className="mt-1 text-xs text-text-muted">Monday to Friday</p>
+          <p className="mt-1 text-xs text-text-muted">This week · Monday to Friday</p>
         </div>
 
-        {!isLoading && (
+        {!isLoading && hasWeeklyActivity && (
           <div className="sm:text-right">
             <p
               className={`font-number text-2xl font-semibold leading-none ${
@@ -88,19 +87,34 @@ export function StudentActivityRecap({
               {weeklyNet > 0 ? "+" : ""}
               {formatAmount(weeklyNet)}
             </p>
-            <p className="mt-1 text-xs text-text-muted">
-              {formatComparison(comparison, currencyName)}
-            </p>
           </div>
         )}
       </div>
 
       {isLoading ? (
         <LoadingSkeleton className="mt-3 min-h-40 px-0" lines={3} />
+      ) : !hasWeeklyActivity ? (
+        <div className="mt-4 flex min-h-32 flex-col justify-between gap-4 rounded-xl bg-panel-soft px-4 py-3 sm:flex-row sm:items-center">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-text-control">Your week is ready</p>
+            <p className="mt-1 text-xs text-text-muted">
+              Credits earned or spent during the school week will show here.
+            </p>
+          </div>
+          <button
+            className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-md bg-surface px-3 text-sm font-semibold text-text-control transition hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            onClick={onBrowseRewards}
+            type="button"
+          >
+            <TrophyIcon className="h-4 w-4" />
+            Explore rewards
+          </button>
+        </div>
       ) : (
         <WeekdayMovementChart
           currencyName={currencyName}
           movement={movement}
+          onSelectDate={onSelectDate}
         />
       )}
     </section>
@@ -110,23 +124,25 @@ export function StudentActivityRecap({
 function WeekdayMovementChart({
   currencyName,
   movement,
+  onSelectDate,
 }: {
   currencyName: string;
   movement: WeekdayMovement[];
+  onSelectDate: (date: string) => void;
 }) {
   const maximumMovement = Math.max(
     ...movement.map((day) => Math.abs(day.net)),
     1,
   );
   const axisMaximum = getRoundedAxisMaximum(maximumMovement);
-  const ticks = [-axisMaximum, 0, axisMaximum];
 
   return (
     <div className="mt-2 h-44 w-full sm:h-48">
       <ResponsiveContainer height="100%" width="100%">
         <BarChart
+          accessibilityLayer
           data={movement}
-          margin={{ bottom: 0, left: 4, right: 4, top: 12 }}
+          margin={{ bottom: 0, left: 2, right: 4, top: 12 }}
         >
           <CartesianGrid horizontal={false} vertical={false} />
           <XAxis
@@ -138,19 +154,15 @@ function WeekdayMovementChart({
           <YAxis
             axisLine={false}
             domain={[-axisMaximum, axisMaximum]}
-            tick={{ fill: "var(--text-muted)", fontSize: 10 }}
+            tick={false}
             tickLine={false}
-            ticks={ticks}
-            width={56}
+            width={8}
           />
-          {ticks.map((tick) => (
-            <ReferenceLine
-              key={tick}
-              stroke={tick === 0 ? "var(--border-strong)" : "var(--border-subtle)"}
-              strokeOpacity={tick === 0 ? 0.75 : 0.45}
-              y={tick}
-            />
-          ))}
+          <ReferenceLine
+            stroke="var(--border-strong)"
+            strokeOpacity={0.75}
+            y={0}
+          />
           <Tooltip
             content={<MovementTooltip currencyName={currencyName} />}
             cursor={{ fill: "var(--panel-soft)", opacity: 0.55 }}
@@ -175,6 +187,23 @@ function WeekdayMovementChart({
                       : "var(--negative-ink)"
                 }
                 strokeWidth={day.isFuture ? 0 : 1}
+                cursor={day.isFuture ? "default" : "pointer"}
+                role={day.isFuture ? undefined : "button"}
+                tabIndex={day.isFuture ? -1 : 0}
+                aria-label={
+                  day.isFuture
+                    ? undefined
+                    : `${day.day}: ${formatAmount(day.net)} net credits. Open transactions for this day.`
+                }
+                onClick={() => {
+                  if (!day.isFuture) onSelectDate(formatDateFilterValue(day.timestamp));
+                }}
+                onKeyDown={(event) => {
+                  if (!day.isFuture && (event.key === "Enter" || event.key === " ")) {
+                    event.preventDefault();
+                    onSelectDate(formatDateFilterValue(day.timestamp));
+                  }
+                }}
               />
             ))}
           </Bar>
@@ -280,12 +309,11 @@ function getRoundedAxisMaximum(value: number) {
   return Math.ceil(value / magnitude) * magnitude;
 }
 
-function formatComparison(comparison: number, currencyName: string) {
-  if (comparison === 0) {
-    return "Same net movement as last week";
-  }
-
-  return `${formatAmount(Math.abs(comparison))} ${currencyName} ${
-    comparison > 0 ? "ahead of" : "behind"
-  } last week`;
+function formatDateFilterValue(timestamp: number) {
+  const date = new Date(timestamp);
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
 }

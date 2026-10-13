@@ -619,7 +619,7 @@ export function TeacherDashboardPanel({
 
             {(visibleStudents.length > 0 || visibleGroups.length > 0) && (
               <>
-                <div className="overflow-clip rounded-lg border border-border-subtle bg-surface shadow-sm">
+                <div className="min-w-0">
                   <DataTable ariaLabel="Student credit accounts">
                     <colgroup>
                       <col />
