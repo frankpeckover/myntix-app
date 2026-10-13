@@ -418,7 +418,7 @@ Database credentials are server-only. They must never be sent to the browser or 
 | SSO | `sso_identity_providers` | Per-organisation Google/Microsoft configuration and optional domain-restricted JIT |
 | External API | `api_clients`, `api_client_scopes`, `api_idempotency_keys`, `api_request_log` | Hashed keys, scopes, replay protection, and request activity |
 | Notifications | `notifications`, `notification_preferences`, `notification_digest_deliveries` | In-app alerts, user choices, and email digest deduplication |
-| Account preferences | `user_preferences`, `user_transaction_preset_preferences` | Persisted appearance, dashboard, table density, voice shortcut, and personal quick-action choices |
+| Account preferences | `user_preferences`, `user_transaction_preset_preferences` | Persisted appearance, dashboard, table density, text size, voice shortcut, and personal quick-action choices |
 | Directory sync | `directory_sync_sources`, `directory_sync_runs`, `directory_sync_*_mappings` | Integration configuration, run history, and ownership for sync-managed users/groups/timetable |
 | Admin onboarding | `admin_setup_checklist_preferences` | Checklist completion and dismiss state |
 

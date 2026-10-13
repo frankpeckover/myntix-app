@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   approveShopRequest,
   denyShopRequest,
@@ -276,60 +276,64 @@ export function ShopRequestsPanel({
     }
   }
 
+  const tableToolbar = (
+    <TableToolbar
+      actions={
+        showViewToggle ? (
+          <div className="flex rounded-md border border-border bg-surface p-1">
+            {(["pending", "recent"] as const).map((view) => (
+              <button
+                className={`rounded-sm px-3 py-1.5 text-sm font-semibold transition ${
+                  activeView === view
+                    ? "bg-brand text-white"
+                    : "text-text-control hover:bg-surface-hover"
+                }`}
+                key={view}
+                onClick={() => changeView(view)}
+                type="button"
+              >
+                {view === "pending" ? "Pending" : "Recent"}
+              </button>
+            ))}
+          </div>
+        ) : undefined
+      }
+    >
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <ListCount
+          count={displayedRequests.length}
+          label="rewards"
+          totalCount={filteredRequests.length}
+        />
+        <BulkSelectionControls
+          actions={[
+            {
+              icon: <CheckIcon />,
+              label: "Approve selected",
+              onSelect: () => setIsConfirmingBulkApproval(true),
+              tone: "success",
+            },
+            {
+              icon: <XIcon />,
+              label: "Deny selected",
+              onSelect: () => setDenyingRequestIds(selectedRequestIds),
+              tone: "danger",
+            },
+          ]}
+          allSelectedLabel="Select all visible reward requests"
+          isAllSelected={areAllVisibleRequestsSelected}
+          onVisibleSelectionChange={handleVisibleSelectionChange}
+          selectedCount={selectedRequestIds.length}
+        />
+      </div>
+    </TableToolbar>
+  );
+
   return (
     <section className={`min-w-0 ${className}`}>
       <FixedNotification error={error} message={message} />
       <div className="relative z-10 min-w-0 overflow-x-clip">
-        <TableToolbar
-          actions={
-            showViewToggle ? (
-              <div className="flex rounded-md border border-border bg-surface p-1">
-                {(["pending", "recent"] as const).map((view) => (
-                  <button
-                    className={`rounded-sm px-3 py-1.5 text-sm font-semibold transition ${
-                      activeView === view
-                        ? "bg-brand text-white"
-                        : "text-text-control hover:bg-surface-hover"
-                    }`}
-                    key={view}
-                    onClick={() => changeView(view)}
-                    type="button"
-                  >
-                    {view === "pending" ? "Pending" : "Recent"}
-                  </button>
-                ))}
-              </div>
-            ) : undefined
-          }
-        >
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <ListCount
-              count={displayedRequests.length}
-              label="rewards"
-              totalCount={filteredRequests.length}
-            />
-            <BulkSelectionControls
-              actions={[
-                {
-                  icon: <CheckIcon />,
-                  label: "Approve selected",
-                  onSelect: () => setIsConfirmingBulkApproval(true),
-                  tone: "success",
-                },
-                {
-                  icon: <XIcon />,
-                  label: "Deny selected",
-                  onSelect: () => setDenyingRequestIds(selectedRequestIds),
-                  tone: "danger",
-                },
-              ]}
-              allSelectedLabel="Select all visible reward requests"
-              isAllSelected={areAllVisibleRequestsSelected}
-              onVisibleSelectionChange={handleVisibleSelectionChange}
-              selectedCount={selectedRequestIds.length}
-            />
-          </div>
-        </TableToolbar>
+        {visibleRequests.length === 0 && tableToolbar}
         {isLoading && (
           <LoadingSkeleton className="px-0" lines={4} />
         )}
@@ -361,6 +365,7 @@ export function ShopRequestsPanel({
             requests={displayedRequests}
             selectedRequestIds={selectedRequestIds}
             tableSort={tableSort}
+            toolbar={tableToolbar}
             showDecisionNote={activeView === "recent"}
             visibleRequestsSelected={areAllVisibleRequestsSelected}
           />
@@ -405,6 +410,7 @@ function ShopRequestList({
   selectedRequestIds,
   tableSort,
   showDecisionNote,
+  toolbar,
   visibleRequestsSelected,
 }: {
   currencyName: string;
@@ -420,6 +426,7 @@ function ShopRequestList({
   selectedRequestIds: string[];
   tableSort: { column: string; direction: TableSortDirection } | null;
   showDecisionNote: boolean;
+  toolbar: ReactNode;
   visibleRequestsSelected: boolean;
 }) {
   return (
@@ -437,6 +444,7 @@ function ShopRequestList({
       selectedRequestIds={selectedRequestIds}
       tableSort={tableSort}
       showDecisionNote={showDecisionNote}
+      toolbar={toolbar}
       visibleRequestsSelected={visibleRequestsSelected}
     />
   );
@@ -456,6 +464,7 @@ function CompactShopRequestList({
   selectedRequestIds,
   tableSort,
   showDecisionNote,
+  toolbar,
   visibleRequestsSelected,
 }: {
   currencyName: string;
@@ -471,6 +480,7 @@ function CompactShopRequestList({
   selectedRequestIds: string[];
   tableSort: { column: string; direction: TableSortDirection } | null;
   showDecisionNote: boolean;
+  toolbar: ReactNode;
   visibleRequestsSelected: boolean;
 }) {
   function updateFilter<Field extends keyof ShopRequestTableFilters>(
@@ -482,7 +492,7 @@ function CompactShopRequestList({
 
   return (
     <>
-      <DataTable ariaLabel="Reward requests">
+      <DataTable ariaLabel="Reward requests" toolbar={toolbar}>
           <colgroup>
             <col className="w-10" />
             <col />

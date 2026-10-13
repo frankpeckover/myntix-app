@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import { getCurrentTeacherClass, listStaffShopRequests } from "@/lib/actions";
 import type { CurrentClass } from "@/domains/timetable/timetable-service";
 import { ClockIcon, CoinStackIcon, ShoppingCartIcon, UsersIcon } from "@/components/ui/icons";
-import { PageHeader } from "@/components/ui/page-header";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { useCurrentClassRefresh } from "@/components/teacher/use-current-class-refresh";
 
@@ -63,12 +62,6 @@ export function TeacherHomePanel({
 
   return (
     <section className="motion-panel mt-2 space-y-5">
-      <PageHeader
-        description="Your current class and the tasks that need attention."
-        icon={<ClockIcon />}
-        title="Today"
-      />
-
       {isLoading ? (
         <LoadingSkeleton lines={3} variant="cards" />
       ) : (

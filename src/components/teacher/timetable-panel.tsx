@@ -2,8 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
-import { ClockIcon } from "@/components/ui/icons";
-import { PanelTitle } from "@/components/ui/panel-title";
 import { LoadFailure } from "@/components/ui/load-failure";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { getTimetableCycleSettings, listMyTimetableEntries } from "@/lib/actions";
@@ -91,11 +89,7 @@ export function TeacherTimetablePanel({
 
   return (
     <section className="motion-panel mt-2 min-w-0">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="text-brand"><ClockIcon /></span>
-          <PanelTitle title="Weekly timetable" />
-        </div>
+      <div className="mb-3 flex min-h-9 items-center justify-end gap-3">
         {!isLoading && !error && cycleSettings && cycleSettings.cycleLength > 1 ? (
           <label className="flex items-center gap-2 text-sm text-text-muted">
             <span className="hidden sm:inline">View</span>

@@ -318,14 +318,66 @@ html[data-accent="custom"] {
   --color-progress-track: var(--progress-track);
   --color-activity-meta: var(--activity-meta);
   --font-numeric: "App Numerals", "Segoe UI", Arial, Helvetica, sans-serif;
-  --font-sans: var(--font-inter), "Segoe UI", Arial, Helvetica, sans-serif;
-  --font-heading: var(--font-plus-jakarta), var(--font-inter), "Segoe UI", Arial, Helvetica, sans-serif;
+  --font-sans: var(--font-manrope), "Segoe UI", Arial, Helvetica, sans-serif;
+  --font-heading: var(--font-manrope), "Segoe UI", Arial, Helvetica, sans-serif;
   --font-mono: "Cascadia Code", Consolas, monospace;
 }
 
 html {
   background: var(--background);
   min-height: 100%;
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: calc(1.125 / 0.8125);
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: calc(1.375 / 0.9375);
+  --text-base: 1.0625rem;
+  --text-base--line-height: calc(1.625 / 1.0625);
+  --text-lg: 1.1875rem;
+  --text-lg--line-height: calc(1.875 / 1.1875);
+  --text-xl: 1.3125rem;
+  --text-xl--line-height: calc(2 / 1.3125);
+  --text-2xl: 1.5625rem;
+  --text-2xl--line-height: calc(2.125 / 1.5625);
+  --text-3xl: 1.9375rem;
+  --text-3xl--line-height: calc(2.5 / 1.9375);
+  --text-4xl: 2.3125rem;
+  --text-4xl--line-height: calc(2.75 / 2.3125);
+  --text-5xl: 3.0625rem;
+  --text-5xl--line-height: 1;
+  --text-6xl: 3.8125rem;
+  --text-6xl--line-height: 1;
+  --text-7xl: 4.5625rem;
+  --text-7xl--line-height: 1;
+}
+
+html[data-text-size="large"] {
+  --text-xs: 0.875rem;
+  --text-xs--line-height: calc(1.25 / 0.875);
+  --text-sm: 1rem;
+  --text-sm--line-height: calc(1.5 / 1);
+  --text-base: 1.125rem;
+  --text-base--line-height: calc(1.75 / 1.125);
+  --text-lg: 1.25rem;
+  --text-lg--line-height: calc(2 / 1.25);
+  --text-xl: 1.375rem;
+  --text-xl--line-height: calc(2.125 / 1.375);
+  --text-2xl: 1.625rem;
+  --text-2xl--line-height: calc(2.25 / 1.625);
+  --text-3xl: 2rem;
+  --text-3xl--line-height: calc(2.625 / 2);
+  --text-4xl: 2.375rem;
+  --text-4xl--line-height: calc(2.875 / 2.375);
+  --text-5xl: 3.125rem;
+  --text-5xl--line-height: 1;
+  --text-6xl: 3.9375rem;
+  --text-6xl--line-height: 1;
+  --text-7xl: 4.6875rem;
+  --text-7xl--line-height: 1;
+}
+
+body {
+  font-size: var(--text-base);
+  line-height: var(--text-base--line-height);
 }
 
 input::placeholder,
@@ -412,7 +464,7 @@ body {
     linear-gradient(180deg, var(--background-gradient-start) 0, var(--background) 260px),
     var(--background);
   color: var(--foreground);
-  font-family: var(--font-inter), "Segoe UI", Arial, Helvetica, sans-serif;
+  font-family: var(--font-manrope), "Segoe UI", Arial, Helvetica, sans-serif;
   font-kerning: normal;
   font-synthesis: none;
   font-weight: 400;
@@ -426,7 +478,7 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: var(--font-plus-jakarta), var(--font-inter), "Segoe UI", Arial, Helvetica, sans-serif;
+  font-family: var(--font-manrope), "Segoe UI", Arial, Helvetica, sans-serif;
 }
 
 .font-semibold {
@@ -979,7 +1031,7 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .login-shell .login-panel h1 {
-  font-size: 1.55rem;
+  font-size: var(--text-2xl);
   font-weight: 500;
   letter-spacing: 0;
 }
@@ -988,7 +1040,7 @@ input[type="number"]::-webkit-outer-spin-button {
   background: color-mix(in srgb, var(--surface) 96%, var(--background));
   border-color: var(--border-strong);
   box-shadow: none;
-  font-size: 0.92rem;
+  font-size: var(--text-sm);
 }
 
 .login-shell .login-panel input::placeholder {
@@ -1403,17 +1455,59 @@ html[data-theme="dark"] .app-modal.theme-panel {
   padding-right: 1.25rem !important;
 }
 
+.app-data-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
 .app-data-table thead th {
   background: var(--brand-soft);
   border-bottom: 1px solid var(--border-subtle);
   border-top: 1px solid var(--border-subtle);
   color: var(--text-label);
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.04em;
-  position: sticky;
+  line-height: 1.2;
   text-transform: uppercase;
-  top: 0;
-  z-index: 20;
+}
+
+.app-data-table .data-table-toolbar-row th {
+  background: var(--surface);
+  border-bottom: 0;
+  padding: 0 !important;
+  text-transform: none;
+}
+
+.app-data-table thead tr.data-table-toolbar-row {
+  height: 48px;
+}
+
+.app-data-table thead tr.data-table-toolbar-row th {
+  box-sizing: border-box;
+  height: 48px;
+  vertical-align: middle;
+}
+
+.app-data-table thead tr:not(.data-table-toolbar-row),
+.app-data-table thead tr:not(.data-table-toolbar-row) th {
+  height: 32px;
+}
+
+.app-data-table thead tr:not(.data-table-toolbar-row) th {
+  box-sizing: border-box;
+  padding-bottom: 0 !important;
+  padding-top: 0 !important;
+  vertical-align: middle;
+}
+
+.app-data-table .data-table-toolbar-row .table-toolbar-band {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  letter-spacing: normal;
+  padding: 0.125rem 1rem;
+  text-transform: none;
 }
 
 .app-data-table thead th:first-child {
@@ -1426,6 +1520,20 @@ html[data-theme="dark"] .app-modal.theme-panel {
   border-bottom-right-radius: var(--radius-card);
   border-right: 1px solid var(--border-subtle);
   border-top-right-radius: var(--radius-card);
+}
+
+.app-data-table thead tr.data-table-toolbar-row th {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  box-shadow: none;
+}
+
+.app-data-table thead tr.data-table-toolbar-row + tr th:first-child {
+  border-radius: var(--radius-card) 0 0 var(--radius-card);
+}
+
+.app-data-table thead tr.data-table-toolbar-row + tr th:last-child {
+  border-radius: 0 var(--radius-card) var(--radius-card) 0;
 }
 
 .app-data-table tbody td {
@@ -1577,7 +1685,7 @@ html[data-theme="dark"] .app-modal.theme-panel {
 .professional-shell .app-data-table th {
   background: var(--brand-soft);
   color: var(--text-label);
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.04em;
   padding-bottom: 0.5rem !important;
   padding-top: 0.5rem !important;
@@ -1585,7 +1693,7 @@ html[data-theme="dark"] .app-modal.theme-panel {
 }
 
 .professional-shell .app-data-table td {
-  font-size: 0.84rem;
+  font-size: var(--text-sm);
   padding-bottom: var(--table-cell-block-padding) !important;
   padding-top: var(--table-cell-block-padding) !important;
   vertical-align: middle;
@@ -1621,12 +1729,12 @@ html[data-theme="dark"] .app-modal.theme-panel {
 
 .professional-shell .text-lg.font-semibold,
 .professional-shell .text-xl.font-semibold {
-  font-size: 1rem;
+  font-size: var(--text-base);
   line-height: 1.35;
 }
 
 .professional-shell .page-title-large {
-  font-size: 1.7rem;
+  font-size: calc(var(--text-2xl) * 1.08);
   line-height: 1.2;
 }
 
@@ -1717,7 +1825,7 @@ textarea:focus-visible,
 }
 
 .professional-shell .theme-panel .rounded-md.border.border-border-subtle.bg-panel-soft.px-4.py-5 p {
-  font-size: 0.82rem;
+  font-size: var(--text-xs);
 }
 
 .professional-shell .motion-pop.theme-panel {
@@ -1743,7 +1851,7 @@ html[data-theme="dark"] .professional-shell .app-modal.theme-panel {
 
 .professional-shell .motion-pop.theme-panel h3 {
   color: var(--foreground);
-  font-size: 1.05rem;
+  font-size: var(--text-lg);
 }
 
 .professional-shell .motion-pop.theme-panel label {

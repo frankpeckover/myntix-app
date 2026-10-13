@@ -1,6 +1,12 @@
 "use client";
 
-import type { MouseEvent, ReactNode } from "react";
+import {
+  Children,
+  cloneElement,
+  isValidElement,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
 import { RowSelectionCheckbox } from "@/components/ui/bulk-selection-controls";
 
 type DataTableProps = {
@@ -9,6 +15,7 @@ type DataTableProps = {
   className?: string;
   layout?: "auto" | "fixed";
   responsive?: "always" | "desktop";
+  toolbar?: ReactNode;
 };
 
 const selectionAnchors = new Map<string, string>();
@@ -19,7 +26,48 @@ export function DataTable({
   className = "",
   layout = "fixed",
   responsive = "always",
+  toolbar,
 }: DataTableProps) {
+  const tableChildren = toolbar
+    ? Children.map(children, (child) => {
+        if (
+          !isValidElement<{ children?: ReactNode }>(child) ||
+          child.type !== "thead"
+        ) {
+          return child;
+        }
+
+        const headerRows = Children.toArray(child.props.children);
+        const firstRow = headerRows.find(
+          (headerRow) => isValidElement(headerRow) && headerRow.type === "tr",
+        );
+        const columnCount = isValidElement<{ children?: ReactNode }>(firstRow)
+          ? Children.toArray(firstRow.props.children).reduce<number>(
+              (count, cell) => {
+                if (!isValidElement<{ colSpan?: number }>(cell)) {
+                  return count + 1;
+                }
+                return count + (cell.props.colSpan ?? 1);
+              },
+              0,
+            )
+          : 1;
+
+        return cloneElement(
+          child,
+          undefined,
+          <>
+            <tr className="data-table-toolbar-row">
+              <th colSpan={columnCount} scope="colgroup">
+                {toolbar}
+              </th>
+            </tr>
+            {child.props.children}
+          </>,
+        );
+      })
+    : children;
+
   return (
     <table
       aria-label={ariaLabel}
@@ -29,7 +77,7 @@ export function DataTable({
       } ${responsive === "desktop" ? "hidden md:table" : ""} ${className}`}
       onMouseOver={showOverflowTooltip}
     >
-      {children}
+      {tableChildren}
     </table>
   );
 }

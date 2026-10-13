@@ -10,8 +10,10 @@ import { AdminTimetablePanel } from "@/components/admin/timetable-panel";
 import { AdminUsersPanel } from "@/components/admin/users-panel";
 import { CreditAnalyticsPanel } from "@/components/analytics/panel";
 import {
+  DesktopAccountMenu,
   DesktopSideNav,
   HeaderNavMenu,
+  NavigationItemIcon,
   type NavigationItem,
 } from "@/components/layout/app-nav";
 import { ChangePasswordModal } from "@/components/auth/change-password-modal";
@@ -27,7 +29,6 @@ import { NotificationCentre } from "@/components/notifications/notification-cent
 import { AppBrand } from "@/components/ui/app-brand";
 import { AppFooter } from "@/components/ui/app-footer";
 import { GlobalMaintenanceBanner } from "@/components/ui/global-maintenance-banner";
-import { SchoolLogo } from "@/components/ui/school-logo";
 import { OfflineBanner } from "@/components/ui/offline-banner";
 import { getSchoolInfo } from "@/lib/actions";
 import { appConfig } from "@/lib/config/app-config";
@@ -165,6 +166,8 @@ export function DashboardShell({
           onPasswordChange={() => setIsPasswordModalOpen(true)}
           profileImageUrl={user.profileImageUrl}
           role={user.role}
+          schoolLogoUrl={schoolInfo.logoUrl}
+          schoolName={schoolName}
           userDisplayName={user.displayName}
         />
 
@@ -173,7 +176,6 @@ export function DashboardShell({
           id="main-content"
           tabIndex={-1}
         >
-          <h1 className="sr-only">{getCurrentPageHeading(activeNavItem, user)}</h1>
           <header className="relative z-50 pb-1.5 pt-3 sm:pb-2 sm:pt-4">
             <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 sm:gap-3 lg:flex-nowrap">
               <div className="lg:hidden">
@@ -182,16 +184,6 @@ export function DashboardShell({
               <p className="order-3 w-full min-w-0 basis-full truncate pt-0.5 text-left text-base font-medium text-text-control sm:pt-1 sm:text-xl lg:order-none lg:w-auto lg:basis-auto lg:flex-1 lg:pt-0 lg:text-left lg:text-2xl">
                 {greeting}, {getGreetingName(user)}!
               </p>
-              <div className="hidden min-w-0 items-center gap-2 md:flex">
-                <SchoolLogo
-                  logoUrl={schoolInfo.logoUrl}
-                  name={schoolName}
-                  size="medium"
-                />
-                <span className="max-w-52 truncate text-sm font-medium text-text-muted">
-                  {schoolName}
-                </span>
-              </div>
               <div className="order-2 ml-auto flex shrink-0 items-center gap-2 lg:order-none lg:ml-0">
                 {!isStudent(user) && (
                   <VoiceCreditAssistant
@@ -202,6 +194,13 @@ export function DashboardShell({
                 <NotificationCentre
                   onNavigate={navigateTo}
                 />
+                <DesktopAccountMenu
+                  onItemChange={navigateTo}
+                  onLogout={onLogout}
+                  onPasswordChange={() => setIsPasswordModalOpen(true)}
+                  profileImageUrl={user.profileImageUrl}
+                  userDisplayName={user.displayName}
+                />
                 <HeaderNavMenu
                   activeItem={activeNavItem}
                   onItemChange={navigateTo}
@@ -209,11 +208,32 @@ export function DashboardShell({
                   onPasswordChange={() => setIsPasswordModalOpen(true)}
                   profileImageUrl={user.profileImageUrl}
                   role={user.role}
+                  schoolLogoUrl={schoolInfo.logoUrl}
+                  schoolName={schoolName}
                   userDisplayName={user.displayName}
                 />
               </div>
             </div>
           </header>
+
+          <div className="mb-2 flex min-h-16 items-center pt-4 pb-1 sm:mb-3 sm:min-h-20 sm:pt-5 sm:pb-2 lg:mb-4">
+            <div className="flex min-w-0 items-center gap-3.5 sm:gap-4">
+              <span className="shrink-0 text-brand" aria-hidden="true">
+                <NavigationItemIcon
+                  className="h-7 w-7 sm:h-8 sm:w-8"
+                  item={activeNavItem}
+                />
+              </span>
+              <div className="min-w-0">
+                <h1 className="min-w-0 truncate text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
+                  {getCurrentPageHeading(activeNavItem, user)}
+                </h1>
+                <p className="mt-1 text-sm leading-5 text-text-muted">
+                  {getCurrentPageDescription(activeNavItem, user)}
+                </p>
+              </div>
+            </div>
+          </div>
 
         {isAdmin(user) && activeNavItem === "Dashboard" && (
           <AdminDashboardPanel
@@ -366,6 +386,56 @@ function getCurrentPageHeading(activeNavItem: NavigationItem, user: SessionUser)
   }
 
   return activeNavItem;
+}
+
+function getCurrentPageDescription(
+  activeNavItem: NavigationItem,
+  user: SessionUser,
+) {
+  switch (activeNavItem) {
+    case "Dashboard":
+      if (isAdmin(user)) {
+        return "A snapshot of your school's accounts, balances and activity.";
+      }
+      if (isTeacher(user)) {
+        return "See your current class and jump into everyday tasks.";
+      }
+      return "Check your balance, recent activity and available rewards.";
+    case "Credit Management":
+      return "Issue or remove credits for individual students or groups.";
+    case "Reward Requests":
+      return "Review student requests and approve or decline them.";
+    case "Analytics":
+      return "Explore student balances and ledger activity over time.";
+    case "Rewards":
+      if (isStudent(user)) {
+        return "Browse rewards you can request with your credits.";
+      }
+      return isAdmin(user)
+        ? "Browse and manage rewards in the school shop."
+        : "Browse the rewards available in your school shop.";
+    case "Transaction Log":
+    case "Transaction History":
+      return isStudent(user)
+        ? "Review your complete credit history."
+        : "Review credit activity across the school.";
+    case "Users":
+      return "Create, update and manage school accounts.";
+    case "Groups":
+      return "Organise students into classes and teaching groups.";
+    case "Timetable":
+      return isAdmin(user)
+        ? "Manage the school's timetable and class assignments."
+        : "See your weekly classes and open a class to manage credits.";
+    case "Audit Log":
+      return "Review a record of administrative changes.";
+    case "Error Log":
+      return "Review application errors recorded for your school.";
+    case "Settings":
+      return "Configure school-wide rules, access and appearance.";
+    case "Preferences":
+      return "Personalise your appearance and everyday workflow.";
+  }
 }
 
 function getRoleDashboardTitle(user: SessionUser) {

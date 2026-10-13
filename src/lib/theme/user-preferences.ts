@@ -20,12 +20,14 @@ import {
 } from "@/lib/theme/wallet-style-config";
 
 export type VoiceShortcut = "F2" | "F8" | "Control+Shift+Space" | "click";
+export type TextSize = "default" | "large";
 
 export type UserPreferences = {
   accentTheme: AccentTheme;
   customAccentColor: string;
   dashboardTheme: DashboardTheme;
   tableDensity: TableDensity;
+  textSize: TextSize;
   themeMode: ThemeMode;
   voiceShortcut: VoiceShortcut;
   walletPattern: WalletPattern;
@@ -37,6 +39,7 @@ export const defaultUserPreferences: UserPreferences = {
   customAccentColor: defaultCustomAccentColor,
   dashboardTheme: defaultDashboardTheme,
   tableDensity: defaultTableDensity,
+  textSize: "default",
   themeMode: defaultThemeMode,
   voiceShortcut: "F2",
   walletPattern: defaultWalletPattern,
@@ -47,6 +50,7 @@ const allowedValues = {
   accentTheme: ["teal", "blue", "purple", "orange", "custom"],
   dashboardTheme: ["clean", "soft-grid", "notebook", "confetti"],
   tableDensity: ["compact", "default", "roomy"],
+  textSize: ["default", "large"],
   themeMode: ["light", "dark"],
   voiceShortcut: ["F2", "F8", "Control+Shift+Space", "click"],
   walletPattern: ["none", "pinstripe", "grid", "dots", "orbit", "contour"],

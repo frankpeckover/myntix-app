@@ -75,8 +75,7 @@ export function TimetableEntryTable({
         ))}
       </div>
 
-      {toolbar && <div className="hidden md:block">{toolbar}</div>}
-      <DataTable ariaLabel="Timetable entries" responsive="desktop">
+      <DataTable ariaLabel="Timetable entries" responsive="desktop" toolbar={toolbar}>
         <colgroup>
           <col className="w-10" />
           <col className="w-[26%]" />

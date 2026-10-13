@@ -566,6 +566,59 @@ function ShopManagementList({
 }) {
   const areAllVisibleItemsSelected =
     items.length > 0 && items.every((item) => selectedItemIds.includes(item.id));
+  const tableToolbar = (
+    <TableToolbar
+      actions={
+        <>
+          <IconButton
+            label="New item"
+            onClick={onNewItem}
+            text="New Reward"
+            tone="primary"
+          >
+            <PlusIcon />
+          </IconButton>
+          <TableActionMenu
+            label="Open reward table tools"
+            items={[
+              {
+                icon: <FileUpIcon />,
+                label: "Import rewards: CSV",
+                onSelect: onImportItems,
+              },
+              {
+                disabled: visibleItemCount === 0,
+                icon: <FileDownIcon />,
+                label: "Export rewards: CSV",
+                onSelect: onItemsExport,
+              },
+            ]}
+          />
+        </>
+      }
+    >
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm font-semibold text-text-muted">
+          Showing {items.length} of {visibleItemCount} rewards.
+        </p>
+        <BulkSelectionControls
+          actions={[
+            {
+              disabled: selectedItemIds.length === 0,
+              icon: <TrashIcon />,
+              label: "Archive selected",
+              onSelect: () => onBulkRemove(selectedItemIds),
+              tone: "danger",
+            },
+          ]}
+          allSelectedLabel="Select all rewards"
+          isAllSelected={areAllVisibleItemsSelected}
+          onVisibleSelectionChange={onVisibleItemsSelectionChange}
+          selectedCount={selectedItemIds.length}
+        />
+      </div>
+    </TableToolbar>
+  );
 
   if (isLoading) {
     return <p className="mt-4 text-sm text-text-muted">Loading rewards...</p>;
@@ -603,59 +656,8 @@ function ShopManagementList({
 
   return (
     <>
-      <TableToolbar
-        actions={
-          <>
-            <IconButton
-              label="New item"
-              onClick={onNewItem}
-              text="New Reward"
-              tone="primary"
-            >
-              <PlusIcon />
-            </IconButton>
-            <TableActionMenu
-              label="Open reward table tools"
-              items={[
-                {
-                  icon: <FileUpIcon />,
-                  label: "Import rewards: CSV",
-                  onSelect: onImportItems,
-                },
-                {
-                  disabled: visibleItemCount === 0,
-                  icon: <FileDownIcon />,
-                  label: "Export rewards: CSV",
-                  onSelect: onItemsExport,
-                },
-              ]}
-            />
-          </>
-        }
-      >
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm font-semibold text-text-muted">
-            Showing {items.length} of {visibleItemCount} rewards.
-          </p>
-          <BulkSelectionControls
-            actions={[
-              {
-                disabled: selectedItemIds.length === 0,
-                icon: <TrashIcon />,
-                label: "Archive selected",
-                onSelect: () => onBulkRemove(selectedItemIds),
-                tone: "danger",
-              },
-            ]}
-            allSelectedLabel="Select all rewards"
-            isAllSelected={areAllVisibleItemsSelected}
-            onVisibleSelectionChange={onVisibleItemsSelectionChange}
-            selectedCount={selectedItemIds.length}
-          />
-        </div>
-      </TableToolbar>
-
-      <DataTable ariaLabel="Rewards" responsive="desktop">
+      <div className="mb-3 md:hidden">{tableToolbar}</div>
+      <DataTable ariaLabel="Rewards" responsive="desktop" toolbar={tableToolbar}>
         <colgroup>
           <col className="w-10" />
           <col className="w-[26%]" />

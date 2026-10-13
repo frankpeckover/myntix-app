@@ -8,6 +8,7 @@ export function applyUserPreferences(preferences: UserPreferences) {
   root.dataset.theme = preferences.themeMode;
   root.dataset.accent = preferences.accentTheme;
   root.dataset.tableDensity = preferences.tableDensity;
+  root.dataset.textSize = preferences.textSize;
   root.dataset.dashboardTheme = preferences.dashboardTheme;
   root.dataset.walletStyle = preferences.walletStyle;
   root.dataset.walletPattern = preferences.walletPattern;

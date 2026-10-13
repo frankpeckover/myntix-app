@@ -284,13 +284,14 @@ export function TransactionLogPanel({
                 <TableToolbar
                   actions={
                     isPreview && onViewAll ? (
-                      <IconButton
-                        label="View all transactions"
+                      <button
+                        aria-label="View all transactions"
+                        className="rounded-sm px-1 py-1 text-sm font-semibold text-brand underline decoration-brand/50 underline-offset-4 transition hover:decoration-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
                         onClick={onViewAll}
-                        text="View all"
+                        type="button"
                       >
-                        <ListIcon />
-                      </IconButton>
+                        View all
+                      </button>
                     ) : (
                       <TableActionMenu
                         label="Open transaction log tools"
@@ -425,8 +426,11 @@ function TransactionList({
       </div>
 
       <div className="hidden w-full min-w-0 max-w-full overflow-visible md:block">
-        {toolbar}
-        <DataTable ariaLabel="Transaction log" className="transaction-log-table min-w-0">
+        <DataTable
+          ariaLabel="Transaction log"
+          className="transaction-log-table min-w-0"
+          toolbar={toolbar}
+        >
           <TransactionTableColumnGroup
             canViewAllTransactions={canViewAllTransactions}
             isPreview={isPreview}

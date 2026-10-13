@@ -88,8 +88,7 @@ export function UsersTable({
         ))}
       </div>
 
-      {toolbar && <div className="hidden md:block">{toolbar}</div>}
-      <DataTable ariaLabel="Users" responsive="desktop">
+      <DataTable ariaLabel="Users" responsive="desktop" toolbar={toolbar}>
         <colgroup>
           <col className="w-10" />
           <col className="w-14" />

@@ -186,8 +186,7 @@ function ErrorLogList({
       </div>
 
       <div className="hidden w-full min-w-0 max-w-full overflow-x-clip md:block">
-        {toolbar}
-        <DataTable ariaLabel="Error log" className="min-w-[760px]">
+        <DataTable ariaLabel="Error log" className="min-w-[760px]" toolbar={toolbar}>
           <colgroup>
             <col className="w-[18%]" />
             <col className="w-[28%]" />

@@ -119,7 +119,7 @@ export function TableHeaderFilter({
         aria-controls={isOpen ? panelId : undefined}
         aria-haspopup="dialog"
         aria-label={`Open ${label} filter and sort options${sortDirection ? `, sorted ${sortDirection}` : ""}`}
-        className={`inline-flex min-h-7 items-center gap-1.5 rounded-md px-1.5 py-1 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
+        className={`inline-flex min-h-8 items-center gap-1.5 rounded-md px-1.5 py-0 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
           isActive || sortDirection
             ? "text-brand-ink hover:bg-brand-soft"
             : "text-inherit hover:bg-panel-soft hover:text-text-control"

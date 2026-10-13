@@ -3,11 +3,9 @@
 import { useState } from "react";
 import { StaffSettingsPanel } from "@/components/preferences/staff-settings-panel";
 import { PreferencesSection } from "@/components/preferences/preferences-section";
-import { PageHeader } from "@/components/ui/page-header";
 import {
   MicrophoneIcon,
   MoonIcon,
-  SlidersHorizontalIcon,
   SunIcon,
   WalletIcon,
 } from "@/components/ui/icons";
@@ -33,11 +31,9 @@ type PreferencesPanelProps = {
 export function PreferencesPanel({ user }: PreferencesPanelProps) {
   return (
     <section className="motion-panel mt-2 space-y-4 sm:space-y-5">
-      <PageHeader
-        description="Your personal appearance and workflow settings. Changes save to your account."
-        icon={<SlidersHorizontalIcon />}
-        title="Preferences"
-      />
+      <p className="text-sm text-text-muted">
+        Your personal appearance and workflow settings. Changes save to your account.
+      </p>
       <AppearancePreferences />
       {isStaff(user) && <WorkflowPreferences />}
       {isStudent(user) && <WalletAppearancePreferences />}
@@ -47,6 +43,7 @@ export function PreferencesPanel({ user }: PreferencesPanelProps) {
 }
 
 function AppearancePreferences() {
+  const { preferences, updatePreferences } = useUserPreferences();
   const {
     accentTheme,
     accentThemeOptions,
@@ -132,6 +129,32 @@ function AppearancePreferences() {
           ))}
         </div>
       </div>
+
+      <fieldset className="min-w-0 rounded-md border border-border-subtle px-3 py-3">
+        <legend className="sr-only">Text size</legend>
+        <p className="text-sm font-medium text-text-control">Text size</p>
+        <p className="mt-0.5 text-xs text-text-muted">Adjust text throughout the app.</p>
+        <div className="mt-3 grid grid-cols-2 gap-1 rounded-md bg-panel-soft p-1">
+          {([
+            { label: "Default", value: "default" },
+            { label: "Large", value: "large" },
+          ] as const).map((option) => (
+            <button
+              aria-pressed={preferences.textSize === option.value}
+              className={`rounded-sm px-3 py-2 text-xs font-semibold transition sm:text-sm ${
+                preferences.textSize === option.value
+                  ? "bg-brand text-white"
+                  : "text-text-control hover:bg-surface-hover"
+              }`}
+              key={option.value}
+              onClick={() => updatePreferences({ textSize: option.value })}
+              type="button"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </fieldset>
       </div>
 
       <div className="mt-5 border-t border-border-subtle pt-5">

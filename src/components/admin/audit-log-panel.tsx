@@ -229,8 +229,7 @@ function AuditLogList({
       </div>
 
       <div className="hidden w-full min-w-0 max-w-full overflow-x-clip md:block">
-        {toolbar}
-        <DataTable ariaLabel="Audit log" className="min-w-[760px]">
+        <DataTable ariaLabel="Audit log" className="min-w-[760px]" toolbar={toolbar}>
           <colgroup>
             <col className="w-[17%]" />
             <col className="w-[15%]" />

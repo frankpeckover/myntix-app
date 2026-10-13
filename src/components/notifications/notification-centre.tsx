@@ -103,12 +103,12 @@ export function NotificationCentre({ onNavigate }: NotificationCentreProps) {
   }
 
   return (
-    <div className="relative ml-auto shrink-0 lg:ml-0" ref={containerRef}>
+    <div className="relative shrink-0" ref={containerRef}>
       <button
         aria-expanded={isOpen}
         aria-haspopup="dialog"
         aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
-        className="relative inline-flex h-9 w-9 items-center justify-center rounded-md text-text-muted transition hover:bg-surface-muted hover:text-text-control"
+        className="relative inline-flex h-9 w-9 items-center justify-center rounded-md border-0 bg-transparent text-text-muted transition-colors hover:text-brand-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
         onClick={() => setIsOpen((current) => !current)}
         type="button"
       >

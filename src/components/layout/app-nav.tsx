@@ -24,6 +24,7 @@ import {
   WalletIcon,
 } from "@/components/ui/icons";
 import { AppBrand } from "@/components/ui/app-brand";
+import { SchoolLogo } from "@/components/ui/school-logo";
 import { UserAvatar } from "@/components/ui/user-avatar";
 
 const defaultNavigationItems = [
@@ -72,6 +73,8 @@ type HeaderNavMenuProps = {
   onPasswordChange: () => void;
   profileImageUrl: string;
   role: Role;
+  schoolLogoUrl: string;
+  schoolName: string;
   userDisplayName: string;
 };
 
@@ -82,6 +85,8 @@ export function HeaderNavMenu({
   onPasswordChange,
   profileImageUrl,
   role,
+  schoolLogoUrl,
+  schoolName,
   userDisplayName,
 }: HeaderNavMenuProps) {
   const navRef = useRef<HTMLElement | null>(null);
@@ -161,6 +166,12 @@ export function HeaderNavMenu({
 
       {isMobileMenuOpen && (
         <NavMenuPanel>
+          <div className="mb-2 flex items-center gap-3 border-b border-border-subtle px-3 py-2.5">
+            <SchoolLogo logoUrl={schoolLogoUrl} name={schoolName} size="small" />
+            <span className="min-w-0 truncate text-sm font-medium text-text-control">
+              {schoolName}
+            </span>
+          </div>
           {navigationSections.map((section) => (
             <NavMenuSection
               activeItem={activeItem}
@@ -185,11 +196,9 @@ export function HeaderNavMenu({
 export function DesktopSideNav({
   activeItem,
   onItemChange,
-  onLogout,
-  onPasswordChange,
-  profileImageUrl,
   role,
-  userDisplayName,
+  schoolLogoUrl,
+  schoolName,
 }: HeaderNavMenuProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const navigationSections = getNavigationSections(role);
@@ -212,8 +221,8 @@ export function DesktopSideNav({
       >
         <div className="flex h-full flex-col bg-surface">
           <div
-            className={`flex h-14 items-center gap-4 border-b border-border-subtle ${
-              isExpanded ? "justify-between px-5" : "justify-center px-3"
+            className={`flex h-[4.5rem] items-center gap-3 ${
+              isExpanded ? "justify-between pl-7 pr-5" : "justify-center px-3"
             }`}
           >
             {isExpanded && (
@@ -223,7 +232,9 @@ export function DesktopSideNav({
             )}
             <button
               aria-label={isExpanded ? "Collapse navigation" : "Expand navigation"}
-              className="inline-flex h-7 w-7 shrink-0 items-center justify-center text-text-muted transition hover:text-text-control"
+              aria-controls="primary-navigation-links"
+              aria-expanded={isExpanded}
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-surface-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-reduce:transition-none"
               onClick={() => setIsExpanded((currentValue) => !currentValue)}
               title={isExpanded ? "Collapse navigation" : "Expand navigation"}
               type="button"
@@ -236,7 +247,10 @@ export function DesktopSideNav({
             </button>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto pb-3 pt-6">
+          <div
+            className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto pb-3 pt-6"
+            id="primary-navigation-links"
+          >
             {navigationSections.map((section) => (
               <SideNavSection
                 activeItem={activeItem}
@@ -248,14 +262,19 @@ export function DesktopSideNav({
             ))}
           </div>
 
-          <SideNavAccountMenu
-            isExpanded={isExpanded}
-            onItemChange={onItemChange}
-            onLogout={onLogout}
-            onPasswordChange={onPasswordChange}
-            profileImageUrl={profileImageUrl}
-            userDisplayName={userDisplayName}
-          />
+          <div
+            className={`flex shrink-0 items-center border-t border-border-subtle py-3 ${
+              isExpanded ? "gap-3 px-5" : "justify-center px-2"
+            }`}
+            title={!isExpanded ? schoolName : undefined}
+          >
+            <SchoolLogo logoUrl={schoolLogoUrl} name={schoolName} size="small" />
+            {isExpanded && (
+              <span className="min-w-0 truncate text-sm font-medium text-text-control">
+                {schoolName}
+              </span>
+            )}
+          </div>
         </div>
       </nav>
     </>
@@ -292,117 +311,17 @@ function SideNavSection({
           {section.title}
         </p>
       )}
-      {section.items.map((item) => (
-        <SideNavButton
-          isActive={activeItem === item}
-          isExpanded={isExpanded}
-          item={item}
-          key={item}
-          onItemChange={onItemChange}
-        />
-      ))}
-    </div>
-  );
-}
-
-function SideNavAccountMenu({
-  isExpanded,
-  onItemChange,
-  onLogout,
-  onPasswordChange,
-  profileImageUrl,
-  userDisplayName,
-}: Pick<
-  HeaderNavMenuProps,
-  | "onLogout"
-  | "onItemChange"
-  | "onPasswordChange"
-  | "profileImageUrl"
-  | "userDisplayName"
-> & {
-  isExpanded: boolean;
-}) {
-  const menuRef = useRef<HTMLDivElement | null>(null);
-  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
-  function closeMenu() {
-    setIsAccountMenuOpen(false);
-  }
-
-  useEffect(() => {
-    if (!isAccountMenuOpen) {
-      return;
-    }
-
-    function handlePointerDown(event: PointerEvent) {
-      if (!menuRef.current?.contains(event.target as Node)) {
-        closeMenu();
-      }
-    }
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        closeMenu();
-      }
-    }
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isAccountMenuOpen]);
-
-  function handleLogout() {
-    closeMenu();
-    onLogout();
-  }
-
-  function handlePasswordChange() {
-    closeMenu();
-    onPasswordChange();
-  }
-
-  function handlePreferences() {
-    closeMenu();
-    onItemChange("Preferences");
-  }
-
-  return (
-    <div
-      className="relative border-t border-border-subtle px-2 py-3"
-      ref={menuRef}
-    >
-      <button
-        aria-expanded={isAccountMenuOpen}
-        aria-label="Open account menu"
-        className={`flex h-10 w-full items-center text-xs font-light tracking-[0.01em] transition ${
-          isAccountMenuOpen
-            ? "bg-brand-soft text-foreground"
-            : "text-text-muted hover:bg-surface-muted hover:text-text-control"
-        } ${isExpanded ? "justify-start gap-2.5 px-3" : "justify-center px-0"}`}
-        onClick={() => setIsAccountMenuOpen((currentValue) => !currentValue)}
-        type="button"
-      >
-        <UserAvatar
-          displayName={userDisplayName}
-          imageUrl={profileImageUrl}
-          size="sm"
-        />
-        {isExpanded && <span className="truncate">{userDisplayName}</span>}
-      </button>
-
-      {isAccountMenuOpen && (
-        <NavMenuPanel align="left" placement="up">
-          <AccountMenuItems
-            hasTopBorder={false}
-            onLogout={handleLogout}
-            onPasswordChange={handlePasswordChange}
-            onPreferences={handlePreferences}
+      <div className="space-y-1.5">
+        {section.items.map((item) => (
+          <SideNavButton
+            isActive={activeItem === item}
+            isExpanded={isExpanded}
+            item={item}
+            key={item}
+            onItemChange={onItemChange}
           />
-        </NavMenuPanel>
-      )}
+        ))}
+      </div>
     </div>
   );
 }
@@ -602,14 +521,16 @@ function NavMenuSection({
           {section.title}
         </p>
       )}
-      {section.items.map((item) => (
-        <MenuItemButton
-          isActive={activeItem === item}
-          item={item}
-          key={item}
-          onItemChange={onItemChange}
-        />
-      ))}
+      <div className="space-y-1.5">
+        {section.items.map((item) => (
+          <MenuItemButton
+            isActive={activeItem === item}
+            item={item}
+            key={item}
+            onItemChange={onItemChange}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -626,7 +547,9 @@ function AccountMenuItems({
   onPreferences: () => void;
 }) {
   return (
-    <div className={hasTopBorder ? "mt-2 border-t border-border-subtle pt-2" : ""}>
+    <div
+      className={`${hasTopBorder ? "mt-2 border-t border-border-subtle pt-2" : ""} space-y-1.5`}
+    >
       <button
         className="flex w-full items-center gap-2 border-l-2 border-transparent px-3 py-2.5 text-left text-xs font-light tracking-[0.01em] text-text-muted transition hover:bg-surface-muted hover:text-text-control"
         onClick={onPreferences}
@@ -655,39 +578,47 @@ function AccountMenuItems({
   );
 }
 
-function NavigationItemIcon({ item }: { item: NavigationItem }) {
-  const className = `h-3.5 w-3.5 shrink-0 transition-transform duration-200 ease-out motion-reduce:transform-none ${getNavigationIconMotionClassName(item)}`;
+export function NavigationItemIcon({
+  className,
+  item,
+}: {
+  className?: string;
+  item: NavigationItem;
+}) {
+  const iconClassName =
+    className ??
+    `h-3.5 w-3.5 shrink-0 transition-transform duration-200 ease-out motion-reduce:transform-none ${getNavigationIconMotionClassName(item)}`;
 
   switch (item) {
     case "Dashboard":
-      return <WalletIcon className={className} />;
+      return <WalletIcon className={iconClassName} />;
     case "Credit Management":
-      return <CoinStackIcon className={className} />;
+      return <CoinStackIcon className={iconClassName} />;
     case "Reward Requests":
-      return <ShoppingCartIcon className={className} />;
+      return <ShoppingCartIcon className={iconClassName} />;
     case "Analytics":
-      return <TrendingUpIcon className={className} />;
+      return <TrendingUpIcon className={iconClassName} />;
     case "Rewards":
-      return <TrophyIcon className={className} />;
+      return <TrophyIcon className={iconClassName} />;
     case "Transaction Log":
     case "Transaction History":
-      return <ListIcon className={className} />;
+      return <ListIcon className={iconClassName} />;
     case "Users":
-      return <UserIcon className={className} />;
+      return <UserIcon className={iconClassName} />;
     case "Groups":
-      return <UsersIcon className={className} />;
+      return <UsersIcon className={iconClassName} />;
     case "Timetable":
-      return <ClockIcon className={className} />;
+      return <ClockIcon className={iconClassName} />;
     case "Audit Log":
-      return <EyeIcon className={className} />;
+      return <EyeIcon className={iconClassName} />;
     case "Error Log":
-      return <AlertTriangleIcon className={className} />;
+      return <AlertTriangleIcon className={iconClassName} />;
     case "Settings":
-      return <CogIcon className={className} />;
+      return <CogIcon className={iconClassName} />;
     case "Preferences":
-      return <SlidersHorizontalIcon className={className} />;
+      return <SlidersHorizontalIcon className={iconClassName} />;
     default:
-      return <ListIcon className={className} />;
+      return <ListIcon className={iconClassName} />;
   }
 }
 

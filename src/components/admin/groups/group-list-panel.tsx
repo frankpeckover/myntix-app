@@ -238,8 +238,7 @@ function GroupList({
         ))}
       </div>
 
-      {toolbar && <div className="hidden md:block">{toolbar}</div>}
-      <DataTable ariaLabel="Groups" responsive="desktop">
+      <DataTable ariaLabel="Groups" responsive="desktop" toolbar={toolbar}>
         <colgroup>
           <col className="w-10" />
           <col className="w-[28%]" />

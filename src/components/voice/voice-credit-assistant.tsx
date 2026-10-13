@@ -405,10 +405,10 @@ export function VoiceCreditAssistant({
           }
           aria-label={isListening ? "Stop listening" : "Start voice credit command"}
           aria-pressed={isListening}
-          className={`inline-flex h-10 w-10 items-center justify-center rounded-full border text-text-control shadow-sm transition-all duration-150 hover:-translate-y-px hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50 ${
+          className={`inline-flex h-9 w-9 items-center justify-center rounded-md border-0 bg-transparent text-text-muted transition-colors hover:text-brand-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50 ${
             isListening
-              ? "animate-pulse border-danger bg-danger text-white"
-              : "border-button-border bg-surface hover:border-brand hover:bg-brand-soft hover:text-brand-ink"
+              ? "animate-pulse text-danger"
+              : ""
           }`}
           disabled={isResolving || isSubmitting}
           onClick={isListening ? stopListening : startListening}
@@ -421,7 +421,7 @@ export function VoiceCreditAssistant({
           }
           type="button"
         >
-          <MicrophoneIcon className="h-4 w-4" />
+          <MicrophoneIcon className="h-4.5 w-4.5" />
         </button>
 
       </div>

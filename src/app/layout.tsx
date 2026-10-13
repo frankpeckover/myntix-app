@@ -1,21 +1,14 @@
 import type { Metadata } from "next";
-import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+import { Manrope } from "next/font/google";
 import { appConfig } from "@/lib/config/app-config";
 import "./globals.css";
 import { SessionChecker } from "@/components/auth/session-checker";
 
-const inter = Inter({
+const manrope = Manrope({
   display: "swap",
   subsets: ["latin"],
-  variable: "--font-inter",
-  weight: ["300", "400", "500", "600", "700", "800", "900"],
-});
-
-const plusJakartaSans = Plus_Jakarta_Sans({
-  display: "swap",
-  subsets: ["latin"],
-  variable: "--font-plus-jakarta",
-  weight: ["500", "600", "700", "800"],
+  variable: "--font-manrope",
+  weight: ["300", "400", "500", "600", "700", "800"],
 });
 
 const themeInitScript = `
@@ -53,7 +46,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${plusJakartaSans.variable} h-full antialiased`} suppressHydrationWarning>
+    <html lang="en" className={`${manrope.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>

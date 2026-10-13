@@ -800,15 +800,22 @@ function SettingsPanel({
           <button
             aria-controls={contentId}
             aria-expanded={isExpanded}
-            className="relative flex w-full min-w-0 items-start gap-3 rounded-md pr-16 text-left transition hover:bg-surface-muted/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            aria-label={`${isExpanded ? "Collapse" : "Expand"} ${title}`}
+            className="absolute inset-0 z-10 w-full rounded-md bg-transparent transition hover:bg-surface-muted/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
             onClick={() => setIsExpanded((current) => !current)}
             type="button"
-          >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-brand-soft text-brand">
+          />
+          <div className="pointer-events-none relative z-20 flex min-w-0 items-start gap-3">
+            <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-brand-soft text-brand">
               {icon}
             </span>
-            <span className="min-w-0 pt-1">
-              <span className="block text-lg font-semibold">{title}</span>
+            <span className="flex min-w-0 items-center gap-2 pt-1">
+              <span aria-hidden="true" className="text-lg font-semibold">{title}</span>
+              {info && (
+                <span className="pointer-events-auto relative z-20">
+                  <InfoTooltip label={info} />
+                </span>
+              )}
             </span>
             <ChevronDownIcon
               aria-hidden="true"
@@ -816,12 +823,7 @@ function SettingsPanel({
                 isExpanded ? "rotate-180" : ""
               }`}
             />
-          </button>
-          {info && (
-            <span className="absolute right-9 top-1.5">
-              <InfoTooltip label={info} />
-            </span>
-          )}
+          </div>
         </div>
       ) : (
         <div className="flex min-w-0 items-start gap-3">
