@@ -227,26 +227,6 @@ export function MoreVerticalIcon(props: IconProps) {
   );
 }
 
-export function SidebarCollapseIcon(props: IconProps) {
-  return (
-    <IconBase {...props}>
-      <rect height="16" rx="2" width="18" x="3" y="4" />
-      <path d="M9 4v16" />
-      <path d="m15 10-2 2 2 2" />
-    </IconBase>
-  );
-}
-
-export function SidebarExpandIcon(props: IconProps) {
-  return (
-    <IconBase {...props}>
-      <rect height="16" rx="2" width="18" x="3" y="4" />
-      <path d="M9 4v16" />
-      <path d="m13 10 2 2-2 2" />
-    </IconBase>
-  );
-}
-
 export function SlidersHorizontalIcon(props: IconProps) {
   return (
     <IconBase {...props}>

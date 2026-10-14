@@ -30,9 +30,11 @@ import {
 } from "@/components/ui/icons";
 import { TableActionMenu } from "@/components/ui/table-action-menu";
 import { TableToolbar } from "@/components/ui/table-toolbar";
+import { updateSelectedIds } from "@/components/ui/selection-utils";
 import { showToast } from "@/components/ui/toast-viewport";
 import { downloadCsv } from "@/lib/csv/client";
 import { formatDateTime } from "@/lib/presentation/formatters";
+import { archiveBulkActionsForFilter, matchesArchiveStatus, type ArchiveStatusFilter } from "@/components/ui/archive-status-filter";
 import type {
   GroupListItem,
   GroupMemberItem,
@@ -65,7 +67,7 @@ export function AdminGroupsPanel() {
   const [studentQuery, setStudentQuery] = useState("");
   const [studentResults, setStudentResults] =
     useState<StudentListItem[]>(emptyStudents);
-  const [showInactiveGroups, setShowInactiveGroups] = useState(false);
+  const [groupStatusFilter, setGroupStatusFilter] = useState<ArchiveStatusFilter>("active");
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [selectedStudents, setSelectedStudents] = useState<StudentListItem[]>(
     emptyStudents,
@@ -104,8 +106,14 @@ export function AdminGroupsPanel() {
   const availableStudentResults = studentResults.filter(
     (student) => !memberIds.has(student.id),
   );
-  const filteredGroups = groups.filter((group) =>
-    matchesGroupFilters(group, groupFilters),
+  const filteredGroups = groups.filter(
+    (group) =>
+      matchesGroupFilters(group, groupFilters) &&
+      matchesArchiveStatus(group.isActive, groupStatusFilter),
+  );
+  const selectedGroupIdSet = useMemo(
+    () => new Set(selectedGroupIds),
+    [selectedGroupIds],
   );
 
   useEffect(() => {
@@ -115,7 +123,7 @@ export function AdminGroupsPanel() {
       setIsLoadingGroups(true);
 
       try {
-        const loadedGroups = await listGroups(showInactiveGroups);
+        const loadedGroups = await listGroups(groupStatusFilter !== "active");
 
         if (isActive) {
           setGroups(loadedGroups);
@@ -145,7 +153,7 @@ export function AdminGroupsPanel() {
     return () => {
       isActive = false;
     };
-  }, [showInactiveGroups]);
+  }, [groupStatusFilter]);
 
   useEffect(() => {
     if (!selectedGroupId) {
@@ -189,7 +197,7 @@ export function AdminGroupsPanel() {
     setIsLoadingGroups(true);
 
     try {
-      const loadedGroups = await listGroups(showInactiveGroups);
+      const loadedGroups = await listGroups(groupStatusFilter !== "active");
 
       setGroups(loadedGroups);
       setSelectedGroupId((currentGroupId) =>
@@ -325,9 +333,7 @@ export function AdminGroupsPanel() {
 
   function handleGroupSelectionChange(groupId: string, isSelected: boolean) {
     setSelectedGroupIds((currentGroupIds) =>
-      isSelected
-        ? [...new Set([...currentGroupIds, groupId])]
-        : currentGroupIds.filter((currentGroupId) => currentGroupId !== groupId),
+      updateSelectedIds(currentGroupIds, [groupId], isSelected),
     );
   }
 
@@ -335,9 +341,7 @@ export function AdminGroupsPanel() {
     const visibleGroupIds = filteredGroups.map((group) => group.id);
 
     setSelectedGroupIds((currentGroupIds) =>
-      isSelected
-        ? [...new Set([...currentGroupIds, ...visibleGroupIds])]
-        : currentGroupIds.filter((groupId) => !visibleGroupIds.includes(groupId)),
+      updateSelectedIds(currentGroupIds, visibleGroupIds, isSelected),
     );
   }
 
@@ -379,7 +383,7 @@ export function AdminGroupsPanel() {
     }
     setError(null);
     setPendingGroupStatusChange(null);
-    if (!nextActiveState && !showInactiveGroups && selectedGroupId === group.id) {
+    if (!nextActiveState && groupStatusFilter === "active" && selectedGroupId === group.id) {
       setEditingGroup(null);
       setSelectedGroupId("");
       setMembers([]);
@@ -509,12 +513,13 @@ export function AdminGroupsPanel() {
     closeGroupDetails();
   }
 
-  function handleShowInactiveGroupsChange(showInactive: boolean) {
+  function handleGroupStatusFilterChange(status: ArchiveStatusFilter) {
     setMembers([]);
     setSelectedGroupId("");
+    setSelectedGroupIds([]);
     setSelectedMemberIds([]);
     clearSelectedStudents();
-    setShowInactiveGroups(showInactive);
+    setGroupStatusFilter(status);
   }
 
   function clearGroupFilters() {
@@ -524,7 +529,7 @@ export function AdminGroupsPanel() {
     setSelectedGroupIds([]);
     setSelectedMemberIds([]);
     clearSelectedStudents();
-    setShowInactiveGroups(false);
+    setGroupStatusFilter("active");
   }
 
   function handleStudentQueryChange(value: string) {
@@ -565,7 +570,7 @@ export function AdminGroupsPanel() {
             groupFilters.description ||
             groupFilters.memberMin ||
             groupFilters.memberMax ||
-            showInactiveGroups,
+            groupStatusFilter !== "active",
         )}
         isLoading={isLoadingGroups}
         onClearFilters={clearGroupFilters}
@@ -577,11 +582,11 @@ export function AdminGroupsPanel() {
         onGroupStatusChange={handleGroupStatusChange}
         onVisibleGroupsSelectionChange={handleVisibleGroupsSelectionChange}
         onFiltersChange={setGroupFilters}
-        onShowArchivedChange={handleShowInactiveGroupsChange}
+        onStatusFilterChange={handleGroupStatusFilterChange}
         filters={groupFilters}
         selectedGroupId={selectedGroupId}
         selectedGroupIds={selectedGroupIds}
-        showArchived={showInactiveGroups}
+        statusFilter={groupStatusFilter}
         totalGroupsCount={groups.length}
         toolbar={
           <TableToolbar
@@ -624,33 +629,34 @@ export function AdminGroupsPanel() {
                 </p>
               )}
               <BulkSelectionControls
-                actions={[
-                  {
-                    icon: <TrashIcon />,
-                    label: "Archive selected",
-                    onSelect: () =>
-                      setPendingBulkGroupStatusChange({
-                        groupIds: selectedGroupIds,
-                        isActive: false,
-                      }),
-                    tone: "danger",
-                  },
-                  {
-                    icon: <CheckIcon />,
-                    label: "Restore selected",
-                    onSelect: () =>
-                      setPendingBulkGroupStatusChange({
-                        groupIds: selectedGroupIds,
-                        isActive: true,
-                      }),
-                    tone: "success",
-                  },
-                ]}
+                actions={archiveBulkActionsForFilter(groupStatusFilter).map((action) =>
+                  action === "restore"
+                    ? {
+                        icon: <CheckIcon />,
+                        label: "Restore selected",
+                        onSelect: () =>
+                          setPendingBulkGroupStatusChange({
+                            groupIds: selectedGroupIds,
+                            isActive: true,
+                          }),
+                        tone: "success" as const,
+                      }
+                    : {
+                        icon: <TrashIcon />,
+                        label: "Archive selected",
+                        onSelect: () =>
+                          setPendingBulkGroupStatusChange({
+                            groupIds: selectedGroupIds,
+                            isActive: false,
+                          }),
+                        tone: "danger" as const,
+                      },
+                )}
                 allSelectedLabel="Select all groups"
                 isAllSelected={
                   filteredGroups.length > 0 &&
                   filteredGroups.every((group) =>
-                    selectedGroupIds.includes(group.id),
+                    selectedGroupIdSet.has(group.id),
                   )
                 }
                 onVisibleSelectionChange={handleVisibleGroupsSelectionChange}

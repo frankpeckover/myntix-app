@@ -6,6 +6,7 @@ import {
   RowSelectionCheckbox,
 } from "@/components/ui/bulk-selection-controls";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { archiveStatusFilterOptions } from "@/components/ui/archive-status-filter";
 import { TableActionGrid } from "@/components/ui/table-action-grid";
 import {
   TableHeaderFilter,
@@ -48,6 +49,9 @@ export function TimetableEntryTable({
   selectedEntryIds: string[];
   toolbar?: ReactNode;
 }) {
+  const selectedEntryIdSet = new Set(selectedEntryIds);
+  const selectableEntryIds = entries.map((entry) => entry.id);
+
   function updateFilter<Field extends keyof TimetableFiltersState>(
     field: Field,
     value: TimetableFiltersState[Field],
@@ -56,7 +60,7 @@ export function TimetableEntryTable({
   }
   const areAllVisibleEntriesSelected =
     entries.length > 0 &&
-    entries.every((entry) => selectedEntryIds.includes(entry.id));
+    entries.every((entry) => selectedEntryIdSet.has(entry.id));
 
   return (
     <>
@@ -70,7 +74,7 @@ export function TimetableEntryTable({
             onDuplicateEntry={onDuplicateEntry}
             onEntrySelectionChange={onEntrySelectionChange}
             onEditEntry={onEditEntry}
-            selected={selectedEntryIds.includes(entry.id)}
+            selected={selectedEntryIdSet.has(entry.id)}
           />
         ))}
       </div>
@@ -153,9 +157,9 @@ export function TimetableEntryTable({
             </th>
             <th scope="col" className="py-2 pr-4 font-semibold">
               <TableHeaderFilter
-                isActive={Boolean(filters.status)}
+                isActive={filters.status !== "active"}
                 label="Status"
-                onClear={() => updateFilter("status", "")}
+                onClear={() => updateFilter("status", "active")}
                 onSortDirectionChange={(direction) => onSortChange("status", direction)}
                 sortDirection={tableSort?.column === "status" ? tableSort.direction : null}
               >
@@ -164,11 +168,7 @@ export function TimetableEntryTable({
                   onChange={(value) =>
                     updateFilter("status", value as TimetableFiltersState["status"])
                   }
-                  options={[
-                    { label: "Any status", value: "" },
-                    { label: "Active", value: "active" },
-                    { label: "Archived", value: "archived" },
-                  ]}
+                  options={archiveStatusFilterOptions}
                   value={filters.status}
                 />
               </TableHeaderFilter>
@@ -182,11 +182,11 @@ export function TimetableEntryTable({
           {entries.map((entry) => (
             <tr className="border-b border-border-subtle" key={entry.id}>
               <DataTableSelectionCell
-                checked={selectedEntryIds.includes(entry.id)}
+                checked={selectedEntryIdSet.has(entry.id)}
                 label={`Select ${entry.groupName} timetable entry`}
                 rangeKey="timetable-table"
                 rowId={entry.id}
-                selectableRowIds={entries.map((row) => row.id)}
+                selectableRowIds={selectableEntryIds}
                 onRangeChange={(ids, isSelected) =>
                   ids.forEach((id) => onEntrySelectionChange(id, isSelected))
                 }

@@ -22,6 +22,7 @@ import { IconButton } from "@/components/ui/icon-button";
 import { LoadFailure } from "@/components/ui/load-failure";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import {
+  CheckIcon,
   FileDownIcon,
   FileUpIcon,
   ClockIcon,
@@ -35,6 +36,7 @@ import {
 } from "@/components/ui/list-pagination";
 import { TableActionMenu } from "@/components/ui/table-action-menu";
 import { TableToolbar } from "@/components/ui/table-toolbar";
+import { updateSelectedIds } from "@/components/ui/selection-utils";
 import {
   createTimetableEntry,
   setTimetableEntryActive,
@@ -53,6 +55,7 @@ import type {
   TimetableCycleSettings,
 } from "@/domains/timetable/timetable-service";
 import { sortTableItems, type TableSortDirection } from "@/components/ui/table-sorting";
+import { archiveBulkActionsForFilter, matchesArchiveStatus } from "@/components/ui/archive-status-filter";
 
 const emptyEntryForm: CreateTimetableEntryInput = {
   dayOfWeek: defaultTimetableDayIndex,
@@ -83,7 +86,10 @@ export function AdminTimetablePanel() {
   const [tableSort, setTableSort] = useState<{ column: string; direction: TableSortDirection } | null>(null);
   const [editingEntry, setEditingEntry] = useState<TimetableEntry | null>(null);
   const [deletingEntry, setDeletingEntry] = useState<TimetableEntry | null>(null);
-  const [deletingEntryIds, setDeletingEntryIds] = useState<string[]>([]);
+  const [pendingBulkEntryStatusChange, setPendingBulkEntryStatusChange] = useState<{
+    entryIds: string[];
+    isActive: boolean;
+  } | null>(null);
   const [selectedEntryIds, setSelectedEntryIds] = useState<string[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -113,10 +119,16 @@ export function AdminTimetablePanel() {
     }),
     [filteredEntries, tableSort],
   );
+  const selectedEntryIdSet = useMemo(
+    () => new Set(selectedEntryIds),
+    [selectedEntryIds],
+  );
   const {
     page,
     pageItems: visibleEntries,
+    pageSize,
     setPage,
+    setPageSize,
     totalPages,
   } = usePagedList(sortedEntries);
 
@@ -129,7 +141,7 @@ export function AdminTimetablePanel() {
 
     try {
       const [loadedEntries, loadedTeachers, loadedGroups, loadedCycleSettings] = await Promise.all([
-        listTimetableEntries(false),
+        listTimetableEntries(true),
         listTimetableTeachers(),
         listGroups(false),
         getTimetableCycleSettings(),
@@ -198,9 +210,7 @@ export function AdminTimetablePanel() {
 
   function handleEntrySelectionChange(entryId: string, isSelected: boolean) {
     setSelectedEntryIds((currentEntryIds) =>
-      isSelected
-        ? [...new Set([...currentEntryIds, entryId])]
-        : currentEntryIds.filter((currentEntryId) => currentEntryId !== entryId),
+      updateSelectedIds(currentEntryIds, [entryId], isSelected),
     );
   }
 
@@ -208,9 +218,7 @@ export function AdminTimetablePanel() {
     const visibleEntryIds = visibleEntries.map((entry) => entry.id);
 
     setSelectedEntryIds((currentEntryIds) =>
-      isSelected
-        ? [...new Set([...currentEntryIds, ...visibleEntryIds])]
-        : currentEntryIds.filter((entryId) => !visibleEntryIds.includes(entryId)),
+      updateSelectedIds(currentEntryIds, visibleEntryIds, isSelected),
     );
   }
 
@@ -241,13 +249,16 @@ export function AdminTimetablePanel() {
     await refreshTimetable();
   }
 
-  async function confirmBulkDeleteEntries() {
-    if (deletingEntryIds.length === 0) {
+  async function confirmBulkSetEntryActive() {
+    if (!pendingBulkEntryStatusChange) {
       return;
     }
 
-    for (const entryId of deletingEntryIds) {
-      const result = await setTimetableEntryActive(entryId, false);
+    for (const entryId of pendingBulkEntryStatusChange.entryIds) {
+      const result = await setTimetableEntryActive(
+        entryId,
+        pendingBulkEntryStatusChange.isActive,
+      );
 
       if (!result.ok) {
         setError(result.message);
@@ -255,10 +266,12 @@ export function AdminTimetablePanel() {
       }
     }
 
-    const archivedCount = deletingEntryIds.length;
-    setDeletingEntryIds([]);
+    const { entryIds, isActive } = pendingBulkEntryStatusChange;
+    setPendingBulkEntryStatusChange(null);
     setSelectedEntryIds([]);
-    setMessage(`${archivedCount} timetable entries archived.`);
+    setMessage(
+      `${entryIds.length} timetable entries ${isActive ? "restored" : "archived"}.`,
+    );
     setError(null);
     await refreshTimetable();
   }
@@ -402,14 +415,14 @@ export function AdminTimetablePanel() {
         />
       )}
 
-      {deletingEntryIds.length > 0 && (
+      {pendingBulkEntryStatusChange && (
         <ConfirmationModal
-          confirmLabel="Archive Entries"
-          description={`Archive ${deletingEntryIds.length} selected timetable entries?`}
-          onCancel={() => setDeletingEntryIds([])}
-          onConfirm={confirmBulkDeleteEntries}
-          title="Archive selected timetable entries"
-          tone="danger"
+          confirmLabel={pendingBulkEntryStatusChange.isActive ? "Restore Entries" : "Archive Entries"}
+          description={`${pendingBulkEntryStatusChange.isActive ? "Restore" : "Archive"} ${pendingBulkEntryStatusChange.entryIds.length} selected timetable entries?`}
+          onCancel={() => setPendingBulkEntryStatusChange(null)}
+          onConfirm={confirmBulkSetEntryActive}
+          title={`${pendingBulkEntryStatusChange.isActive ? "Restore" : "Archive"} selected timetable entries`}
+          tone={pendingBulkEntryStatusChange.isActive ? "success" : "danger"}
         />
       )}
 
@@ -469,7 +482,12 @@ export function AdminTimetablePanel() {
               onDuplicateEntry={handleDuplicateEntry}
               onEntrySelectionChange={handleEntrySelectionChange}
               onEditEntry={handleEditEntry}
-              onFiltersChange={setFilters}
+              onFiltersChange={(nextFilters) => {
+                if (nextFilters.status !== filters.status) {
+                  setSelectedEntryIds([]);
+                }
+                setFilters(nextFilters);
+              }}
               onVisibleEntriesSelectionChange={handleVisibleEntriesSelectionChange}
               selectedEntryIds={selectedEntryIds}
               toolbar={
@@ -515,19 +533,34 @@ export function AdminTimetablePanel() {
                       Showing {visibleEntries.length} of {filteredEntries.length} timetable entries.
                     </p>
                     <BulkSelectionControls
-                      actions={[
-                        {
-                          icon: <TrashIcon />,
-                          label: "Archive selected",
-                          onSelect: () => setDeletingEntryIds(selectedEntryIds),
-                          tone: "danger",
-                        },
-                      ]}
+                      actions={archiveBulkActionsForFilter(filters.status).map((action) =>
+                        action === "restore"
+                          ? {
+                              icon: <CheckIcon />,
+                              label: "Restore selected",
+                              onSelect: () =>
+                                setPendingBulkEntryStatusChange({
+                                  entryIds: selectedEntryIds,
+                                  isActive: true,
+                                }),
+                              tone: "success" as const,
+                            }
+                          : {
+                              icon: <TrashIcon />,
+                              label: "Archive selected",
+                              onSelect: () =>
+                                setPendingBulkEntryStatusChange({
+                                  entryIds: selectedEntryIds,
+                                  isActive: false,
+                                }),
+                              tone: "danger" as const,
+                            },
+                      )}
                       allSelectedLabel="Select all timetable entries"
                       isAllSelected={
                         visibleEntries.length > 0 &&
                         visibleEntries.every((entry) =>
-                          selectedEntryIds.includes(entry.id),
+                          selectedEntryIdSet.has(entry.id),
                         )
                       }
                       onVisibleSelectionChange={
@@ -558,7 +591,9 @@ export function AdminTimetablePanel() {
             {filteredEntries.length > 0 && (
               <ListPagination
                 onPageChange={setPage}
+                onPageSizeChange={setPageSize}
                 page={page}
+                pageSize={pageSize}
                 totalCount={filteredEntries.length}
                 totalPages={totalPages}
               />
@@ -578,8 +613,7 @@ function matchesTimetableFilters(
     includesFilter(entry.teacherName, filters.teacherName) &&
     includesFilter(entry.groupName, filters.groupName) &&
     (!filters.dayOfWeek || entry.dayOfWeek === Number(filters.dayOfWeek)) &&
-    (!filters.status ||
-      (filters.status === "active" ? entry.isActive : !entry.isActive))
+    matchesArchiveStatus(entry.isActive, filters.status)
   );
 }
 

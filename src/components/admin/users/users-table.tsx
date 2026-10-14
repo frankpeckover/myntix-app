@@ -25,6 +25,7 @@ import {
 import { formatDateTime } from "@/lib/presentation/formatters";
 import type { UserListItem } from "@/domains/users/user-service";
 import type { TableSortDirection } from "@/components/ui/table-sorting";
+import { archiveStatusFilterOptions, type ArchiveStatusFilter } from "@/components/ui/archive-status-filter";
 
 type UsersTableProps = {
   filters: UserFilters;
@@ -32,13 +33,13 @@ type UsersTableProps = {
   onDuplicate: (user: UserListItem) => void;
   onEdit: (user: UserListItem) => void;
   onPasswordReset: (user: UserListItem) => void;
-  onShowInactiveUsersChange: (showInactiveUsers: boolean) => void;
+  onStatusFilterChange: (status: ArchiveStatusFilter) => void;
   onSortChange: (column: string, direction: TableSortDirection | null) => void;
   onUserSelectionChange: (userId: string, isSelected: boolean) => void;
   onUserActiveChange: (user: UserListItem, isActive: boolean) => void;
   onVisibleUsersSelectionChange: (isSelected: boolean) => void;
   selectedUserIds: string[];
-  showInactiveUsers: boolean;
+  statusFilter: ArchiveStatusFilter;
   tableSort: { column: string; direction: TableSortDirection } | null;
   toolbar?: ReactNode;
   users: UserListItem[];
@@ -50,17 +51,20 @@ export function UsersTable({
   onDuplicate,
   onEdit,
   onPasswordReset,
-  onShowInactiveUsersChange,
+  onStatusFilterChange,
   onSortChange,
   onUserSelectionChange,
   onUserActiveChange,
   onVisibleUsersSelectionChange,
   selectedUserIds,
-  showInactiveUsers,
+  statusFilter,
   tableSort,
   toolbar,
   users,
 }: UsersTableProps) {
+  const selectedUserIdSet = new Set(selectedUserIds);
+  const selectableUserIds = users.map((user) => user.id);
+
   function updateFilter<Field extends keyof UserFilters>(
     field: Field,
     value: UserFilters[Field],
@@ -68,7 +72,7 @@ export function UsersTable({
     onFiltersChange({ ...filters, [field]: value });
   }
   const areAllVisibleUsersSelected =
-    users.length > 0 && users.every((user) => selectedUserIds.includes(user.id));
+    users.length > 0 && users.every((user) => selectedUserIdSet.has(user.id));
 
   return (
     <>
@@ -82,7 +86,7 @@ export function UsersTable({
             onPasswordReset={onPasswordReset}
             onSelectionChange={onUserSelectionChange}
             onUserActiveChange={onUserActiveChange}
-            selected={selectedUserIds.includes(user.id)}
+            selected={selectedUserIdSet.has(user.id)}
             user={user}
           />
         ))}
@@ -217,22 +221,17 @@ export function UsersTable({
             </th>
             <th scope="col" className="py-3 pr-4 font-semibold">
               <TableHeaderFilter
-                isActive={showInactiveUsers}
+                isActive={statusFilter !== "active"}
                 label="Status"
-                onClear={() => onShowInactiveUsersChange(false)}
+                onClear={() => onStatusFilterChange("active")}
                 onSortDirectionChange={(direction) => onSortChange("status", direction)}
                 sortDirection={tableSort?.column === "status" ? tableSort.direction : null}
               >
                 <TableHeaderFilterSelect
                   label="Status"
-                  onChange={(value) =>
-                    onShowInactiveUsersChange(value === "includeInactive")
-                  }
-                  options={[
-                    { label: "Active only", value: "activeOnly" },
-                    { label: "Include archived", value: "includeInactive" },
-                  ]}
-                  value={showInactiveUsers ? "includeInactive" : "activeOnly"}
+                  onChange={(value) => onStatusFilterChange(value as ArchiveStatusFilter)}
+                  options={archiveStatusFilterOptions}
+                  value={statusFilter}
                 />
               </TableHeaderFilter>
             </th>
@@ -245,11 +244,11 @@ export function UsersTable({
           {users.map((user) => (
             <tr className="border-b border-border-subtle" key={user.id}>
               <DataTableSelectionCell
-                checked={selectedUserIds.includes(user.id)}
+                checked={selectedUserIdSet.has(user.id)}
                 label={`Select ${user.displayName}`}
                 rangeKey="users-table"
                 rowId={user.id}
-                selectableRowIds={users.map((row) => row.id)}
+                selectableRowIds={selectableUserIds}
                 onRangeChange={(ids, isSelected) =>
                   ids.forEach((id) => onUserSelectionChange(id, isSelected))
                 }

@@ -1,12 +1,13 @@
 import type { UserListItem } from "@/domains/users/user-service";
 import type { UserFilters } from "@/components/admin/users/user-management-types";
+import { matchesArchiveStatus, type ArchiveStatusFilter } from "@/components/ui/archive-status-filter";
 
 export function matchesUserFilters(
   user: UserListItem,
   filters: UserFilters,
-  showInactiveUsers: boolean,
+  statusFilter: ArchiveStatusFilter,
 ) {
-  if (!showInactiveUsers && !user.isActive) {
+  if (!matchesArchiveStatus(user.isActive, statusFilter)) {
     return false;
   }
 

@@ -156,13 +156,13 @@ export function StudentGoalCard({
 
   return (
     <article
-      className={`student-dashboard-card student-goal-card relative h-full overflow-hidden rounded-3xl border border-transparent bg-surface p-5 ${className}`}
+      className={`student-dashboard-card student-goal-card relative h-full overflow-hidden rounded-2xl border border-transparent bg-surface p-5 ${className}`}
     >
       <GoalCelebration isVisible={showGoalCelebration} />
 
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand-soft text-brand">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center text-brand">
             <TargetIcon className="h-4 w-4" />
           </span>
           <PanelTitle

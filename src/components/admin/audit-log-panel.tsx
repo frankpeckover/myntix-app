@@ -101,7 +101,9 @@ export function AdminAuditLogPanel() {
   const {
     page,
     pageItems: visibleEntries,
+    pageSize,
     setPage,
+    setPageSize,
     totalPages,
   } = usePagedList(sortedEntries);
 
@@ -175,7 +177,9 @@ export function AdminAuditLogPanel() {
             {sortedEntries.length > 0 && (
               <ListPagination
                 onPageChange={setPage}
+                onPageSizeChange={setPageSize}
                 page={page}
+                pageSize={pageSize}
                 totalCount={sortedEntries.length}
                 totalPages={totalPages}
               />

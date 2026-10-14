@@ -35,12 +35,14 @@ import {
 } from "@/components/ui/list-pagination";
 import { TableActionMenu } from "@/components/ui/table-action-menu";
 import { TableToolbar } from "@/components/ui/table-toolbar";
+import { updateSelectedIds } from "@/components/ui/selection-utils";
 import { showToast } from "@/components/ui/toast-viewport";
 import { downloadCsv } from "@/lib/csv/client";
 import { formatDateTime } from "@/lib/presentation/formatters";
 import type { UserListItem } from "@/domains/users/user-service";
 import { sortTableItems, type TableSortDirection } from "@/components/ui/table-sorting";
 import type { UserFormState } from "@/components/admin/users/user-modal-types";
+import { archiveBulkActionsForFilter, type ArchiveStatusFilter } from "@/components/ui/archive-status-filter";
 
 type AdminUsersPanelProps = {
   schoolName: string;
@@ -50,7 +52,7 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
   const [users, setUsers] = useState<UserListItem[]>([]);
   const [filters, setFilters] = useState<UserFilters>(emptyFilters);
   const [tableSort, setTableSort] = useState<{ column: string; direction: TableSortDirection } | null>(null);
-  const [showInactiveUsers, setShowInactiveUsers] = useState(false);
+  const [userStatusFilter, setUserStatusFilter] = useState<ArchiveStatusFilter>("active");
   const [duplicatingUserForm, setDuplicatingUserForm] =
     useState<Partial<UserFormState> | null>(null);
   const [editingUser, setEditingUser] = useState<UserListItem | null>(null);
@@ -151,19 +153,20 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
 
   function handleUserSelectionChange(userId: string, isSelected: boolean) {
     setSelectedUserIds((currentUserIds) =>
-      isSelected
-        ? [...new Set([...currentUserIds, userId])]
-        : currentUserIds.filter((currentUserId) => currentUserId !== userId),
+      updateSelectedIds(currentUserIds, [userId], isSelected),
     );
+  }
+
+  function handleUserStatusFilterChange(status: ArchiveStatusFilter) {
+    setSelectedUserIds([]);
+    setUserStatusFilter(status);
   }
 
   function handleVisibleUsersSelectionChange(isSelected: boolean) {
     const visibleUserIds = visibleUsers.map((user) => user.id);
 
     setSelectedUserIds((currentUserIds) =>
-      isSelected
-        ? [...new Set([...currentUserIds, ...visibleUserIds])]
-        : currentUserIds.filter((userId) => !visibleUserIds.includes(userId)),
+      updateSelectedIds(currentUserIds, visibleUserIds, isSelected),
     );
   }
 
@@ -246,9 +249,13 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
   const filteredUsers = useMemo(
     () =>
       users.filter((user) =>
-        matchesUserFilters(user, filters, showInactiveUsers),
+        matchesUserFilters(user, filters, userStatusFilter),
       ),
-    [filters, showInactiveUsers, users],
+    [filters, userStatusFilter, users],
+  );
+  const selectedUserIdsSet = useMemo(
+    () => new Set(selectedUserIds),
+    [selectedUserIds],
   );
   const sortedUsers = useMemo(
     () => sortTableItems(filteredUsers, tableSort, (user, column) => {
@@ -267,13 +274,15 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
   const {
     page,
     pageItems: visibleUsers,
+    pageSize,
     setPage,
+    setPageSize,
     totalPages,
   } = usePagedList(sortedUsers);
 
   function clearUserFilters() {
     setFilters(emptyFilters);
-    setShowInactiveUsers(false);
+    setUserStatusFilter("active");
     setSelectedUserIds([]);
   }
 
@@ -297,14 +306,14 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
               onDuplicate={handleDuplicateUser}
               onEdit={setEditingUser}
               onPasswordReset={setResettingPasswordUser}
-              onShowInactiveUsersChange={setShowInactiveUsers}
+              onStatusFilterChange={handleUserStatusFilterChange}
               onSortChange={(column, direction) => setTableSort(direction ? { column, direction } : null)}
               tableSort={tableSort}
               onUserSelectionChange={handleUserSelectionChange}
               onUserActiveChange={handleSetUserActive}
               onVisibleUsersSelectionChange={handleVisibleUsersSelectionChange}
               selectedUserIds={selectedUserIds}
-              showInactiveUsers={showInactiveUsers}
+              statusFilter={userStatusFilter}
               toolbar={
                 <TableToolbar
                   actions={
@@ -343,33 +352,34 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
                       totalCount={sortedUsers.length}
                     />
                     <BulkSelectionControls
-                      actions={[
-                        {
-                          icon: <CheckIcon />,
-                          label: "Restore selected",
-                          onSelect: () =>
-                            setPendingBulkUserStatusChange({
-                              isActive: true,
-                              userIds: selectedUserIds,
-                            }),
-                          tone: "success",
-                        },
-                        {
-                          icon: <TrashIcon />,
-                          label: "Archive selected",
-                          onSelect: () =>
-                            setPendingBulkUserStatusChange({
-                              isActive: false,
-                              userIds: selectedUserIds,
-                            }),
-                          tone: "danger",
-                        },
-                      ]}
+                      actions={archiveBulkActionsForFilter(userStatusFilter).map((action) =>
+                        action === "restore"
+                          ? {
+                              icon: <CheckIcon />,
+                              label: "Restore selected",
+                              onSelect: () =>
+                                setPendingBulkUserStatusChange({
+                                  isActive: true,
+                                  userIds: selectedUserIds,
+                                }),
+                              tone: "success" as const,
+                            }
+                          : {
+                              icon: <TrashIcon />,
+                              label: "Archive selected",
+                              onSelect: () =>
+                                setPendingBulkUserStatusChange({
+                                  isActive: false,
+                                  userIds: selectedUserIds,
+                                }),
+                              tone: "danger" as const,
+                            },
+                      )}
                       allSelectedLabel="Select all users"
                       isAllSelected={
                         visibleUsers.length > 0 &&
                         visibleUsers.every((user) =>
-                          selectedUserIds.includes(user.id),
+                          selectedUserIdsSet.has(user.id),
                         )
                       }
                       onVisibleSelectionChange={
@@ -401,7 +411,9 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
             {filteredUsers.length > 0 && (
               <ListPagination
                 onPageChange={setPage}
+                onPageSizeChange={setPageSize}
                 page={page}
+                pageSize={pageSize}
                 totalCount={sortedUsers.length}
                 totalPages={totalPages}
               />

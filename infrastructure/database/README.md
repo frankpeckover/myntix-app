@@ -36,13 +36,16 @@ infrastructure/database/tenant/07-notifications.sql
 infrastructure/database/tenant/08-user-preferences.sql
 infrastructure/database/tenant/09-directory-sync.sql
 infrastructure/database/tenant/10-timetable-cycles.sql
+infrastructure/database/tenant/11-query-performance.sql
 infrastructure/database/tenant/99-access.sql
 ```
 
 Scripts `00` through `04` establish the core organisation, identity, ledger,
 groups/timetable, and rewards features. Apply `05` through `10` for SSO, API
-clients, notifications, account preferences, directory sync, and timetable
-cycles. Run `99-access.sql` last after all tenant tables exist.
+clients, notifications, account preferences, directory sync, timetable
+cycles, and query-performance indexes. Run `99-access.sql` last after all
+tenant tables exist. Apply new numbered modules to existing production tenants
+as forward migrations.
 
 For a schema tenant, set the schema on the same connection before running each
 tenant module:

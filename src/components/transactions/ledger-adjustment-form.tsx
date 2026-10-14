@@ -750,19 +750,22 @@ function TransactionImpactSummary({
       aria-live="polite"
       className="border-t border-border-subtle pt-3"
     >
-      <p className="text-sm text-text-control">
-        <span className="font-semibold">{isAdding ? "Add" : "Take"}</span>{" "}
-        <span className="font-number font-semibold">{formatAmount(amount)}</span>{" "}
-        {currencyName} {isAdding ? "to" : "from"}{" "}
-        <span className="font-semibold">
-          {students.length} student{students.length === 1 ? "" : "s"}
-        </span>
-        :{" "}
-        <span className="font-number font-semibold text-brand-ink">
-          {formatAmount(totalImpact)}
-        </span>{" "}
-        {currencyName} total.
-      </p>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <p className="text-sm text-text-control">
+          <span className="font-semibold">{isAdding ? "Add" : "Take"}</span>{" "}
+          <span className="font-number font-semibold">{formatAmount(amount)}</span>{" "}
+          {currencyName} {isAdding ? "to" : "from"}{" "}
+          <span className="font-semibold">
+            {students.length} student{students.length === 1 ? "" : "s"}
+          </span>
+        </p>
+        <p className="ml-auto text-right text-sm text-text-muted">
+          <span className="font-number text-base font-semibold text-brand-ink">
+            {formatAmount(totalImpact)}
+          </span>{" "}
+          {currencyName} total
+        </p>
+      </div>
 
       {partialStudents.length > 0 && (
         <details className="mt-2 rounded-md border border-warning-border bg-warning-soft px-3 py-2 text-sm">

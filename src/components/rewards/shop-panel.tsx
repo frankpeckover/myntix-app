@@ -62,6 +62,8 @@ import { TableToolbar } from "@/components/ui/table-toolbar";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { sortTableItems, type TableSortDirection } from "@/components/ui/table-sorting";
+import { updateSelectedIds } from "@/components/ui/selection-utils";
+import { archiveBulkActionsForFilter, archiveStatusFilterOptions, matchesArchiveStatus, type ArchiveStatusFilter } from "@/components/ui/archive-status-filter";
 
 type ShopPanelProps = {
   currencyName: string;
@@ -73,7 +75,7 @@ type ShopFiltersState = {
   name: string;
   priceMax: string;
   priceMin: string;
-  showArchivedItems: boolean;
+  statusFilter: ArchiveStatusFilter;
 };
 
 export function ShopPanel({ currencyName, currentUser }: ShopPanelProps) {
@@ -84,14 +86,17 @@ export function ShopPanel({ currencyName, currentUser }: ShopPanelProps) {
     name: "",
     priceMax: "",
     priceMin: "",
-    showArchivedItems: false,
+    statusFilter: "active",
   });
   const [tableSort, setTableSort] = useState<{ column: string; direction: TableSortDirection } | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
   const [requestedItemIds, setRequestedItemIds] = useState<string[]>([]);
   const [duplicatingItem, setDuplicatingItem] = useState<ShopItem | null>(null);
   const [editingItem, setEditingItem] = useState<ShopItem | null>(null);
-  const [removingItemIds, setRemovingItemIds] = useState<string[]>([]);
+  const [pendingBulkItemStatusChange, setPendingBulkItemStatusChange] = useState<{
+    itemIds: string[];
+    isActive: boolean;
+  } | null>(null);
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [viewingItem, setViewingItem] = useState<ShopItem | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -246,9 +251,7 @@ export function ShopPanel({ currencyName, currentUser }: ShopPanelProps) {
 
   function handleItemSelectionChange(itemId: string, isSelected: boolean) {
     setSelectedItemIds((currentItemIds) =>
-      isSelected
-        ? [...new Set([...currentItemIds, itemId])]
-        : currentItemIds.filter((currentItemId) => currentItemId !== itemId),
+      updateSelectedIds(currentItemIds, [itemId], isSelected),
     );
   }
 
@@ -256,19 +259,20 @@ export function ShopPanel({ currencyName, currentUser }: ShopPanelProps) {
     const visibleItemIds = pageItems.map((item) => item.id);
 
     setSelectedItemIds((currentItemIds) =>
-      isSelected
-        ? [...new Set([...currentItemIds, ...visibleItemIds])]
-        : currentItemIds.filter((itemId) => !visibleItemIds.includes(itemId)),
+      updateSelectedIds(currentItemIds, visibleItemIds, isSelected),
     );
   }
 
-  async function confirmBulkRemoveItems() {
-    if (removingItemIds.length === 0) {
+  async function confirmBulkSetItemActive() {
+    if (!pendingBulkItemStatusChange) {
       return;
     }
 
-    for (const itemId of removingItemIds) {
-      const result = await removeShopItem(itemId);
+    for (const itemId of pendingBulkItemStatusChange.itemIds) {
+      const result = await setShopItemActive(
+        itemId,
+        pendingBulkItemStatusChange.isActive,
+      );
 
       if (!result.ok) {
         setError(result.message);
@@ -276,9 +280,10 @@ export function ShopPanel({ currencyName, currentUser }: ShopPanelProps) {
       }
     }
 
-    setMessage(`${removingItemIds.length} reward items archived.`);
+    const { itemIds, isActive } = pendingBulkItemStatusChange;
+    setMessage(`${itemIds.length} reward items ${isActive ? "restored" : "archived"}.`);
     setError(null);
-    setRemovingItemIds([]);
+    setPendingBulkItemStatusChange(null);
     setSelectedItemIds([]);
     await refreshItems();
   }
@@ -352,7 +357,7 @@ export function ShopPanel({ currencyName, currentUser }: ShopPanelProps) {
       name: "",
       priceMax: "",
       priceMin: "",
-      showArchivedItems: false,
+      statusFilter: "active",
     });
     setSelectedItemIds([]);
   }
@@ -362,7 +367,7 @@ export function ShopPanel({ currencyName, currentUser }: ShopPanelProps) {
       items.filter((item) =>
         matchesShopFilters(item, {
           ...filters,
-          showArchivedItems: canManage && filters.showArchivedItems,
+          statusFilter: canManage ? filters.statusFilter : "active",
         }),
       ),
     [canManage, filters, items],
@@ -383,7 +388,9 @@ export function ShopPanel({ currencyName, currentUser }: ShopPanelProps) {
   const {
     page,
     pageItems,
+    pageSize,
     setPage,
+    setPageSize,
     totalPages,
   } = usePagedList(sortedItems);
 
@@ -415,10 +422,15 @@ export function ShopPanel({ currencyName, currentUser }: ShopPanelProps) {
           onSearchChange={(field, value) => updateFilter(field, value)}
           onSelectionChange={handleItemSelectionChange}
           onVisibleItemsSelectionChange={handleVisibleItemsSelectionChange}
-          onShowArchivedItemsChange={(value) =>
-            updateFilter("showArchivedItems", value)
+          onStatusFilterChange={(value) =>
+            {
+              setSelectedItemIds([]);
+              updateFilter("statusFilter", value);
+            }
           }
-          onBulkRemove={(itemIds) => setRemovingItemIds(itemIds)}
+          onBulkStatusChange={(itemIds, isActive) =>
+            setPendingBulkItemStatusChange({ itemIds, isActive })
+          }
           onView={setViewingItem}
           selectedItemIds={selectedItemIds}
           totalItemCount={items.length}
@@ -442,7 +454,9 @@ export function ShopPanel({ currencyName, currentUser }: ShopPanelProps) {
       {!isLoading && visibleItems.length > 0 && (
         <ListPagination
           onPageChange={setPage}
+          onPageSizeChange={setPageSize}
           page={page}
+          pageSize={pageSize}
           totalCount={visibleItems.length}
           totalPages={totalPages}
         />
@@ -496,14 +510,14 @@ export function ShopPanel({ currencyName, currentUser }: ShopPanelProps) {
         />
       )}
 
-      {removingItemIds.length > 0 && (
+      {pendingBulkItemStatusChange && (
         <ConfirmationModal
-          confirmLabel="Archive Rewards"
-          description={`Archive ${removingItemIds.length} selected reward items?`}
-          onCancel={() => setRemovingItemIds([])}
-          onConfirm={confirmBulkRemoveItems}
-          title="Archive selected rewards"
-          tone="danger"
+          confirmLabel={pendingBulkItemStatusChange.isActive ? "Restore Rewards" : "Archive Rewards"}
+          description={`${pendingBulkItemStatusChange.isActive ? "Restore" : "Archive"} ${pendingBulkItemStatusChange.itemIds.length} selected reward items?`}
+          onCancel={() => setPendingBulkItemStatusChange(null)}
+          onConfirm={confirmBulkSetItemActive}
+          title={`${pendingBulkItemStatusChange.isActive ? "Restore" : "Archive"} selected rewards`}
+          tone={pendingBulkItemStatusChange.isActive ? "success" : "danger"}
         />
       )}
     </section>
@@ -526,11 +540,11 @@ function ShopManagementList({
   onPriceMinChange,
   onStatusChange,
   onSearchChange,
-  onBulkRemove,
+  onBulkStatusChange,
   onClearFilters,
   onSelectionChange,
   onVisibleItemsSelectionChange,
-  onShowArchivedItemsChange,
+  onStatusFilterChange,
   onView,
   selectedItemIds,
   totalItemCount,
@@ -554,18 +568,20 @@ function ShopManagementList({
     field: "description" | "name",
     value: string,
   ) => void;
-  onBulkRemove: (itemIds: string[]) => void;
+  onBulkStatusChange: (itemIds: string[], isActive: boolean) => void;
   onClearFilters: () => void;
   onSelectionChange: (itemId: string, isSelected: boolean) => void;
   onVisibleItemsSelectionChange: (isSelected: boolean) => void;
-  onShowArchivedItemsChange: (value: boolean) => void;
+  onStatusFilterChange: (value: ArchiveStatusFilter) => void;
   onView: (item: ShopItem) => void;
   selectedItemIds: string[];
   totalItemCount: number;
   visibleItemCount: number;
 }) {
+  const selectedItemIdSet = new Set(selectedItemIds);
+  const selectableItemIds = items.map((item) => item.id);
   const areAllVisibleItemsSelected =
-    items.length > 0 && items.every((item) => selectedItemIds.includes(item.id));
+    items.length > 0 && items.every((item) => selectedItemIdSet.has(item.id));
   const tableToolbar = (
     <TableToolbar
       actions={
@@ -602,15 +618,23 @@ function ShopManagementList({
           Showing {items.length} of {visibleItemCount} rewards.
         </p>
         <BulkSelectionControls
-          actions={[
-            {
-              disabled: selectedItemIds.length === 0,
-              icon: <TrashIcon />,
-              label: "Archive selected",
-              onSelect: () => onBulkRemove(selectedItemIds),
-              tone: "danger",
-            },
-          ]}
+          actions={archiveBulkActionsForFilter(filters.statusFilter).map((action) =>
+            action === "restore"
+              ? {
+                  disabled: selectedItemIds.length === 0,
+                  icon: <CheckIcon />,
+                  label: "Restore selected",
+                  onSelect: () => onBulkStatusChange(selectedItemIds, true),
+                  tone: "success" as const,
+                }
+              : {
+                  disabled: selectedItemIds.length === 0,
+                  icon: <TrashIcon />,
+                  label: "Archive selected",
+                  onSelect: () => onBulkStatusChange(selectedItemIds, false),
+                  tone: "danger" as const,
+                },
+          )}
           allSelectedLabel="Select all rewards"
           isAllSelected={areAllVisibleItemsSelected}
           onVisibleSelectionChange={onVisibleItemsSelectionChange}
@@ -740,26 +764,17 @@ function ShopManagementList({
             </th>
             <th scope="col" className="py-2 pr-4 font-semibold">
               <TableHeaderFilter
-                isActive={filters.showArchivedItems}
+                isActive={filters.statusFilter !== "active"}
                 label="Status"
-                onClear={() => onShowArchivedItemsChange(false)}
+                onClear={() => onStatusFilterChange("active")}
                 onSortDirectionChange={(direction) => onSortChange("status", direction)}
                 sortDirection={tableSort?.column === "status" ? tableSort.direction : null}
               >
                 <TableHeaderFilterSelect
                   label="Status"
-                  onChange={(value) =>
-                    onShowArchivedItemsChange(value === "includeArchived")
-                  }
-                  options={[
-                    { label: "Active only", value: "activeOnly" },
-                    { label: "Include archived", value: "includeArchived" },
-                  ]}
-                  value={
-                    filters.showArchivedItems
-                      ? "includeArchived"
-                      : "activeOnly"
-                  }
+                  onChange={(value) => onStatusFilterChange(value as ArchiveStatusFilter)}
+                  options={archiveStatusFilterOptions}
+                  value={filters.statusFilter}
                 />
               </TableHeaderFilter>
             </th>
@@ -772,11 +787,11 @@ function ShopManagementList({
           {items.map((item) => (
             <tr className="border-b border-border-subtle" key={item.id}>
               <DataTableSelectionCell
-                checked={selectedItemIds.includes(item.id)}
+                checked={selectedItemIdSet.has(item.id)}
                 label={`Select ${item.name}`}
                 rangeKey="rewards-table"
                 rowId={item.id}
-                selectableRowIds={items.map((row) => row.id)}
+                selectableRowIds={selectableItemIds}
                 onRangeChange={(ids, isSelected) =>
                   ids.forEach((id) => onSelectionChange(id, isSelected))
                 }
@@ -829,7 +844,7 @@ function ShopManagementList({
             onStatusChange={onStatusChange}
             onSelectionChange={onSelectionChange}
             onView={onView}
-            selected={selectedItemIds.includes(item.id)}
+            selected={selectedItemIdSet.has(item.id)}
           />
         ))}
       </div>
@@ -1100,7 +1115,7 @@ function ShopEmptyState({
 }
 
 function matchesShopFilters(item: ShopItem, filters: ShopFiltersState) {
-  if (!filters.showArchivedItems && !item.isActive) {
+  if (!matchesArchiveStatus(item.isActive, filters.statusFilter)) {
     return false;
   }
 

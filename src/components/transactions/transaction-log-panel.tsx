@@ -1,21 +1,27 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { listTransactionLog, voidTransaction } from "@/lib/actions";
+import {
+  exportTransactionLog,
+  listTransactionLogPage,
+  voidTransaction,
+} from "@/lib/actions";
 import { downloadCsv } from "@/lib/csv/client";
 import {
   canViewAllTransactions,
   canVoidTransactions,
 } from "@/lib/auth/permissions";
 import type { SessionUser } from "@/lib/auth/session";
-import type { TransactionLogItem } from "@/domains/ledger/transaction-service";
+import type {
+  TransactionLogItem,
+  TransactionLogSort,
+} from "@/domains/ledger/transaction-service";
 import { getSignedAmountTextClassName } from "@/lib/presentation/amount-style";
 import {
   formatDateTime,
   formatSignedAmount,
 } from "@/lib/presentation/formatters";
-import { matchesTransactionFilters } from "@/components/transactions/transaction-filter-utils";
 import { TransactionDetailsModal } from "@/components/transactions/transaction-details-modal";
 import {
   emptyTransactionFilters,
@@ -37,7 +43,7 @@ import {
 } from "@/components/ui/icons";
 import {
   ListPagination,
-  usePagedList,
+  useResponsiveListPageSize,
 } from "@/components/ui/list-pagination";
 import {
   TableActionMenu,
@@ -53,7 +59,7 @@ import { TableToolbar } from "@/components/ui/table-toolbar";
 import { TextReasonModal } from "@/components/ui/text-reason-modal";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { ledgerChangeEventName } from "@/lib/ledger/ledger-change-event";
-import { sortTableItems, type TableSortDirection } from "@/components/ui/table-sorting";
+import type { TableSortDirection } from "@/components/ui/table-sorting";
 
 type TransactionLogPanelProps = {
   className?: string;
@@ -79,9 +85,9 @@ const transactionTypeOptions = [
 ];
 
 const voidedStatusOptions = [
-  { label: "Any status", value: "" },
-  { label: "Active", value: "active" },
+  { label: "All", value: "" },
   { label: "Archived", value: "voided" },
+  { label: "Active", value: "active" },
 ];
 
 const purchaseStatusOptions = [
@@ -108,11 +114,16 @@ export function TransactionLogPanel({
   const canViewAllTransactionsForUser = canViewAllTransactions(currentUser);
   const canVoidTransactionsForUser = canVoidTransactions(currentUser);
   const [transactions, setTransactions] = useState<TransactionLogItem[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [hasAnyTransactions, setHasAnyTransactions] = useState(false);
+  const [page, setPage] = useState(1);
+  const { pageSize, setPageSize } = useResponsiveListPageSize();
   const [filters, setFilters] = useState<TransactionFilters>(() => ({
     ...emptyTransactionFilters,
     createdDate: initialDateFilter ?? "",
   }));
   const [tableSort, setTableSort] = useState<{ column: string; direction: TableSortDirection } | null>(null);
+  const [refreshVersion, setRefreshVersion] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -120,20 +131,64 @@ export function TransactionLogPanel({
     useState<TransactionLogItem | null>(null);
   const [voidingTransaction, setVoidingTransaction] =
     useState<TransactionLogItem | null>(null);
-
-  const refreshTransactions = useCallback(async () => {
-    setIsLoading(true);
-
-    try {
-      const loadedTransactions = await listTransactionLog();
-      setTransactions(loadedTransactions);
-      setError(null);
-    } catch {
-      setError("Could not load transactions.");
-    } finally {
-      setIsLoading(false);
-    }
+  const requestSequence = useRef(0);
+  const isPreview = previewLimit !== undefined;
+  const dateRange = useMemo(
+    () => getLocalDateRange(filters.createdDate),
+    [filters.createdDate],
+  );
+  const sort = useMemo<TransactionLogSort>(
+    () =>
+      tableSort && isTransactionSortColumn(tableSort.column)
+        ? { column: tableSort.column, direction: tableSort.direction }
+        : null,
+    [tableSort],
+  );
+  const refreshTransactions = useCallback(() => {
+    setRefreshVersion((version) => version + 1);
   }, []);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => setPage(1), 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [pageSize]);
+
+  useEffect(() => {
+    const requestId = ++requestSequence.current;
+    let isActive = true;
+    const timeoutId = window.setTimeout(async () => {
+      setIsLoading(true);
+      try {
+        const result = await listTransactionLogPage({
+          ...dateRange,
+          filters,
+          page: isPreview ? 1 : page,
+          pageSize: isPreview ? Math.min(previewLimit ?? 1, 100) : pageSize,
+          previewLimit: isPreview ? previewLimit : undefined,
+          sort,
+        });
+        if (!isActive || requestId !== requestSequence.current) return;
+        setTransactions(result.items);
+        setTotalCount(result.totalCount);
+        setHasAnyTransactions(result.hasAnyTransactions);
+        setPage(result.page);
+        setError(null);
+      } catch {
+        if (isActive && requestId === requestSequence.current) {
+          setError("Could not load transactions.");
+        }
+      } finally {
+        if (isActive && requestId === requestSequence.current) {
+          setIsLoading(false);
+        }
+      }
+    }, 180);
+
+    return () => {
+      isActive = false;
+      window.clearTimeout(timeoutId);
+    };
+  }, [dateRange, filters, isPreview, page, pageSize, previewLimit, refreshVersion, sort]);
 
   useEffect(() => {
     function refreshAfterExternalAdjustment() {
@@ -147,35 +202,6 @@ export function TransactionLogPanel({
         refreshAfterExternalAdjustment,
       );
   }, [refreshTransactions]);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadTransactions() {
-      try {
-        const loadedTransactions = await listTransactionLog();
-
-        if (isMounted) {
-          setTransactions(loadedTransactions);
-          setError(null);
-        }
-      } catch {
-        if (isMounted) {
-          setError("Could not load transactions.");
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    loadTransactions();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   async function handleVoidTransaction(reason: string) {
     if (!voidingTransaction) {
@@ -196,42 +222,35 @@ export function TransactionLogPanel({
     refreshTransactions();
   }
 
-  const filteredTransactions = useMemo(
-    () =>
-      transactions.filter((transaction) =>
-        matchesTransactionFilters(transaction, filters),
-      ),
-    [filters, transactions],
-  );
-  const sortedTransactions = useMemo(
-    () => sortTableItems(filteredTransactions, tableSort, (transaction, column) => {
-      switch (column) {
-        case "description": return transaction.reason;
-        case "account": return transaction.studentName;
-        case "type": return transaction.type;
-        case "time": return transaction.createdAt;
-        case "status": return transaction.entryStatus;
-        case "amount": return transaction.amount;
-        default: return "";
-      }
-    }),
-    [filteredTransactions, tableSort],
-  );
-  const {
-    page,
-    pageItems: visibleTransactions,
-    setPage,
-    totalPages,
-  } = usePagedList(sortedTransactions);
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const visibleTransactions = transactions;
+  const displayedTransactions = transactions;
 
-  function clearTransactionFilters() {
-    setFilters(emptyTransactionFilters);
+  function updateFilters(nextFilters: TransactionFilters) {
+    setFilters(nextFilters);
+    setPage(1);
   }
 
-  const isPreview = previewLimit !== undefined;
-  const displayedTransactions = isPreview
-    ? transactions.slice(0, previewLimit)
-    : visibleTransactions;
+  function updateSort(column: string, direction: TableSortDirection | null) {
+    setTableSort(direction ? { column, direction } : null);
+    setPage(1);
+  }
+
+  async function handleExportTransactions() {
+    try {
+      const exportedTransactions = await exportTransactionLog(filters, sort, dateRange);
+      downloadTransactions(exportedTransactions, currencyName);
+    } catch {
+      setError("Could not export transactions.");
+    }
+  }
+
+  function clearTransactionFilters() {
+    updateFilters(emptyTransactionFilters);
+  }
+
+  const transactionEmpty = !isLoading && !error && !hasAnyTransactions;
+  const filterEmpty = !isLoading && !error && hasAnyTransactions && totalCount === 0;
 
   return (
     <section className={`theme-panel motion-panel mt-5 min-w-0 overflow-hidden p-0 ${className}`}>
@@ -247,14 +266,14 @@ export function TransactionLogPanel({
             title="Could not load transactions"
           />
         )}
-        {!isLoading && !error && transactions.length === 0 && (
+        {transactionEmpty && (
           <EmptyState
             description="Transactions will appear here after credits are issued, removed, held, spent, or voided."
             icon={<ListIcon />}
             title="No transactions yet"
           />
         )}
-        {!isLoading && transactions.length > 0 && (
+        {!isLoading && !error && hasAnyTransactions && (
           <>
             {!isPreview && filters.createdDate && (
               <div className="mx-3 mb-3 flex items-center justify-between gap-3 rounded-md bg-panel-soft px-3 py-2 text-sm md:hidden">
@@ -263,7 +282,7 @@ export function TransactionLogPanel({
                 </span>
                 <button
                   className="shrink-0 font-semibold text-brand underline-offset-2 hover:underline"
-                  onClick={() => setFilters({ ...filters, createdDate: "" })}
+                  onClick={() => updateFilters({ ...filters, createdDate: "" })}
                   type="button"
                 >
                   Clear date
@@ -276,8 +295,8 @@ export function TransactionLogPanel({
               filters={filters}
               isPreview={isPreview}
               onDetailsClick={setViewingTransaction}
-              onFiltersChange={setFilters}
-              onSortChange={(column, direction) => setTableSort(direction ? { column, direction } : null)}
+              onFiltersChange={updateFilters}
+              onSortChange={updateSort}
               onVoidClick={setVoidingTransaction}
               tableSort={tableSort}
               toolbar={
@@ -297,15 +316,10 @@ export function TransactionLogPanel({
                         label="Open transaction log tools"
                         items={[
                           {
-                            disabled:
-                              isLoading || sortedTransactions.length === 0,
+                            disabled: isLoading || totalCount === 0,
                             icon: <FileDownIcon />,
                             label: "Export transactions: CSV",
-                            onSelect: () =>
-                              downloadTransactions(
-                                sortedTransactions,
-                                currencyName,
-                              ),
+                            onSelect: () => void handleExportTransactions(),
                           },
                         ]}
                       />
@@ -315,13 +329,13 @@ export function TransactionLogPanel({
                   <p className="text-sm font-semibold text-text-muted">
                     {isPreview
                       ? `Latest ${displayedTransactions.length} transactions`
-                      : `Showing ${visibleTransactions.length} of ${sortedTransactions.length} transactions.`}
+                      : `Showing ${visibleTransactions.length} of ${totalCount} transactions.`}
                   </p>
                 </TableToolbar>
               }
               transactions={displayedTransactions}
             />
-            {!isPreview && sortedTransactions.length === 0 && (
+            {!isPreview && filterEmpty && (
               <EmptyState
                 action={
                   <IconButton
@@ -337,11 +351,13 @@ export function TransactionLogPanel({
                 title="No matching transactions"
               />
             )}
-            {!isPreview && sortedTransactions.length > 0 && (
+            {!isPreview && totalCount > 0 && (
               <ListPagination
                 onPageChange={setPage}
+                onPageSizeChange={setPageSize}
                 page={page}
-                totalCount={sortedTransactions.length}
+                pageSize={pageSize}
+                totalCount={totalCount}
                 totalPages={totalPages}
               />
             )}
@@ -378,6 +394,33 @@ function formatTransactionDateFilter(dateValue: string) {
     month: "short",
     year: "numeric",
   }).format(date)}`;
+}
+
+function getLocalDateRange(dateValue: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateValue);
+  if (!match) return { createdAtFrom: undefined, createdAtTo: undefined };
+
+  const [, year, month, day] = match;
+  const start = new Date(Number(year), Number(month) - 1, Number(day));
+  if (
+    start.getFullYear() !== Number(year) ||
+    start.getMonth() !== Number(month) - 1 ||
+    start.getDate() !== Number(day)
+  ) {
+    return { createdAtFrom: undefined, createdAtTo: undefined };
+  }
+  const end = new Date(Number(year), Number(month) - 1, Number(day) + 1);
+
+  return {
+    createdAtFrom: start.toISOString(),
+    createdAtTo: end.toISOString(),
+  };
+}
+
+function isTransactionSortColumn(
+  value: string,
+): value is NonNullable<TransactionLogSort>["column"] {
+  return ["description", "account", "type", "time", "status", "amount"].includes(value);
 }
 
 function TransactionList({

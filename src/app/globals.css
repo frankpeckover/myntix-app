@@ -74,7 +74,6 @@
   --brand-soft: color-mix(in srgb, var(--accent-primary) 10%, white);
   --brand-soft-strong: color-mix(in srgb, var(--accent-primary) 24%, white);
   --brand-ink: color-mix(in srgb, var(--accent-primary) 68%, black);
-  --section-highlight: var(--accent-primary);
   --accent: var(--accent-secondary);
   --accent-soft: color-mix(in srgb, var(--accent-secondary) 12%, white);
   --success: #10b981;
@@ -115,9 +114,6 @@
   --wallet-card-background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.68) 0%, rgba(255, 255, 255, 0.18) 52%, transparent 100%),
     linear-gradient(145deg, #eff6fd 0%, #e8f4fb 48%, #edf8f3 100%);
-  --wallet-holder-background: rgba(255, 255, 255, 0.2);
-  --wallet-holder-border: rgba(255, 255, 255, 0.38);
-  --wallet-holder-name: color-mix(in srgb, var(--accent-primary) 86%, black);
   --wallet-card-shadow: 0 8px 20px color-mix(in srgb, var(--shadow-panel) 56%, transparent);
   --student-card-background:
     radial-gradient(circle at 88% 18%, rgba(122, 228, 183, 0.2) 0%, transparent 28%),
@@ -171,7 +167,6 @@ html[data-theme="dark"] {
   --brand-soft: color-mix(in srgb, var(--accent-primary) 22%, #101216);
   --brand-soft-strong: color-mix(in srgb, var(--accent-primary) 42%, #101216);
   --brand-ink: color-mix(in srgb, var(--accent-primary) 32%, white);
-  --section-highlight: color-mix(in srgb, var(--accent-primary) 72%, white);
   --accent: color-mix(in srgb, var(--accent-secondary) 72%, white);
   --accent-soft: color-mix(in srgb, var(--accent-secondary) 20%, #101216);
   --success: #34d399;
@@ -212,9 +207,6 @@ html[data-theme="dark"] {
   --wallet-card-background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 52%, transparent 100%),
     linear-gradient(145deg, #1c2a35 0%, #172830 48%, #172b25 100%);
-  --wallet-holder-background: rgba(255, 255, 255, 0.05);
-  --wallet-holder-border: rgba(255, 255, 255, 0.1);
-  --wallet-holder-name: color-mix(in srgb, var(--accent-secondary) 68%, white);
   --wallet-card-shadow: 0 10px 24px color-mix(in srgb, var(--shadow-panel) 76%, transparent);
   --student-card-background:
     radial-gradient(circle at 88% 18%, rgba(122, 228, 183, 0.16) 0%, transparent 28%),
@@ -281,7 +273,6 @@ html[data-accent="custom"] {
   --color-brand-soft: var(--brand-soft);
   --color-brand-soft-strong: var(--brand-soft-strong);
   --color-brand-ink: var(--brand-ink);
-  --color-section-highlight: var(--section-highlight);
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
   --color-success: var(--success-text);
@@ -350,6 +341,31 @@ html {
   --text-7xl--line-height: 1;
 }
 
+html[data-text-size="small"] {
+  --text-xs: 0.75rem;
+  --text-xs--line-height: calc(1.125 / 0.75);
+  --text-sm: 0.875rem;
+  --text-sm--line-height: calc(1.3125 / 0.875);
+  --text-base: 1rem;
+  --text-base--line-height: calc(1.5 / 1);
+  --text-lg: 1.125rem;
+  --text-lg--line-height: calc(1.75 / 1.125);
+  --text-xl: 1.25rem;
+  --text-xl--line-height: calc(1.875 / 1.25);
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: calc(2 / 1.5);
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: calc(2.375 / 1.875);
+  --text-4xl: 2.25rem;
+  --text-4xl--line-height: calc(2.75 / 2.25);
+  --text-5xl: 3rem;
+  --text-5xl--line-height: 1;
+  --text-6xl: 3.75rem;
+  --text-6xl--line-height: 1;
+  --text-7xl: 4.5rem;
+  --text-7xl--line-height: 1;
+}
+
 html[data-text-size="large"] {
   --text-xs: 0.875rem;
   --text-xs--line-height: calc(1.25 / 0.875);
@@ -373,11 +389,6 @@ html[data-text-size="large"] {
   --text-6xl--line-height: 1;
   --text-7xl: 4.6875rem;
   --text-7xl--line-height: 1;
-}
-
-body {
-  font-size: var(--text-base);
-  line-height: var(--text-base--line-height);
 }
 
 input::placeholder,
@@ -467,7 +478,9 @@ body {
   font-family: var(--font-manrope), "Segoe UI", Arial, Helvetica, sans-serif;
   font-kerning: normal;
   font-synthesis: none;
+  font-size: var(--text-base);
   font-weight: 400;
+  line-height: var(--text-base--line-height);
   min-height: 100dvh;
   text-rendering: optimizeLegibility;
 }
@@ -662,7 +675,7 @@ button:disabled {
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
+    animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
@@ -775,29 +788,6 @@ html[data-theme="dark"] .professional-shell {
   position: relative;
 }
 
-.wallet-card.reward-requests-card {
-  background:
-    radial-gradient(
-      circle at 97% 6%,
-      color-mix(in srgb, var(--accent-highlight) 20%, transparent) 0 4.5rem,
-      color-mix(in srgb, var(--accent-primary) 34%, transparent) 4.5rem 4.65rem,
-      transparent 4.75rem
-    ),
-    radial-gradient(
-      circle at 2% 108%,
-      color-mix(in srgb, var(--accent-secondary) 15%, transparent) 0 5.5rem,
-      color-mix(in srgb, var(--accent-secondary) 28%, transparent) 5.5rem 5.65rem,
-      transparent 5.75rem
-    ),
-    var(--wallet-card-background);
-  overflow: visible;
-}
-
-.wallet-card.reward-requests-card::before,
-.wallet-card.reward-requests-card::after {
-  display: none;
-}
-
 .student-wallet-card {
   background: var(--student-card-background);
   border: 1px solid var(--student-card-border);
@@ -812,7 +802,12 @@ html[data-theme="dark"] .professional-shell {
 
 .student-dashboard-card {
   animation: student-dashboard-enter 460ms var(--motion-ease) both;
-  border-radius: 1.5rem;
+  border-radius: 1rem;
+}
+
+.student-dashboard-section > .student-dashboard-card:not(.student-wallet-card) {
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--shadow-panel) 24%, transparent);
 }
 
 .student-dashboard-section > .student-dashboard-card:nth-child(1) {
@@ -834,29 +829,13 @@ html[data-theme="dark"] .professional-shell {
 .student-dashboard-transaction-log.theme-panel {
   background: transparent;
   border-color: transparent;
-  border-radius: 1.5rem;
+  border-radius: 1rem;
   box-shadow: none;
 }
 
 .student-dashboard-transaction-log.theme-panel:hover {
   border-color: transparent !important;
   box-shadow: none !important;
-}
-
-.student-recap-item {
-  animation: student-recap-enter 420ms var(--motion-ease) both;
-}
-
-.student-recap-item:nth-child(2) {
-  animation-delay: 55ms;
-}
-
-.student-recap-item:nth-child(3) {
-  animation-delay: 110ms;
-}
-
-.student-recap-item:nth-child(4) {
-  animation-delay: 165ms;
 }
 
 .student-balance-trend-card,
@@ -867,11 +846,6 @@ html[data-theme="dark"] .professional-shell {
 
 .student-balance-trend-card > div {
   background: transparent;
-}
-
-.student-wallet-holder {
-  background: transparent;
-  border-top: 0;
 }
 
 .wallet-card::before,
@@ -937,19 +911,6 @@ input[type="number"]::-webkit-outer-spin-button {
 .color-swatch-input::-moz-color-swatch {
   border: 0;
   border-radius: 9999px;
-}
-
-.section-highlight {
-  position: relative;
-  overflow: hidden;
-}
-
-.section-highlight::before {
-  background: var(--section-highlight);
-  content: "";
-  height: 3px;
-  inset: 0 0 auto;
-  position: absolute;
 }
 
 .rounded-md {
@@ -1456,9 +1417,7 @@ html[data-theme="dark"] .app-modal.theme-panel {
 }
 
 .app-data-table thead {
-  position: sticky;
-  top: 0;
-  z-index: 20;
+  position: relative;
 }
 
 .app-data-table thead th {
@@ -1469,7 +1428,10 @@ html[data-theme="dark"] .app-modal.theme-panel {
   font-size: var(--text-xs);
   letter-spacing: 0.04em;
   line-height: 1.2;
+  position: sticky;
+  top: 0;
   text-transform: uppercase;
+  z-index: 20;
 }
 
 .app-data-table .data-table-toolbar-row th {
@@ -1480,13 +1442,15 @@ html[data-theme="dark"] .app-modal.theme-panel {
 }
 
 .app-data-table thead tr.data-table-toolbar-row {
-  height: 48px;
+  height: 56px;
 }
 
 .app-data-table thead tr.data-table-toolbar-row th {
   box-sizing: border-box;
-  height: 48px;
+  height: 56px;
+  top: 0;
   vertical-align: middle;
+  z-index: 21;
 }
 
 .app-data-table thead tr:not(.data-table-toolbar-row),
@@ -1499,6 +1463,10 @@ html[data-theme="dark"] .app-modal.theme-panel {
   padding-bottom: 0 !important;
   padding-top: 0 !important;
   vertical-align: middle;
+}
+
+.app-data-table thead tr.data-table-toolbar-row + tr th {
+  top: 56px;
 }
 
 .app-data-table .data-table-toolbar-row .table-toolbar-band {
@@ -1557,10 +1525,6 @@ html[data-theme="dark"] .app-modal.theme-panel {
   border-top-right-radius: var(--radius-card);
 }
 
-.app-data-table tbody tr:last-child td {
-  border-bottom: 1px solid var(--border-subtle);
-}
-
 .app-data-table tbody tr:hover td {
   background: color-mix(in srgb, var(--brand-soft) 38%, var(--surface));
   border-color: color-mix(in srgb, var(--brand) 22%, var(--border-subtle));
@@ -1580,6 +1544,10 @@ html[data-theme="dark"] .app-modal.theme-panel {
   background: transparent;
   border-color: transparent;
   box-shadow: none;
+}
+
+.app-shell-surface .theme-panel:not(.app-modal):has(.app-data-table) {
+  overflow: visible;
 }
 
 .app-shell-surface .theme-panel:has(.app-data-table):hover {
@@ -1625,12 +1593,17 @@ html[data-theme="dark"] .app-modal.theme-panel {
   overflow: visible;
 }
 
-.transaction-log-table th:last-child,
 .transaction-log-table td:last-child {
   overflow: visible;
   padding-left: 0.25rem !important;
   padding-right: 0.75rem !important;
   position: relative;
+}
+
+.transaction-log-table th:last-child {
+  overflow: visible;
+  padding-left: 0.25rem !important;
+  padding-right: 0.75rem !important;
 }
 
 .transaction-log-table th:nth-last-child(2),
@@ -1652,6 +1625,7 @@ html[data-theme="dark"] .app-modal.theme-panel {
   background: var(--professional-card-bg);
   border-color: var(--border-subtle);
   box-shadow: 0 1px 2px color-mix(in srgb, var(--professional-panel-shadow) 42%, transparent);
+  line-height: 1.35;
 }
 
 .professional-shell .theme-subpanel {
@@ -1671,25 +1645,10 @@ html[data-theme="dark"] .app-modal.theme-panel {
   opacity: 0.14;
 }
 
-.professional-shell .section-highlight::before {
-  height: 2px;
-  opacity: 0.9;
-}
-
 .professional-shell .app-data-table {
   border-collapse: separate !important;
   font-variant-numeric: tabular-nums;
   line-height: 1.25;
-}
-
-.professional-shell .app-data-table th {
-  background: var(--brand-soft);
-  color: var(--text-label);
-  font-size: var(--text-xs);
-  letter-spacing: 0.04em;
-  padding-bottom: 0.5rem !important;
-  padding-top: 0.5rem !important;
-  text-transform: uppercase;
 }
 
 .professional-shell .app-data-table td {
@@ -1804,10 +1763,6 @@ textarea:focus-visible,
 [tabindex]:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--brand) 78%, white);
   outline-offset: 2px;
-}
-
-.professional-shell .theme-card {
-  line-height: 1.35;
 }
 
 .professional-shell .theme-card p,
@@ -1963,17 +1918,6 @@ html[data-theme="dark"] .professional-shell .app-modal.theme-panel {
   }
 }
 
-@keyframes student-recap-enter {
-  from {
-    opacity: 0;
-    transform: translateY(7px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 @keyframes wallet-positive-arrival {
   0%, 100% {
     box-shadow: var(--wallet-card-shadow);
@@ -2052,15 +1996,5 @@ html[data-theme="dark"] .professional-shell .app-modal.theme-panel {
   100% {
     opacity: 0;
     transform: translate(var(--confetti-x), calc(var(--confetti-y) + 22px)) scale(0.92) rotate(var(--confetti-rotate));
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 1ms !important;
-    scroll-behavior: auto !important;
-    transition-duration: 1ms !important;
   }
 }

@@ -216,7 +216,7 @@ export function DashboardShell({
             </div>
           </header>
 
-          <div className="mb-2 flex min-h-16 items-center pt-4 pb-1 sm:mb-3 sm:min-h-20 sm:pt-5 sm:pb-2 lg:mb-4">
+          <div className="mb-1.5 flex min-h-0 items-center pt-2 pb-0 sm:mb-2 sm:pt-3">
             <div className="flex min-w-0 items-center gap-3.5 sm:gap-4">
               <span className="shrink-0 text-brand" aria-hidden="true">
                 <NavigationItemIcon

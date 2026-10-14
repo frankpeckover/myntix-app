@@ -32,6 +32,7 @@ import {
 import { BulkSelectionControls } from "@/components/ui/bulk-selection-controls";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { sortTableItems, type TableSortDirection } from "@/components/ui/table-sorting";
+import { updateSelectedIds } from "@/components/ui/selection-utils";
 
 type ShopRequestTableFilters = {
   decisionNote: string;
@@ -72,6 +73,7 @@ export function ShopRequestsPanel({
   const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isConfirmingBulkApproval, setIsConfirmingBulkApproval] = useState(false);
+  const [isApprovingBulkRequests, setIsApprovingBulkRequests] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const pendingDecisionIdsRef = useRef(new Set<string>());
@@ -150,7 +152,7 @@ export function ShopRequestsPanel({
 
     setMessage("Request approved.");
     setSelectedRequestIds((current) =>
-      current.filter((requestId) => requestId !== purchaseId),
+      updateSelectedIds(current, [purchaseId], false),
     );
     onRequestActioned?.();
     refreshRequests();
@@ -192,6 +194,12 @@ export function ShopRequestsPanel({
   }
 
   async function handleBulkApprove() {
+    const requestIds = [...selectedRequestIds];
+
+    if (requestIds.length === 0) {
+      setIsConfirmingBulkApproval(false);
+      return;
+    }
     if (!navigator.onLine) {
       setError("You are offline. Reconnect before approving requests.");
       return;
@@ -199,28 +207,60 @@ export function ShopRequestsPanel({
 
     setError(null);
     setMessage(null);
+    setIsApprovingBulkRequests(true);
     let approvedCount = 0;
-    for (const purchaseId of selectedRequestIds) {
-      if (pendingDecisionIdsRef.current.has(purchaseId)) continue;
-      pendingDecisionIdsRef.current.add(purchaseId);
-      try {
-        const result = await approveShopRequest(purchaseId);
-        if (result.ok) approvedCount += 1;
-      } catch {
-        // Continue so one changed request does not block the rest of the selection.
-      } finally {
-        pendingDecisionIdsRef.current.delete(purchaseId);
-      }
-    }
+    const approvedIds = new Set<string>();
 
-    setSelectedRequestIds([]);
-    setMessage(
-      approvedCount === 1
-        ? "Request approved."
-        : `${approvedCount} requests approved.`,
-    );
-    onRequestActioned?.();
-    refreshRequests();
+    try {
+      for (const purchaseId of requestIds) {
+        if (pendingDecisionIdsRef.current.has(purchaseId)) continue;
+        pendingDecisionIdsRef.current.add(purchaseId);
+        try {
+          const result = await approveShopRequest(purchaseId);
+          if (result.ok) {
+            approvedCount += 1;
+            approvedIds.add(purchaseId);
+          }
+        } catch {
+          // Continue so one changed request does not block the rest of the selection.
+        } finally {
+          pendingDecisionIdsRef.current.delete(purchaseId);
+        }
+      }
+
+      const failedCount = requestIds.length - approvedCount;
+      setSelectedRequestIds((current) =>
+        current.filter((requestId) => !approvedIds.has(requestId)),
+      );
+
+      if (approvedCount > 0) {
+        setMessage(
+          approvedCount === 1
+            ? "Request approved."
+            : `${approvedCount} requests approved.`,
+        );
+      }
+
+      if (failedCount > 0) {
+        setError(
+          approvedCount > 0
+            ? `${failedCount} request${failedCount === 1 ? "" : "s"} could not be approved and remain selected.`
+            : "The selected requests could not be approved. Refresh and try again.",
+        );
+      }
+
+      onRequestActioned?.();
+      setIsConfirmingBulkApproval(false);
+      setIsApprovingBulkRequests(false);
+      await refreshRequests();
+    } catch {
+      setError(
+        "Could not finish approving the selected requests. Refresh and check their status.",
+      );
+    } finally {
+      setIsConfirmingBulkApproval(false);
+      setIsApprovingBulkRequests(false);
+    }
   }
 
   const filteredRequests =
@@ -248,23 +288,20 @@ export function ShopRequestsPanel({
   const selectableRequestIds = displayedRequests
     .filter((request) => request.status === "pending")
     .map((request) => request.id);
+  const selectedRequestIdSet = new Set(selectedRequestIds);
   const areAllVisibleRequestsSelected =
     selectableRequestIds.length > 0 &&
-    selectableRequestIds.every((id) => selectedRequestIds.includes(id));
+    selectableRequestIds.every((id) => selectedRequestIdSet.has(id));
 
   function handleVisibleSelectionChange(isSelected: boolean) {
     setSelectedRequestIds((current) =>
-      isSelected
-        ? Array.from(new Set([...current, ...selectableRequestIds]))
-        : current.filter((id) => !selectableRequestIds.includes(id)),
+      updateSelectedIds(current, selectableRequestIds, isSelected),
     );
   }
 
   function handleRequestSelectionChange(requestId: string, isSelected: boolean) {
     setSelectedRequestIds((current) =>
-      isSelected
-        ? Array.from(new Set([...current, requestId]))
-        : current.filter((id) => id !== requestId),
+      updateSelectedIds(current, [requestId], isSelected),
     );
   }
 
@@ -386,6 +423,7 @@ export function ShopRequestsPanel({
         <ConfirmationModal
           confirmLabel="Approve Requests"
           description={`Approve ${selectedRequestIds.length} selected reward requests?`}
+          isConfirming={isApprovingBulkRequests}
           onCancel={() => setIsConfirmingBulkApproval(false)}
           onConfirm={handleBulkApprove}
           title="Approve selected requests"
@@ -483,6 +521,11 @@ function CompactShopRequestList({
   toolbar: ReactNode;
   visibleRequestsSelected: boolean;
 }) {
+  const selectedRequestIdSet = new Set(selectedRequestIds);
+  const selectableRequestIds = requests
+    .filter((request) => request.status === "pending")
+    .map((request) => request.id);
+
   function updateFilter<Field extends keyof ShopRequestTableFilters>(
     field: Field,
     value: ShopRequestTableFilters[Field],
@@ -600,12 +643,12 @@ function CompactShopRequestList({
             {requests.map((request) => (
               <tr className="border-b border-border-subtle transition hover:bg-panel-soft/60" key={request.id}>
                 <DataTableSelectionCell
-                  checked={selectedRequestIds.includes(request.id)}
+                  checked={selectedRequestIdSet.has(request.id)}
                   disabled={request.status !== "pending"}
                   label={`Select ${request.itemName} for ${request.studentName}`}
                   rangeKey="reward-requests-table"
                   rowId={request.id}
-                  selectableRowIds={requests.filter((row) => row.status === "pending").map((row) => row.id)}
+                  selectableRowIds={selectableRequestIds}
                   onRangeChange={(ids, isSelected) =>
                     ids.forEach((id) => onRequestSelectionChange(id, isSelected))
                   }

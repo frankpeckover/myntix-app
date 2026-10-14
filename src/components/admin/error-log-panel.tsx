@@ -49,7 +49,9 @@ export function AdminErrorLogPanel() {
   const {
     page,
     pageItems: visibleEntries,
+    pageSize,
     setPage,
+    setPageSize,
     totalPages,
   } = usePagedList(filteredEntries);
 
@@ -136,7 +138,9 @@ export function AdminErrorLogPanel() {
             {filteredEntries.length > 0 && (
               <ListPagination
                 onPageChange={setPage}
+                onPageSizeChange={setPageSize}
                 page={page}
+                pageSize={pageSize}
                 totalCount={filteredEntries.length}
                 totalPages={totalPages}
               />

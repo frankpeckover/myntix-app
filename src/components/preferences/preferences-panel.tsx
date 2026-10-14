@@ -134,8 +134,9 @@ function AppearancePreferences() {
         <legend className="sr-only">Text size</legend>
         <p className="text-sm font-medium text-text-control">Text size</p>
         <p className="mt-0.5 text-xs text-text-muted">Adjust text throughout the app.</p>
-        <div className="mt-3 grid grid-cols-2 gap-1 rounded-md bg-panel-soft p-1">
+        <div className="mt-3 grid grid-cols-3 gap-1 rounded-md bg-panel-soft p-1">
           {([
+            { label: "Smaller", value: "small" },
             { label: "Default", value: "default" },
             { label: "Large", value: "large" },
           ] as const).map((option) => (

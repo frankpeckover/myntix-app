@@ -61,11 +61,11 @@ export function StudentActivityRecap({
   );
 
   return (
-    <section className={`student-dashboard-card student-activity-recap min-w-0 overflow-hidden rounded-3xl bg-surface px-4 py-4 sm:px-5 ${className}`}>
+    <section className={`student-dashboard-card student-activity-recap min-w-0 overflow-hidden rounded-2xl bg-surface px-4 py-4 sm:px-5 ${className}`}>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand-soft text-brand">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center text-brand">
               <SparkleIcon className="h-4 w-4" />
             </span>
             <PanelTitle title="Daily movement" />

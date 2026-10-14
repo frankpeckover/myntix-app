@@ -6,6 +6,8 @@ import {
   isValidElement,
   type MouseEvent,
   type ReactNode,
+  useOptimistic,
+  useTransition,
 } from "react";
 import { RowSelectionCheckbox } from "@/components/ui/bulk-selection-controls";
 
@@ -186,9 +188,24 @@ export function DataTableSelectionHeader({
   label: string;
   onChange: (checked: boolean) => void;
 }) {
+  const [, startTransition] = useTransition();
+  const [optimisticChecked, setOptimisticChecked] = useOptimistic(
+    checked,
+    (_current, next: boolean) => next,
+  );
+
   return (
     <DataTableHeaderCell className="w-10 pr-3">
-      <RowSelectionCheckbox checked={checked} label={label} onChange={onChange} />
+      <RowSelectionCheckbox
+        checked={optimisticChecked}
+        label={label}
+        onChange={(nextChecked) => {
+          startTransition(() => {
+            setOptimisticChecked(nextChecked);
+            onChange(nextChecked);
+          });
+        }}
+      />
     </DataTableHeaderCell>
   );
 }

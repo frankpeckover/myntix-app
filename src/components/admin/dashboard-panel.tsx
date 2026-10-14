@@ -156,15 +156,18 @@ export function AdminDashboardPanel({
 
         {summary && (
           <>
-            <LedgerBalanceCard
-              currencyName={currencyName}
-              ledgerBalance={summary.ledgerBalance}
-            />
-            <PendingSummaryCard
-              onOpenRequests={() => onNavigate("Reward Requests")}
-              pendingHolds={summary.pendingHolds}
-              pendingShopRequests={summary.pendingShopRequests}
-            />
+            <div className="dashboard-unit-1 grid min-w-0 grid-rows-2 gap-4">
+              <LedgerBalanceCard
+                currencyName={currencyName}
+                ledgerBalance={summary.ledgerBalance}
+              />
+              <PendingSummaryCard
+                currencyName={currencyName}
+                onOpenRequests={() => onNavigate("Reward Requests")}
+                pendingHolds={summary.pendingHolds}
+                pendingShopRequests={summary.pendingShopRequests}
+              />
+            </div>
             <AccountSummaryCard
               adminAccounts={summary.adminAccounts}
               disabledAccounts={summary.totalUsers - summary.activeUsers}
@@ -172,7 +175,11 @@ export function AdminDashboardPanel({
               studentAccounts={summary.studentAccounts}
               totalAccounts={summary.totalUsers}
             />
-            <SystemHealthCard system={summary.operations.system} />
+            <SystemAndBackupStatusCard
+              backup={summary.operations.backup}
+              system={summary.operations.system}
+            />
+            <ApiActivityCard api={summary.operations.api} />
           </>
         )}
 
@@ -198,8 +205,6 @@ export function AdminDashboardPanel({
               tone="negative"
             />
             <SecurityActivityCard security={summary.operations.security} />
-            <BackupStatusCard backup={summary.operations.backup} />
-            <ApiActivityCard api={summary.operations.api} />
           </>
         )}
       </div>
@@ -224,17 +229,17 @@ function LedgerBalanceCard({
   ledgerBalance: number;
 }) {
   return (
-    <section className="dashboard-unit-1 theme-panel flex min-h-36 min-w-0 flex-col p-4">
+    <section className="theme-panel flex min-h-36 min-w-0 flex-col p-4">
       <MetricCardHeader
         icon={<WalletIcon />}
         label="Ledger Balance"
         tone="brand"
       />
-      <div className="flex flex-1 flex-col justify-end">
-        <p className="truncate text-4xl font-semibold tracking-normal text-foreground">
+      <div className="flex flex-1 flex-col items-center justify-center text-center">
+        <p className="max-w-full truncate text-4xl font-semibold tracking-normal text-foreground">
           {formatWholeNumber(ledgerBalance)}
         </p>
-        <p className="mt-2 text-xs font-semibold uppercase tracking-normal text-text-muted">
+        <p className="mt-1 text-xs font-semibold uppercase tracking-normal text-text-muted">
           {currencyName}
         </p>
       </div>
@@ -242,31 +247,53 @@ function LedgerBalanceCard({
   );
 }
 
-function SystemHealthCard({
+function SystemAndBackupStatusCard({
+  backup,
   system,
 }: {
+  backup: OperationsDashboardSnapshot["backup"];
   system: OperationsDashboardSnapshot["system"];
 }) {
   const isHealthy = system.status === "operational";
+  const backupStatusLabel = {
+    failed: "Last run failed",
+    healthy: "Protected",
+    not_configured: "Not configured",
+    running: "Backup running",
+  }[backup.status];
 
   return (
-    <section className="dashboard-unit-1 theme-panel flex min-h-36 flex-col p-4">
-      <MetricCardHeader
-        icon={isHealthy ? <CheckIcon /> : <AlertTriangleIcon />}
-        label="System Health"
-        tone={isHealthy ? "positive" : "warning"}
-      />
-      <div className="flex flex-1 flex-col justify-end">
-        <p className={`text-xl font-semibold ${isHealthy ? "text-success" : "text-danger-strong"}`}>
+    <div className="dashboard-unit-1 grid min-w-0 grid-rows-2 gap-4">
+      <section className="theme-panel flex min-w-0 flex-col justify-center p-4">
+        <MetricCardHeader
+          icon={isHealthy ? <CheckIcon /> : <AlertTriangleIcon />}
+          label="System Health"
+          tone={isHealthy ? "positive" : "warning"}
+        />
+        <p className={`mt-1 text-sm font-semibold ${isHealthy ? "text-success" : "text-danger-strong"}`}>
           {isHealthy ? "Operational" : "Needs attention"}
         </p>
-        <p className="mt-2 text-xs text-text-muted">
+        <p className="text-xs text-text-muted">
           {system.errorCountLast24Hours === 0
             ? "No server errors in the last 24 hours"
             : `${formatWholeNumber(system.errorCountLast24Hours)} server errors in the last 24 hours`}
         </p>
-      </div>
-    </section>
+      </section>
+      <section className="theme-panel flex min-w-0 flex-col justify-center p-4">
+        <MetricCardHeader icon={<FileDownIcon />} label="Backup Status" tone="neutral" />
+        <p className={`mt-1 text-sm font-semibold ${backup.status === "healthy" ? "text-success" : backup.status === "failed" ? "text-danger-strong" : "text-foreground"}`}>
+          {backupStatusLabel}
+        </p>
+        <p className="truncate text-xs text-text-muted">
+          {backup.lastSuccessfulAt
+            ? `Last success ${formatDashboardDate(backup.lastSuccessfulAt)}`
+            : "No successful backups recorded"}
+        </p>
+        {backup.destinationLabel && (
+          <p className="truncate text-xs text-text-muted">{backup.destinationLabel}</p>
+        )}
+      </section>
+    </div>
   );
 }
 
@@ -314,38 +341,6 @@ function SecurityActivityRow({ event }: { event: SecurityActivityItem }) {
   );
 }
 
-function BackupStatusCard({
-  backup,
-}: {
-  backup: OperationsDashboardSnapshot["backup"];
-}) {
-  const statusLabel = {
-    failed: "Last run failed",
-    healthy: "Protected",
-    not_configured: "Not configured",
-    running: "Backup running",
-  }[backup.status];
-
-  return (
-    <section className="dashboard-unit-1 theme-panel flex min-h-40 min-w-0 flex-col p-4">
-      <MetricCardHeader icon={<FileDownIcon />} label="Backup Status" tone="neutral" />
-      <div className="flex flex-1 flex-col justify-end">
-        <p className={`text-lg font-semibold ${backup.status === "healthy" ? "text-success" : backup.status === "failed" ? "text-danger-strong" : "text-foreground"}`}>
-          {statusLabel}
-        </p>
-        <p className="mt-2 text-xs text-text-muted">
-          {backup.lastSuccessfulAt
-            ? `Last success ${formatDashboardDate(backup.lastSuccessfulAt)}`
-            : "No successful backups recorded"}
-        </p>
-        {backup.destinationLabel && (
-          <p className="mt-1 truncate text-xs text-text-muted">{backup.destinationLabel}</p>
-        )}
-      </div>
-    </section>
-  );
-}
-
 function ApiActivityCard({ api }: { api: OperationsDashboardSnapshot["api"] }) {
   return (
     <section className="dashboard-unit-1 theme-panel flex min-h-40 min-w-0 flex-col p-4">
@@ -353,9 +348,9 @@ function ApiActivityCard({ api }: { api: OperationsDashboardSnapshot["api"] }) {
       <div className="mt-3 grid flex-1 gap-1">
         <CompactMetricRow label="Requests · 24h" value={api.requestsLast24Hours} />
         <CompactMetricRow label="Failed · 24h" value={api.failedRequestsLast24Hours} />
+        <CompactMetricRow label="Active API keys" value={api.activeKeys} />
         <p className="mt-1 truncate text-xs text-text-muted">
-          {api.activeClients} active client{api.activeClients === 1 ? "" : "s"}
-          {api.lastRequestAt ? ` · Last used ${formatDashboardDate(api.lastRequestAt)}` : ""}
+          {api.lastRequestAt ? `Last used ${formatDashboardDate(api.lastRequestAt)}` : "No API requests recorded"}
         </p>
       </div>
     </section>
@@ -530,34 +525,44 @@ function CirculationChartSection({
 }
 
 function PendingSummaryCard({
+  currencyName,
   onOpenRequests,
   pendingHolds,
   pendingShopRequests,
 }: {
+  currencyName: string;
   onOpenRequests: () => void;
   pendingHolds: number;
   pendingShopRequests: number;
 }) {
   return (
-    <section className="dashboard-unit-1 theme-panel flex min-h-36 flex-col p-4">
+    <section className="theme-panel flex min-h-36 flex-col p-4">
       <MetricCardHeader
         icon={<ClockIcon />}
-        label="Pending"
+        label="Awaiting action"
         tone="accent"
       />
-      <div className="mt-2 grid flex-1 gap-1">
+      <div className="mt-2 grid flex-1 content-center gap-1">
         <button
-          className="flex min-w-0 items-center justify-between gap-3 border-b border-border-muted px-1 py-1.5 text-left transition hover:bg-panel-soft"
+          className="flex min-w-0 items-center justify-between gap-3 border-b border-border-muted px-1 py-2 text-left transition hover:bg-panel-soft"
           onClick={onOpenRequests}
           type="button"
         >
-          <span className="truncate text-xs font-semibold uppercase tracking-normal text-text-muted">Requests</span>
-          <span className="shrink-0 text-lg font-semibold tracking-normal text-foreground">{formatWholeNumber(pendingShopRequests)}</span>
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-medium text-foreground">Reward requests</span>
+          </span>
+          <span className="font-number shrink-0 text-lg font-semibold tracking-normal text-foreground">{formatWholeNumber(pendingShopRequests)}</span>
         </button>
-        <CompactMetricRow
-          label="Holds"
-          value={pendingHolds}
-        />
+        <div className="flex min-w-0 items-center justify-between gap-3 px-1 py-2">
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-medium text-foreground">{currencyName} on hold</span>
+          </span>
+          <span className="shrink-0 text-right">
+            <span className="font-number text-lg font-semibold tracking-normal text-foreground">
+              {formatWholeNumber(pendingHolds)}
+            </span>
+          </span>
+        </div>
       </div>
     </section>
   );
@@ -657,23 +662,65 @@ function AccountSummaryCard({
     { color: "var(--brand)", label: "Students", value: studentAccounts },
     { color: "var(--accent)", label: "Staff", value: staffAccounts },
     { color: "var(--success)", label: "Admins", value: adminAccounts },
-  ].filter((segment) => segment.value > 0);
+    { color: "var(--danger)", label: "Disabled", value: disabledAccounts },
+  ]
+    .filter((segment) => segment.value > 0)
+    .map((segment) => ({
+      ...segment,
+      percent: totalAccounts > 0 ? (segment.value / totalAccounts) * 100 : 0,
+    }));
 
   return (
-    <section className="dashboard-unit-1 theme-panel flex min-h-36 flex-col p-4">
+    <section className="dashboard-unit-1 theme-panel flex min-w-0 flex-col p-4">
       <MetricCardHeader
         icon={<UserCircleIcon />}
         label="Accounts"
         tone="neutral"
       />
-      <div className="mt-2 grid flex-1 grid-cols-[5.25rem_minmax(0,1fr)] items-center gap-3">
-        <AccountDonut segments={accountSegments} totalAccounts={totalAccounts} />
-        <div className="grid gap-1">
-          <AccountLegend color="var(--brand)" label="Students" value={studentAccounts} />
-          <AccountLegend color="var(--accent)" label="Staff" value={staffAccounts} />
-          <AccountLegend color="var(--success)" label="Admins" value={adminAccounts} />
-          <AccountLegend color="var(--danger)" label="Disabled" value={disabledAccounts} />
-        </div>
+      <div className="mt-3 flex items-baseline justify-between gap-3">
+        <span className="text-xs text-text-muted">Total accounts</span>
+        <span className="font-number text-sm font-semibold text-foreground">
+          {formatWholeNumber(totalAccounts)}
+        </span>
+      </div>
+      <div className="relative mt-1 h-56 min-w-0" role="img" aria-label="Account distribution by role; hover a slice for its count and share">
+        {accountSegments.length > 0 ? (
+          <ResponsiveContainer height="100%" width="100%">
+            <PieChart>
+              <Pie
+                data={accountSegments}
+                dataKey="value"
+                innerRadius="58%"
+                isAnimationActive={false}
+                minAngle={2}
+                outerRadius="88%"
+                paddingAngle={1}
+                stroke="var(--surface)"
+                strokeWidth={2}
+              >
+                {accountSegments.map((segment) => (
+                  <Cell fill={segment.color} key={segment.label} />
+                ))}
+              </Pie>
+              <Tooltip
+                content={<AccountDonutTooltip />}
+                wrapperStyle={{ zIndex: 50 }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="flex h-full items-center justify-center text-sm text-text-muted">
+            No accounts yet
+          </div>
+        )}
+        {accountSegments.length > 0 && (
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+            <span className="font-number text-xl font-semibold text-foreground">
+              {formatWholeNumber(totalAccounts)}
+            </span>
+            <span className="text-xs text-text-muted">accounts</span>
+          </div>
+        )}
       </div>
     </section>
   );
@@ -682,54 +729,9 @@ function AccountSummaryCard({
 type AccountSegment = {
   color: string;
   label: string;
+  percent: number;
   value: number;
 };
-
-function AccountDonut({
-  segments,
-  totalAccounts,
-}: {
-  segments: AccountSegment[];
-  totalAccounts: number;
-}) {
-  if (segments.length === 0) {
-    return (
-      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-panel-soft text-sm font-semibold text-text-muted">
-        0
-      </div>
-    );
-  }
-
-  return (
-    <div className="relative h-20 w-20">
-      <ResponsiveContainer height="100%" width="100%">
-        <PieChart>
-          <Pie
-            data={segments}
-            dataKey="value"
-            innerRadius="64%"
-            isAnimationActive={false}
-            outerRadius="94%"
-            paddingAngle={2}
-            stroke="var(--surface)"
-            strokeWidth={2}
-          >
-            {segments.map((segment) => (
-              <Cell fill={segment.color} key={segment.label} />
-            ))}
-          </Pie>
-          <Tooltip
-            content={<AccountDonutTooltip />}
-            wrapperStyle={{ zIndex: 50 }}
-          />
-        </PieChart>
-      </ResponsiveContainer>
-      <div className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center text-lg font-semibold text-foreground">
-        {formatWholeNumber(totalAccounts)}
-      </div>
-    </div>
-  );
-}
 
 function AccountDonutTooltip({
   active,
@@ -747,30 +749,9 @@ function AccountDonutTooltip({
   return (
     <div className="rounded-md border border-border bg-surface px-3 py-2 text-sm shadow-md">
       <p className="font-semibold text-text-control">{segment.label}</p>
-      <p className="mt-1 text-text-muted">{formatWholeNumber(segment.value)}</p>
-    </div>
-  );
-}
-
-function AccountLegend({
-  color,
-  label,
-  value,
-}: {
-  color: string;
-  label: string;
-  value: number;
-}) {
-  return (
-    <div className="flex min-w-0 items-center justify-between gap-2 text-xs">
-      <span className="flex min-w-0 items-center gap-1.5 text-text-muted">
-        <span
-          className="h-2 w-2 shrink-0 rounded-full"
-          style={{ background: color }}
-        />
-        <span className="truncate">{label}</span>
-      </span>
-      <span className="font-semibold text-foreground">{formatWholeNumber(value)}</span>
+      <p className="mt-1 text-text-muted">
+        {formatWholeNumber(segment.value)} accounts · {segment.percent.toFixed(1)}%
+      </p>
     </div>
   );
 }

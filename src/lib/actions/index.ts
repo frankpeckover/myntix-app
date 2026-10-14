@@ -112,7 +112,9 @@ export {
   createLedgerAdjustments,
   getStudentBalance,
   listStudentBalances,
+  exportTransactionLog,
   listTransactionLog,
+  listTransactionLogPage,
   voidTransaction,
 } from "@/lib/actions/transaction-actions";
 export {

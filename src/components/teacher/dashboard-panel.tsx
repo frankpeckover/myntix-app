@@ -242,6 +242,8 @@ export function TeacherDashboardPanel({
     page: studentPage,
     pageItems: visibleStudentPage,
     setPage: setStudentPage,
+    pageSize: studentPageSize,
+    setPageSize: setStudentPageSize,
     totalPages: studentTotalPages,
   } = usePagedList(visibleStudents);
 
@@ -750,7 +752,9 @@ export function TeacherDashboardPanel({
                 </div>
                 <ListPagination
                   onPageChange={setStudentPage}
+                  onPageSizeChange={setStudentPageSize}
                   page={studentPage}
+                  pageSize={studentPageSize}
                   totalCount={visibleStudents.length}
                   totalPages={studentTotalPages}
                 />

@@ -53,7 +53,7 @@ type BalanceTrendTooltipProps = {
   payload?: { payload: BalanceTimePoint }[];
 };
 
-type BalanceHistoryWindow = "day" | "week" | "month" | "custom";
+type BalanceHistoryWindow = "day" | "week" | "month" | "year" | "custom";
 
 const ACTIVE_CHART_POINT_RADIUS = 6;
 const CHART_STROKE_WIDTH = 2;
@@ -64,15 +64,17 @@ const balanceHistoryWindowOptions: {
   label: string;
   value: BalanceHistoryWindow;
 }[] = [
-  { label: "Day", value: "day" },
-  { label: "Week", value: "week" },
-  { label: "Month", value: "month" },
+  { label: "Last 24 hours", value: "day" },
+  { label: "Last 7 days", value: "week" },
+  { label: "Last 30 days", value: "month" },
+  { label: "Last 365 days", value: "year" },
   { label: "Custom", value: "custom" },
 ];
 const studentMetricTimeframeOptions = [
-  { label: "Week", value: 7 },
-  { label: "Month", value: 30 },
-  { label: "3 months", value: 90 },
+  { label: "Last 7 days", value: 7 },
+  { label: "Last 30 days", value: 30 },
+  { label: "Last 90 days", value: 90 },
+  { label: "Last 365 days", value: 365 },
 ] as const;
 type StudentMetricTimeframeDays =
   (typeof studentMetricTimeframeOptions)[number]["value"];
@@ -403,11 +405,11 @@ function BalanceTrendCard({
   const timeTicks = getTimeAxisTicks(chartPoints, 4);
 
   return (
-    <article className="student-dashboard-card student-balance-trend-card dashboard-unit-1 flex min-h-52 rounded-3xl border border-transparent bg-surface p-4 sm:p-5">
-      <div className="flex min-h-56 w-full flex-col rounded-2xl bg-surface">
+    <article className="student-dashboard-card student-balance-trend-card dashboard-unit-1 flex min-h-52 rounded-2xl border border-transparent bg-surface p-4 sm:p-5">
+      <div className="flex min-h-56 w-full flex-col">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand-soft text-brand">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center text-brand">
               <WalletIcon className="h-4 w-4" />
             </span>
             <PanelTitle title="Balance" />
@@ -541,7 +543,7 @@ function StudentMetricStrip({
   const metrics = getStudentMetrics(transactions, timeframeDays);
 
   return (
-    <section className={`student-dashboard-card student-metric-strip min-w-0 rounded-3xl bg-surface p-4 sm:p-5 ${className}`}>
+    <section className={`student-dashboard-card student-metric-strip min-w-0 rounded-2xl bg-surface p-4 sm:p-5 ${className}`}>
       <div className="flex items-center justify-between gap-2">
         <PanelTitle title="Activity snapshot" />
         <InlineSelectMenu
@@ -822,7 +824,14 @@ function getBalanceHistoryRange(
     }
   }
 
-  const days = selectedWindow === "day" ? 1 : selectedWindow === "week" ? 7 : 30;
+  const days =
+    selectedWindow === "day"
+      ? 1
+      : selectedWindow === "week"
+        ? 7
+        : selectedWindow === "year"
+          ? 365
+          : 30;
   return { end: now, start: new Date(now.getTime() - days * MILLISECONDS_PER_DAY) };
 }
 

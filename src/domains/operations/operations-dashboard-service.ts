@@ -3,7 +3,7 @@ import { db, getCurrentTenantSlug, platformDb } from "@/lib/database/db";
 
 export type OperationsDashboardSnapshot = {
   api: {
-    activeClients: number;
+    activeKeys: number;
     failedRequestsLast24Hours: number;
     lastRequestAt: string | null;
     requestsLast24Hours: number;
@@ -33,7 +33,7 @@ export type SecurityActivityItem = {
 };
 
 type OperationsRow = {
-  active_api_clients: string;
+  active_api_keys: string;
   api_failures_24h: string;
   api_requests_24h: string;
   errors_24h: string;
@@ -63,7 +63,7 @@ export class OperationsDashboardService {
           (select count(*) from server_error_log where created_at >= now() - interval '24 hours') as errors_24h,
           (select max(created_at) from server_error_log) as last_error_at,
           (select count(*) from audit_log where action = 'auth.login_failed' and created_at >= now() - interval '24 hours') as failed_logins_24h,
-          (select count(*) from api_clients where is_active = true and revoked_at is null) as active_api_clients,
+          (select count(*) from api_clients where is_active = true and revoked_at is null and (expires_at is null or expires_at > now())) as active_api_keys,
           (select count(*) from api_request_log where created_at >= now() - interval '24 hours') as api_requests_24h,
           (select count(*) from api_request_log where status_code >= 400 and created_at >= now() - interval '24 hours') as api_failures_24h,
           (select max(created_at) from api_request_log) as last_api_request_at
@@ -93,7 +93,7 @@ export class OperationsDashboardService {
 
     return {
       api: {
-        activeClients: toNumber(operations.active_api_clients),
+        activeKeys: toNumber(operations.active_api_keys),
         failedRequestsLast24Hours: toNumber(operations.api_failures_24h),
         lastRequestAt: toIsoString(operations.last_api_request_at),
         requestsLast24Hours: toNumber(operations.api_requests_24h),

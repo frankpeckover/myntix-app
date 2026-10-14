@@ -418,41 +418,59 @@ export class CreditAnalyticsService {
             end,
             case when $5::text = 'hour' then interval '1 hour' else interval '1 day' end
           ) as bucket_date
+        ),
+        opening_balance as (
+          select coalesce(sum(ledger_entries.amount), 0)::numeric as amount
+          from ledger_entries
+          join accounts on accounts.id = ledger_entries.account_id
+          join filtered_students on filtered_students.id = accounts.user_id
+          where ledger_entries.status in ('pending', 'posted')
+            and not (
+              ledger_entries.status = 'pending'
+              and ledger_entries.is_voided = true
+            )
+            and ledger_entries.created_at < $1::timestamp
+        ),
+        bucket_changes as (
+          select
+            case when $5::text = 'hour'
+              then date_trunc('hour', ledger_entries.created_at)
+              else date_trunc('day', ledger_entries.created_at)
+            end as bucket_date,
+            sum(ledger_entries.amount)::numeric as amount
+          from ledger_entries
+          join accounts on accounts.id = ledger_entries.account_id
+          join filtered_students on filtered_students.id = accounts.user_id
+          where ledger_entries.status in ('pending', 'posted')
+            and not (
+              ledger_entries.status = 'pending'
+              and ledger_entries.is_voided = true
+            )
+            and ledger_entries.created_at >= $1::timestamp
+            and ledger_entries.created_at < $2::timestamp
+          group by 1
+        ),
+        running_balance as (
+          select
+            days.bucket_date,
+            opening_balance.amount + sum(coalesce(bucket_changes.amount, 0)) over (
+              order by days.bucket_date
+              rows between unbounded preceding and current row
+            ) as total_balance
+          from days
+          left join bucket_changes on bucket_changes.bucket_date = days.bucket_date
+          cross join opening_balance
+        ),
+        cohort_size as (
+          select count(*)::numeric as count from filtered_students
         )
         select
-          days.bucket_date,
-          coalesce(round((
-            select coalesce(sum(ledger_entries.amount), 0)::numeric
-            from ledger_entries
-            join accounts on accounts.id = ledger_entries.account_id
-            join filtered_students on filtered_students.id = accounts.user_id
-            where ledger_entries.status in ('pending', 'posted')
-              and not (
-                ledger_entries.status = 'pending'
-                and ledger_entries.is_voided = true
-              )
-              and ledger_entries.created_at < days.bucket_date + case
-                when $5::text = 'hour' then interval '1 hour'
-                else interval '1 day'
-              end
-          ) / nullif((select count(*) from filtered_students)::numeric, 0)), 0) as average_balance,
-          coalesce((
-            select sum(ledger_entries.amount)
-            from ledger_entries
-            join accounts on accounts.id = ledger_entries.account_id
-            join filtered_students on filtered_students.id = accounts.user_id
-            where ledger_entries.status in ('pending', 'posted')
-              and not (
-                ledger_entries.status = 'pending'
-                and ledger_entries.is_voided = true
-              )
-              and ledger_entries.created_at < days.bucket_date + case
-                when $5::text = 'hour' then interval '1 hour'
-                else interval '1 day'
-              end
-          ), 0) as total_balance
-        from days
-        order by days.bucket_date
+          running_balance.bucket_date,
+          coalesce(round(running_balance.total_balance / nullif(cohort_size.count, 0)), 0) as average_balance,
+          running_balance.total_balance
+        from running_balance
+        cross join cohort_size
+        order by running_balance.bucket_date
       `, [
         analyticsWindow.startDate,
         analyticsWindow.endDateExclusive,

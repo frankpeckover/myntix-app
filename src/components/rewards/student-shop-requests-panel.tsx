@@ -58,12 +58,12 @@ export function StudentShopRequestsPanel({
 
   return (
     <section
-      className={`student-dashboard-card student-cart-card rounded-3xl border border-transparent bg-surface p-4 sm:p-5 ${className}`}
+      className={`student-dashboard-card student-cart-card rounded-2xl border border-transparent bg-surface p-4 sm:p-5 ${className}`}
     >
       <FixedNotification error={error} />
       <div className="flex items-center gap-3">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand-soft text-brand">
-          <ShoppingCartIcon />
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center text-brand">
+          <ShoppingCartIcon className="h-4 w-4" />
         </span>
         <div className="min-w-0">
           <PanelTitle

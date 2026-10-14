@@ -6,6 +6,8 @@ import type { Role } from "@/lib/auth/session";
 import { isAdmin, isStudent } from "@/lib/auth/permissions";
 import {
   AlertTriangleIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   ClockIcon,
   CoinStackIcon,
   CogIcon,
@@ -13,8 +15,6 @@ import {
   KeyRoundIcon,
   ListIcon,
   LogOutIcon,
-  SidebarCollapseIcon,
-  SidebarExpandIcon,
   ShoppingCartIcon,
   SlidersHorizontalIcon,
   TrendingUpIcon,
@@ -234,15 +234,15 @@ export function DesktopSideNav({
               aria-label={isExpanded ? "Collapse navigation" : "Expand navigation"}
               aria-controls="primary-navigation-links"
               aria-expanded={isExpanded}
-              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-surface-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-reduce:transition-none"
+              className="group inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-transparent text-text-muted transition-colors hover:bg-brand-soft hover:text-brand-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand motion-reduce:transition-none"
               onClick={() => setIsExpanded((currentValue) => !currentValue)}
               title={isExpanded ? "Collapse navigation" : "Expand navigation"}
               type="button"
             >
               {isExpanded ? (
-                <SidebarCollapseIcon className="h-4 w-4" />
+                <ChevronLeftIcon className="h-[18px] w-[18px] transition-transform group-hover:-translate-x-0.5 motion-reduce:transition-none" />
               ) : (
-                <SidebarExpandIcon className="h-4 w-4" />
+                <ChevronRightIcon className="h-[18px] w-[18px] transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" />
               )}
             </button>
           </div>

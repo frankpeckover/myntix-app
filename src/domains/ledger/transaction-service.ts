@@ -41,6 +41,40 @@ export type TransactionLogItem = {
   purchaseStatus: ShopPurchaseStatus | null;
 };
 
+export type TransactionLogFilters = {
+  amountDirection: "" | "positive" | "negative";
+  amountMax: string;
+  amountMin: string;
+  createdDate: string;
+  purchaseStatus: "" | "pending" | "approved" | "denied";
+  reason: string;
+  student: string;
+  type: "" | LedgerEntryType;
+  voidedStatus: "" | "active" | "voided";
+};
+
+export type TransactionLogSort = {
+  column: "description" | "account" | "type" | "time" | "status" | "amount";
+  direction: "ascending" | "descending";
+} | null;
+
+export type TransactionLogQuery = {
+  createdAtFrom?: string;
+  createdAtTo?: string;
+  filters: TransactionLogFilters;
+  page: number;
+  pageSize: number;
+  sort: TransactionLogSort;
+  previewLimit?: number;
+};
+
+export type TransactionLogPage = {
+  hasAnyTransactions: boolean;
+  items: TransactionLogItem[];
+  page: number;
+  totalCount: number;
+};
+
 export type StudentBalanceItem = {
   balance: number;
   displayName: string;
@@ -131,12 +165,85 @@ type GroupAdjustmentMemberRow = {
 };
 
 type AdjustmentRecipient = {
+  accountId: string;
   balance: number;
   firstName: string;
   lastName: string;
-  userId: string;
   username: string;
 };
+
+type BulkAdjustmentEntry = {
+  accountId: string;
+  amount: number;
+  description: string;
+  entryType: LedgerEntryType;
+  relatedEntityId: string | null;
+  relatedEntityType: string | null;
+};
+
+type LockedStudentAccountRow = {
+  account_id: string;
+  balance: string;
+  user_id: string;
+};
+
+type StudentAccountIdRow = {
+  account_id: string;
+  user_id: string;
+};
+
+const transactionLogFromSql = `
+  from ledger_entries
+  join accounts on accounts.id = ledger_entries.account_id
+  join users on users.id = accounts.user_id
+  left join users created_by on created_by.id = ledger_entries.created_by_user_id
+  left join users voided_by on voided_by.id = ledger_entries.voided_by_user_id
+  left join shop_purchases
+    on ledger_entries.related_entity_type = 'shop_purchase'
+    and shop_purchases.id = ledger_entries.related_entity_id
+  left join shop_items on shop_items.id = shop_purchases.shop_item_id
+  left join student_groups
+    on ledger_entries.related_entity_type = 'student_group'
+    and student_groups.id = ledger_entries.related_entity_id
+  left join api_clients
+    on ledger_entries.related_entity_type = 'api_client'
+    and api_clients.id = ledger_entries.related_entity_id
+`;
+
+const transactionLogCountFromSql = `
+  from ledger_entries
+  join accounts on accounts.id = ledger_entries.account_id
+  join users on users.id = accounts.user_id
+  left join shop_purchases
+    on ledger_entries.related_entity_type = 'shop_purchase'
+    and shop_purchases.id = ledger_entries.related_entity_id
+`;
+
+const transactionLogSelectSql = `
+  accounts.account_name,
+  ledger_entries.id,
+  ledger_entries.amount,
+  ledger_entries.created_at,
+  ledger_entries.description,
+  ledger_entries.status as entry_status,
+  ledger_entries.is_voided,
+  ledger_entries.related_entity_id,
+  ledger_entries.related_entity_type,
+  ledger_entries.description as reason,
+  ledger_entries.reversal_of_ledger_entry_id,
+  trim(coalesce(nullif(users.preferred_name, ''), users.first_name) || ' ' || users.last_name) as student_name,
+  users.username as student_username,
+  trim(coalesce(nullif(created_by.preferred_name, ''), created_by.first_name) || ' ' || created_by.last_name) as created_by_name,
+  created_by.username as created_by_username,
+  ledger_entries.entry_type as type,
+  ledger_entries.voided_at,
+  trim(coalesce(nullif(voided_by.preferred_name, ''), voided_by.first_name) || ' ' || voided_by.last_name) as voided_by_name,
+  ledger_entries.void_reason,
+  shop_items.name as shop_item_name,
+  student_groups.name as student_group_name,
+  api_clients.name as api_client_name,
+  shop_purchases.status as purchase_status
+`;
 
 const ledgerService = new LedgerService();
 const auditService = new AuditService();
@@ -215,55 +322,104 @@ export class TransactionService {
     return result.rows.map(mapStudentBalanceRow);
   }
 
-  async listTransactions(userId: string, role: Role): Promise<TransactionLogItem[]> {
+  async listTransactions(
+    userId: string,
+    role: Role,
+    query: TransactionLogQuery,
+  ): Promise<TransactionLogPage> {
     const canViewAllTransactionsForRole = canViewAllTransactions({ role });
-
-    const result = await db.query<TransactionLogRow>(
+    const filters = sanitizeTransactionFilters(query.filters);
+    const values: unknown[] = [];
+    const scopeSql = canViewAllTransactionsForRole
+      ? "true"
+      : "accounts.user_id = $1";
+    if (!canViewAllTransactionsForRole) values.push(userId);
+    const filterSql = buildTransactionFilterSql(filters, query, values);
+    const countResult = await db.query<{
+      filtered_count: string;
+      total_count: string;
+    }>(
       `
         select
-          accounts.account_name,
-          ledger_entries.id,
-          ledger_entries.amount,
-          ledger_entries.created_at,
-          ledger_entries.description,
-          ledger_entries.status as entry_status,
-          ledger_entries.is_voided,
-          ledger_entries.related_entity_id,
-          ledger_entries.related_entity_type,
-          ledger_entries.description as reason,
-          ledger_entries.reversal_of_ledger_entry_id,
-          trim(coalesce(nullif(users.preferred_name, ''), users.first_name) || ' ' || users.last_name) as student_name,
-          users.username as student_username,
-          trim(coalesce(nullif(created_by.preferred_name, ''), created_by.first_name) || ' ' || created_by.last_name) as created_by_name,
-          created_by.username as created_by_username,
-          ledger_entries.entry_type as type,
-          ledger_entries.voided_at,
-          trim(coalesce(nullif(voided_by.preferred_name, ''), voided_by.first_name) || ' ' || voided_by.last_name) as voided_by_name,
-          ledger_entries.void_reason,
-          shop_items.name as shop_item_name,
-          student_groups.name as student_group_name,
-          api_clients.name as api_client_name,
-          shop_purchases.status as purchase_status
-        from ledger_entries
-        join accounts on accounts.id = ledger_entries.account_id
-        join users on users.id = accounts.user_id
-        left join users created_by on created_by.id = ledger_entries.created_by_user_id
-        left join users voided_by on voided_by.id = ledger_entries.voided_by_user_id
-        left join shop_purchases
-          on ledger_entries.related_entity_type = 'shop_purchase'
-          and shop_purchases.id = ledger_entries.related_entity_id
-        left join shop_items on shop_items.id = shop_purchases.shop_item_id
-        left join student_groups
-          on ledger_entries.related_entity_type = 'student_group'
-          and student_groups.id = ledger_entries.related_entity_id
-        left join api_clients
-          on ledger_entries.related_entity_type = 'api_client'
-          and api_clients.id = ledger_entries.related_entity_id
-        where $1::boolean = true
-          or accounts.user_id = $2
-        order by ledger_entries.created_at desc
+          count(*)::text as total_count,
+          count(*) filter (where ${filterSql || "true"})::text as filtered_count
+        ${transactionLogCountFromSql}
+        where ${scopeSql}
       `,
-      [canViewAllTransactionsForRole, userId],
+      values,
+    );
+    const totalCount = Number(countResult.rows[0]?.filtered_count ?? 0);
+    const hasAnyTransactions = Number(countResult.rows[0]?.total_count ?? 0) > 0;
+    const previewLimit = sanitizePageSize(query.previewLimit, 0);
+    const pageSize = previewLimit || sanitizePageSize(query.pageSize, 50);
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+    const page = previewLimit
+      ? 1
+      : Math.min(sanitizePageNumber(query.page), totalPages);
+    const offset = (page - 1) * pageSize;
+    const pageValues = [...values, pageSize, offset];
+    const orderBySql = buildTransactionOrderBy(query.sort);
+    const pageResult = await db.query<TransactionLogRow>(
+      `
+        select ${transactionLogSelectSql}
+        ${transactionLogFromSql}
+        where ${scopeSql}
+          ${filterSql ? `and ${filterSql}` : ""}
+        order by ${orderBySql}
+        limit $${pageValues.length - 1}
+        offset $${pageValues.length}
+      `,
+      pageValues,
+    );
+
+    return {
+      hasAnyTransactions,
+      items: pageResult.rows.map(this.mapTransactionRow),
+      page,
+      totalCount,
+    };
+  }
+
+  async listAllTransactions(userId: string, role: Role): Promise<TransactionLogItem[]> {
+    const canViewAll = canViewAllTransactions({ role });
+    const result = await db.query<TransactionLogRow>(
+      `
+        select ${transactionLogSelectSql}
+        ${transactionLogFromSql}
+        where ${canViewAll ? "true" : "accounts.user_id = $1"}
+        order by ledger_entries.created_at desc, ledger_entries.id desc
+      `,
+      canViewAll ? [] : [userId],
+    );
+
+    return result.rows.map(this.mapTransactionRow);
+  }
+
+  async exportTransactions(
+    userId: string,
+    role: Role,
+    filters: TransactionLogFilters,
+    sort: TransactionLogSort,
+    query: Pick<TransactionLogQuery, "createdAtFrom" | "createdAtTo">,
+  ): Promise<TransactionLogItem[]> {
+    const canViewAll = canViewAllTransactions({ role });
+    const values: unknown[] = [];
+    const scopeSql = canViewAll ? "true" : "accounts.user_id = $1";
+    if (!canViewAll) values.push(userId);
+    const filterSql = buildTransactionFilterSql(
+      sanitizeTransactionFilters(filters),
+      query,
+      values,
+    );
+    const result = await db.query<TransactionLogRow>(
+      `
+        select ${transactionLogSelectSql}
+        ${transactionLogFromSql}
+        where ${scopeSql}
+          ${filterSql ? `and ${filterSql}` : ""}
+        order by ${buildTransactionOrderBy(sort)}
+      `,
+      values,
     );
 
     return result.rows.map(this.mapTransactionRow);
@@ -467,22 +623,25 @@ export class TransactionService {
         };
       }
 
-      const adjustmentRecipients: AdjustmentRecipient[] = [];
-
-      for (const student of studentsResult.rows) {
-        adjustmentRecipients.push({
-          balance: await ledgerService.getAvailableBalance(
-            client,
-            student.user_id,
-          ),
+      const accountsByUserId = await lockAndGetStudentAccounts(
+        client,
+        studentUserIds,
+      );
+      const adjustmentRecipients: AdjustmentRecipient[] = studentsResult.rows.map(
+        (student) => {
+          const account = accountsByUserId.get(student.user_id);
+          if (!account) throw new Error("Student account could not be found.");
+          return {
+          accountId: account.accountId,
+          balance: account.balance,
           firstName: student.first_name,
           lastName: student.last_name,
-          userId: student.user_id,
           username: student.username,
-        });
-      }
+          };
+        },
+      );
 
-      const createdLedgerEntryIds: string[] = [];
+      const pendingEntries: BulkAdjustmentEntry[] = [];
       let cappedAtBalanceCapCount = 0;
       let skippedZeroBalanceCount = 0;
       let reducedToZeroCount = 0;
@@ -507,17 +666,21 @@ export class TransactionService {
           cappedAtBalanceCapCount += 1;
         }
 
-        const ledgerEntryId = await ledgerService.createEntry(client, {
+        pendingEntries.push({
+          accountId: recipient.accountId,
           amount: actualAmount,
-          createdByUserId: currentUser.id,
-          description: reason,
           entryType: actualAmount > 0 ? "reward" : "penalty",
-          status: "posted",
-          userId: recipient.userId,
+          description: reason,
+          relatedEntityId: null,
+          relatedEntityType: null,
         });
-
-        createdLedgerEntryIds.push(ledgerEntryId);
       }
+
+      const createdLedgerEntryIds = await insertAdjustmentEntries(
+        client,
+        pendingEntries,
+        currentUser.id,
+      );
 
       await auditService.logWithClient(client, {
         action:
@@ -666,19 +829,22 @@ export class TransactionService {
 
       const balanceCap = await ledgerService.getBalanceCap(client);
 
-      const createdLedgerEntryIds: string[] = [];
+      const memberUserIds = membersResult.rows.map((member) => member.user_id);
+      const accountsByUserId = await lockAndGetStudentAccounts(
+        client,
+        memberUserIds,
+      );
+      const pendingEntries: BulkAdjustmentEntry[] = [];
       let cappedAtBalanceCapCount = 0;
       let skippedZeroBalanceCount = 0;
       let reducedToZeroCount = 0;
 
       for (const member of membersResult.rows) {
-        const balance = await ledgerService.getAvailableBalance(
-          client,
-          member.user_id,
-        );
+        const account = accountsByUserId.get(member.user_id);
+        if (!account) throw new Error("Student account could not be found.");
         const actualAmount = getActualAdjustmentAmount(
           input.amount,
-          balance,
+          account.balance,
           balanceCap,
         );
 
@@ -695,19 +861,21 @@ export class TransactionService {
           cappedAtBalanceCapCount += 1;
         }
 
-        const ledgerEntryId = await ledgerService.createEntry(client, {
+        pendingEntries.push({
+          accountId: account.accountId,
           amount: actualAmount,
-          createdByUserId: currentUser.id,
-          description,
           entryType: actualAmount > 0 ? "reward" : "penalty",
+          description,
           relatedEntityId: input.groupId,
           relatedEntityType: "student_group",
-          status: "posted",
-          userId: member.user_id,
         });
-
-        createdLedgerEntryIds.push(ledgerEntryId);
       }
+
+      const createdLedgerEntryIds = await insertAdjustmentEntries(
+        client,
+        pendingEntries,
+        currentUser.id,
+      );
 
       await auditService.logWithClient(client, {
         action: "ledger_entry.group_created",
@@ -832,6 +1000,153 @@ export class TransactionService {
   }
 }
 
+const supportedTransactionTypes = new Set<LedgerEntryType>([
+  "reward",
+  "penalty",
+  "credit",
+  "debit",
+  "hold",
+  "shop_hold",
+  "shop_purchase",
+  "shop_refund",
+  "manual_adjustment",
+  "void_reversal",
+]);
+
+function sanitizeTransactionFilters(filters: TransactionLogFilters) {
+  const source = filters as Partial<TransactionLogFilters> | null;
+  const validPurchaseStatuses = ["pending", "approved", "denied"];
+
+  return {
+    amountDirection:
+      source?.amountDirection === "positive" || source?.amountDirection === "negative"
+        ? source.amountDirection
+        : "",
+    amountMax: typeof source?.amountMax === "string" ? source.amountMax.slice(0, 32) : "",
+    amountMin: typeof source?.amountMin === "string" ? source.amountMin.slice(0, 32) : "",
+    createdDate: typeof source?.createdDate === "string" ? source.createdDate : "",
+    purchaseStatus: validPurchaseStatuses.includes(source?.purchaseStatus ?? "")
+      ? source!.purchaseStatus!
+      : "",
+    reason: typeof source?.reason === "string" ? source.reason.trim().slice(0, 200) : "",
+    student: typeof source?.student === "string" ? source.student.trim().slice(0, 200) : "",
+    type: supportedTransactionTypes.has(source?.type as LedgerEntryType)
+      ? source!.type!
+      : "",
+    voidedStatus:
+      source?.voidedStatus === "active" || source?.voidedStatus === "voided"
+        ? source.voidedStatus
+        : "",
+  } satisfies TransactionLogFilters;
+}
+
+function buildTransactionFilterSql(
+  filters: TransactionLogFilters,
+  query: Pick<TransactionLogQuery, "createdAtFrom" | "createdAtTo">,
+  values: unknown[],
+) {
+  const conditions: string[] = [];
+  const addValue = (value: unknown) => {
+    values.push(value);
+    return `$${values.length}`;
+  };
+
+  if (filters.reason) {
+    conditions.push(
+      `lower(ledger_entries.description) like ${addValue(`%${escapeLikeTerm(filters.reason.toLowerCase())}%`)} escape E'\\\\'`,
+    );
+  }
+
+  if (filters.student) {
+    const pattern = addValue(`%${escapeLikeTerm(filters.student.toLowerCase())}%`);
+    conditions.push(`
+      lower(concat_ws(
+        ' ',
+        trim(coalesce(nullif(users.preferred_name, ''), users.first_name) || ' ' || users.last_name),
+        users.username
+      )) like ${pattern} escape E'\\\\'
+    `);
+  }
+
+  if (filters.type) {
+    conditions.push(`ledger_entries.entry_type = ${addValue(filters.type)}`);
+  }
+  if (filters.voidedStatus === "active") {
+    conditions.push("not ledger_entries.is_voided and ledger_entries.status <> 'voided'");
+  } else if (filters.voidedStatus === "voided") {
+    conditions.push("(ledger_entries.is_voided or ledger_entries.status = 'voided')");
+  }
+  if (filters.purchaseStatus) {
+    conditions.push(`shop_purchases.status = ${addValue(filters.purchaseStatus)}`);
+  }
+  if (filters.amountDirection === "positive") {
+    conditions.push("ledger_entries.amount > 0");
+  } else if (filters.amountDirection === "negative") {
+    conditions.push("ledger_entries.amount < 0");
+  }
+
+  const minimum = parseAmountFilter(filters.amountMin);
+  if (minimum !== null) {
+    conditions.push(`abs(ledger_entries.amount::numeric) >= ${addValue(minimum)}::numeric`);
+  }
+  const maximum = parseAmountFilter(filters.amountMax);
+  if (maximum !== null) {
+    conditions.push(`abs(ledger_entries.amount::numeric) <= ${addValue(maximum)}::numeric`);
+  }
+
+  const createdAtFrom = sanitizeIsoDateTime(query.createdAtFrom);
+  const createdAtTo = sanitizeIsoDateTime(query.createdAtTo);
+  if (createdAtFrom && createdAtTo && createdAtTo > createdAtFrom) {
+    conditions.push(`ledger_entries.created_at >= ${addValue(createdAtFrom)}::timestamptz`);
+    conditions.push(`ledger_entries.created_at < ${addValue(createdAtTo)}::timestamptz`);
+  }
+
+  return conditions.join(" and ");
+}
+
+function buildTransactionOrderBy(sort: TransactionLogSort) {
+  const columns = {
+    description: "lower(ledger_entries.description)",
+    account: "lower(trim(coalesce(nullif(users.preferred_name, ''), users.first_name) || ' ' || users.last_name))",
+    type: "ledger_entries.entry_type",
+    time: "ledger_entries.created_at",
+    status: "ledger_entries.status",
+    amount: "ledger_entries.amount",
+  } as const;
+  const column =
+    sort && Object.hasOwn(columns, sort.column)
+      ? columns[sort.column]
+      : columns.time;
+  const direction = sort?.direction === "ascending" ? "asc" : "desc";
+
+  return `${column} ${direction}, ledger_entries.created_at desc, ledger_entries.id desc`;
+}
+
+function sanitizePageNumber(value: number) {
+  return Number.isSafeInteger(value) ? Math.max(1, value) : 1;
+}
+
+function sanitizePageSize(value: number | undefined, fallback: number) {
+  if (!Number.isSafeInteger(value) || value === undefined) return fallback;
+  return Math.min(500, Math.max(1, value));
+}
+
+function sanitizeIsoDateTime(value: string | undefined) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+}
+
+function escapeLikeTerm(value: string) {
+  return value.replace(/[\\%_]/g, (character) => `\\${character}`);
+}
+
+function parseAmountFilter(value: string) {
+  if (!value.trim()) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.abs(parsed) : null;
+}
+
 function formatLedgerType(type: LedgerEntryType) {
   const labels: Record<LedgerEntryType, string> = {
     manual_adjustment: "Manual adjustment",
@@ -926,6 +1241,143 @@ function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     value,
   );
+}
+
+async function lockAndGetStudentAccounts(
+  client: import("pg").PoolClient,
+  userIds: string[],
+) {
+  await client.query(
+    `
+      insert into accounts (user_id, account_name)
+      select users.id, 'Primary account'
+      from users
+      join roles on roles.id = users.role_id
+      where users.id = any($1::uuid[])
+        and roles.role_key = 'student'
+      on conflict (user_id) do nothing
+    `,
+    [userIds],
+  );
+
+  const lockedAccounts = await client.query<StudentAccountIdRow>(
+    `
+      select accounts.id as account_id, accounts.user_id
+      from accounts
+      where accounts.user_id = any($1::uuid[])
+      order by accounts.user_id
+      for update of accounts
+    `,
+    [userIds],
+  );
+
+  const accountIds = lockedAccounts.rows.map((row) => row.account_id);
+  if (accountIds.length !== userIds.length) {
+    throw new Error("Student account could not be found.");
+  }
+
+  const balances = await client.query<LockedStudentAccountRow>(
+    `
+      select
+        accounts.id as account_id,
+        accounts.user_id,
+        coalesce(ledger_balance.amount, 0)
+          - coalesce(active_holds.amount, 0) as balance
+      from accounts
+      left join (
+        select
+          ledger_entries.account_id,
+          sum(ledger_entries.amount) as amount
+        from ledger_entries
+        where ledger_entries.account_id = any($1::uuid[])
+          and ledger_entries.status in ('pending', 'posted')
+          and not (
+            ledger_entries.status = 'pending'
+            and ledger_entries.is_voided = true
+          )
+        group by ledger_entries.account_id
+      ) ledger_balance on ledger_balance.account_id = accounts.id
+      left join (
+        select account_holds.account_id, sum(account_holds.amount) as amount
+        from account_holds
+        where account_holds.account_id = any($1::uuid[])
+          and account_holds.status = 'active'
+          and (
+            account_holds.expires_at is null
+            or account_holds.expires_at > now()
+          )
+        group by account_holds.account_id
+      ) active_holds on active_holds.account_id = accounts.id
+      where accounts.id = any($1::uuid[])
+    `,
+    [accountIds],
+  );
+
+  return new Map(
+    balances.rows.map((row) => [
+      row.user_id,
+      { accountId: row.account_id, balance: Number(row.balance) },
+    ]),
+  );
+}
+
+async function insertAdjustmentEntries(
+  client: import("pg").PoolClient,
+  entries: BulkAdjustmentEntry[],
+  createdByUserId: string,
+) {
+  if (entries.length === 0) return [];
+
+  const result = await client.query<{ id: string }>(
+    `
+      insert into ledger_entries (
+        account_id,
+        amount,
+        entry_type,
+        status,
+        description,
+        related_entity_type,
+        related_entity_id,
+        created_by_user_id
+      )
+      select
+        entry.account_id,
+        entry.amount,
+        entry.entry_type,
+        'posted',
+        entry.description,
+        entry.related_entity_type,
+        entry.related_entity_id,
+        $7
+      from unnest(
+        $1::uuid[],
+        $2::integer[],
+        $3::text[],
+        $4::text[],
+        $5::text[],
+        $6::uuid[]
+      ) as entry(
+        account_id,
+        amount,
+        entry_type,
+        description,
+        related_entity_type,
+        related_entity_id
+      )
+      returning id
+    `,
+    [
+      entries.map((entry) => entry.accountId),
+      entries.map((entry) => entry.amount),
+      entries.map((entry) => entry.entryType),
+      entries.map((entry) => entry.description),
+      entries.map((entry) => entry.relatedEntityType),
+      entries.map((entry) => entry.relatedEntityId),
+      createdByUserId,
+    ],
+  );
+
+  return result.rows.map((row) => row.id);
 }
 
 function getActualAdjustmentAmount(

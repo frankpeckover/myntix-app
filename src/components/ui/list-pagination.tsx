@@ -8,7 +8,7 @@ const desktopListPageSize = 50;
 const mobileMediaQuery = "(max-width: 767px)";
 
 export function usePagedList<Item>(items: Item[]) {
-  const pageSize = useResponsiveListPageSize();
+  const { pageSize, setPageSize } = useResponsiveListPageSize();
   const [page, setPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
 
@@ -34,23 +34,26 @@ export function usePagedList<Item>(items: Item[]) {
     pageItems,
     pageSize,
     setPage,
+    setPageSize,
     totalPages,
   };
 }
 
 export function ListPagination({
   onPageChange,
+  onPageSizeChange,
   page,
+  pageSize,
   totalCount,
   totalPages,
 }: {
   onPageChange: (page: number) => void;
+  onPageSizeChange: (pageSize: number) => void;
   page: number;
+  pageSize: number;
   totalCount: number;
   totalPages: number;
 }) {
-  const pageSize = useResponsiveListPageSize();
-
   if (totalPages <= 1) {
     return null;
   }
@@ -63,56 +66,73 @@ export function ListPagination({
       <p className="text-xs font-medium text-text-muted">
         Showing <span className="tabular-nums text-text-control">{rangeStart}-{rangeEnd}</span> of {totalCount}
       </p>
-      <div className="inline-flex h-9 w-fit items-center rounded-md border border-button-border bg-surface p-0.5">
-        <button
-          aria-label="Previous page"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-sm text-text-control transition hover:bg-panel-soft disabled:cursor-not-allowed disabled:text-text-subtle"
-          disabled={page <= 1}
-          onClick={() => onPageChange(page - 1)}
-          type="button"
-        >
-          <ChevronLeftIcon className="h-4 w-4" />
-        </button>
-        <label className="sr-only" htmlFor="paginationPage">
-          Go to page
-        </label>
-        <select
-          className="h-8 min-w-12 appearance-none rounded-sm bg-transparent px-2 text-center text-xs font-semibold tabular-nums text-text-control outline-none transition hover:bg-panel-soft focus-visible:ring-2 focus-visible:ring-brand"
-          id="paginationPage"
-          onChange={(event) => onPageChange(Number(event.target.value))}
-          value={page}
-        >
-          {Array.from({ length: totalPages }, (_, index) => index + 1).map(
-            (pageNumber) => (
-              <option key={pageNumber} value={pageNumber}>
-                {pageNumber}
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="flex items-center gap-2 text-xs text-text-muted">
+          Rows
+          <select
+            aria-label="Rows per page"
+            className="h-8 rounded-md border border-button-border bg-surface px-2.5 text-xs font-medium text-text-control outline-none transition hover:border-border-strong focus-visible:ring-2 focus-visible:ring-brand"
+            onChange={(event) => onPageSizeChange(Number(event.target.value))}
+            value={pageSize}
+          >
+            {[15, 50, 100, 250, 500].map((size) => (
+              <option key={size} value={size}>
+                {size}
               </option>
-            ),
-          )}
-        </select>
-        <span className="px-1 text-xs text-text-subtle">of {totalPages}</span>
-        <button
-          aria-label="Next page"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-sm text-text-control transition hover:bg-panel-soft disabled:cursor-not-allowed disabled:text-text-subtle"
-          disabled={page >= totalPages}
-          onClick={() => onPageChange(page + 1)}
-          type="button"
-        >
-          <ChevronRightIcon className="h-4 w-4" />
-        </button>
+            ))}
+          </select>
+        </label>
+        <div className="inline-flex items-center gap-1">
+          <button
+            aria-label="Previous page"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-control transition hover:bg-panel-soft disabled:cursor-not-allowed disabled:text-text-subtle"
+            disabled={page <= 1}
+            onClick={() => onPageChange(page - 1)}
+            type="button"
+          >
+            <ChevronLeftIcon className="h-4 w-4" />
+          </button>
+          <select
+            aria-label="Go to page"
+            className="h-8 min-w-8 appearance-none rounded-md bg-transparent px-1 text-center text-xs font-semibold tabular-nums text-text-control outline-none transition hover:bg-panel-soft focus-visible:ring-2 focus-visible:ring-brand"
+            onChange={(event) => onPageChange(Number(event.target.value))}
+            value={page}
+          >
+            {Array.from({ length: totalPages }, (_, index) => index + 1).map(
+              (pageNumber) => (
+                <option key={pageNumber} value={pageNumber}>
+                  {pageNumber}
+                </option>
+              ),
+            )}
+          </select>
+          <span className="text-xs text-text-subtle">of {totalPages}</span>
+          <button
+            aria-label="Next page"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-control transition hover:bg-panel-soft disabled:cursor-not-allowed disabled:text-text-subtle"
+            disabled={page >= totalPages}
+            onClick={() => onPageChange(page + 1)}
+            type="button"
+          >
+            <ChevronRightIcon className="h-4 w-4" />
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-function useResponsiveListPageSize() {
+export function useResponsiveListPageSize() {
   const [pageSize, setPageSize] = useState(desktopListPageSize);
+  const [userSelectedPageSize, setUserSelectedPageSize] = useState(false);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia(mobileMediaQuery);
 
     function updatePageSize() {
-      setPageSize(mediaQuery.matches ? mobileListPageSize : desktopListPageSize);
+      if (!userSelectedPageSize) {
+        setPageSize(mediaQuery.matches ? mobileListPageSize : desktopListPageSize);
+      }
     }
 
     updatePageSize();
@@ -121,7 +141,12 @@ function useResponsiveListPageSize() {
     return () => {
       mediaQuery.removeEventListener("change", updatePageSize);
     };
-  }, []);
+  }, [userSelectedPageSize]);
 
-  return pageSize;
+  function updateSelectedPageSize(nextPageSize: number) {
+    setPageSize(nextPageSize);
+    setUserSelectedPageSize(true);
+  }
+
+  return { pageSize, setPageSize: updateSelectedPageSize };
 }

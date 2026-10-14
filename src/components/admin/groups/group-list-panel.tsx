@@ -22,6 +22,7 @@ import {
   usePagedList,
 } from "@/components/ui/list-pagination";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { archiveStatusFilterOptions, type ArchiveStatusFilter } from "@/components/ui/archive-status-filter";
 import { TableActionGrid } from "@/components/ui/table-action-grid";
 import {
   TableHeaderFilter,
@@ -58,10 +59,10 @@ type GroupListPanelProps = {
   onGroupStatusChange: (group: GroupListItem) => void;
   onVisibleGroupsSelectionChange: (isSelected: boolean) => void;
   onFiltersChange: (filters: GroupFilters) => void;
-  onShowArchivedChange: (showArchived: boolean) => void;
+  onStatusFilterChange: (status: ArchiveStatusFilter) => void;
   selectedGroupId: string;
   selectedGroupIds: string[];
-  showArchived: boolean;
+  statusFilter: ArchiveStatusFilter;
   toolbar?: ReactNode;
   totalGroupsCount: number;
 };
@@ -81,10 +82,10 @@ export function GroupListPanel({
   onGroupStatusChange,
   onVisibleGroupsSelectionChange,
   onFiltersChange,
-  onShowArchivedChange,
+  onStatusFilterChange,
   selectedGroupId,
   selectedGroupIds,
-  showArchived,
+  statusFilter,
   toolbar,
   totalGroupsCount,
 }: GroupListPanelProps) {
@@ -101,7 +102,9 @@ export function GroupListPanel({
   const {
     page,
     pageItems: visibleGroups,
+    pageSize,
     setPage,
+    setPageSize,
     totalPages,
   } = usePagedList(sortedGroups);
 
@@ -134,10 +137,10 @@ export function GroupListPanel({
               onGroupStatusChange={onGroupStatusChange}
               onVisibleGroupsSelectionChange={onVisibleGroupsSelectionChange}
               onFiltersChange={onFiltersChange}
-              onShowArchivedChange={onShowArchivedChange}
+              onStatusFilterChange={onStatusFilterChange}
               selectedGroupId={selectedGroupId}
               selectedGroupIds={selectedGroupIds}
-              showArchived={showArchived}
+              statusFilter={statusFilter}
               toolbar={toolbar}
             />
             {groups.length === 0 && (
@@ -161,7 +164,9 @@ export function GroupListPanel({
             {groups.length > 0 && (
               <ListPagination
                 onPageChange={setPage}
+                onPageSizeChange={setPageSize}
                 page={page}
+                pageSize={pageSize}
                 totalCount={groups.length}
                 totalPages={totalPages}
               />
@@ -184,11 +189,11 @@ function GroupList({
   onGroupStatusChange,
   onVisibleGroupsSelectionChange,
   onFiltersChange,
-  onShowArchivedChange,
+  onStatusFilterChange,
   onSortChange,
   selectedGroupId,
   selectedGroupIds,
-  showArchived,
+  statusFilter,
   tableSort,
   toolbar,
 }: {
@@ -202,17 +207,19 @@ function GroupList({
   onGroupStatusChange: (group: GroupListItem) => void;
   onVisibleGroupsSelectionChange: (isSelected: boolean) => void;
   onFiltersChange: (filters: GroupFilters) => void;
-  onShowArchivedChange: (showArchived: boolean) => void;
+  onStatusFilterChange: (status: ArchiveStatusFilter) => void;
   onSortChange: (column: string, direction: TableSortDirection | null) => void;
   selectedGroupId: string;
   selectedGroupIds: string[];
-  showArchived: boolean;
+  statusFilter: ArchiveStatusFilter;
   tableSort: { column: string; direction: TableSortDirection } | null;
   toolbar?: ReactNode;
 }) {
+  const selectedGroupIdSet = new Set(selectedGroupIds);
+  const selectableGroupIds = groups.map((group) => group.id);
   const areAllVisibleGroupsSelected =
     groups.length > 0 &&
-    groups.every((group) => selectedGroupIds.includes(group.id));
+    groups.every((group) => selectedGroupIdSet.has(group.id));
 
   function updateFilter(field: keyof GroupFilters, value: string) {
     onFiltersChange({ ...filters, [field]: value });
@@ -233,7 +240,7 @@ function GroupList({
             onGroupSelect={onGroupSelect}
             onGroupSelectionChange={onGroupSelectionChange}
             onGroupStatusChange={onGroupStatusChange}
-            selected={selectedGroupIds.includes(group.id)}
+            selected={selectedGroupIdSet.has(group.id)}
           />
         ))}
       </div>
@@ -320,22 +327,17 @@ function GroupList({
             </th>
             <th scope="col" className="py-2 pr-4 font-semibold">
               <TableHeaderFilter
-                isActive={showArchived}
+                isActive={statusFilter !== "active"}
                 label="Status"
-                onClear={() => onShowArchivedChange(false)}
+                onClear={() => onStatusFilterChange("active")}
                 onSortDirectionChange={(direction) => onSortChange("status", direction)}
                 sortDirection={tableSort?.column === "status" ? tableSort.direction : null}
               >
                 <TableHeaderFilterSelect
                   label="Status"
-                  onChange={(value) =>
-                    onShowArchivedChange(value === "includeArchived")
-                  }
-                  options={[
-                    { label: "Active only", value: "activeOnly" },
-                    { label: "Include archived", value: "includeArchived" },
-                  ]}
-                  value={showArchived ? "includeArchived" : "activeOnly"}
+                  onChange={(value) => onStatusFilterChange(value as ArchiveStatusFilter)}
+                  options={archiveStatusFilterOptions}
+                  value={statusFilter}
                 />
               </TableHeaderFilter>
             </th>
@@ -353,11 +355,11 @@ function GroupList({
               key={group.id}
             >
               <DataTableSelectionCell
-                checked={selectedGroupIds.includes(group.id)}
+                checked={selectedGroupIdSet.has(group.id)}
                 label={`Select ${group.name}`}
                 rangeKey="groups-table"
                 rowId={group.id}
-                selectableRowIds={groups.map((row) => row.id)}
+                selectableRowIds={selectableGroupIds}
                 onRangeChange={(ids, isSelected) =>
                   ids.forEach((id) => onGroupSelectionChange(id, isSelected))
                 }

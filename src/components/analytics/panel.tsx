@@ -69,11 +69,11 @@ type AnalyticsWindowKey = number | "custom";
 
 const analyticsSearchDebounceMs = 300;
 const analyticsWindowOptions: AnalyticsWindowOption[] = [
-  { days: 1, label: "Day" },
-  { days: 7, label: "Week" },
-  { days: 30, label: "Month" },
-  { days: 90, label: "3 months" },
-  { days: 365, label: "Year" },
+  { days: 1, label: "Today" },
+  { days: 7, label: "Last 7 days" },
+  { days: 30, label: "Last 30 days" },
+  { days: 90, label: "Last 90 days" },
+  { days: 365, label: "Last 365 days" },
 ];
 const scopeSearchDebounceMs = 250;
 
@@ -133,9 +133,9 @@ export function CreditAnalyticsPanel({
   const selectedWindowLabel =
     selectedWindowKey === "custom"
       ? formatCustomWindowLabel(customStartDate, customEndDate)
-      : selectedWindowKey === 1
-        ? "today"
-        : `${selectedWindowKey} days`;
+      : analyticsWindowOptions.find(
+          (option) => option.days === selectedWindowKey,
+        )?.label.toLowerCase() ?? "selected range";
 
   useEffect(() => {
     let isMounted = true;
@@ -506,15 +506,15 @@ function NetMovementChart({
           <XAxis
             axisLine={false}
             dataKey="timestamp"
-            domain={["dataMin", "dataMax"]}
             minTickGap={12}
+            padding={{ left: 12, right: 8 }}
             tick={{ fill: "var(--text-muted)", fontSize: 11 }}
             tickFormatter={(timestamp) =>
               findPointLabel(trend, Number(timestamp))
             }
             tickLine={false}
             ticks={xAxisTicks}
-            type="number"
+            type="category"
           />
           <YAxis
             axisLine={false}
@@ -547,6 +547,7 @@ function NetMovementChart({
               strokeWidth: 1,
             }}
             dataKey="net"
+            maxBarSize={32}
             radius={[6, 6, 2, 2]}
           >
             {trend.map((point) => (

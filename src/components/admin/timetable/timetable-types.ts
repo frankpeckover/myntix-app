@@ -1,13 +1,15 @@
+import type { ArchiveStatusFilter } from "@/components/ui/archive-status-filter";
+
 export type TimetableFiltersState = {
   dayOfWeek: string;
   groupName: string;
-  status: "" | "active" | "archived";
+  status: ArchiveStatusFilter;
   teacherName: string;
 };
 
 export const emptyTimetableFilters: TimetableFiltersState = {
   dayOfWeek: "",
   groupName: "",
-  status: "",
+  status: "active",
   teacherName: "",
 };

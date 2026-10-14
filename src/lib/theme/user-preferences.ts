@@ -20,7 +20,7 @@ import {
 } from "@/lib/theme/wallet-style-config";
 
 export type VoiceShortcut = "F2" | "F8" | "Control+Shift+Space" | "click";
-export type TextSize = "default" | "large";
+export type TextSize = "small" | "default" | "large";
 
 export type UserPreferences = {
   accentTheme: AccentTheme;
@@ -50,7 +50,7 @@ const allowedValues = {
   accentTheme: ["teal", "blue", "purple", "orange", "custom"],
   dashboardTheme: ["clean", "soft-grid", "notebook", "confetti"],
   tableDensity: ["compact", "default", "roomy"],
-  textSize: ["default", "large"],
+  textSize: ["small", "default", "large"],
   themeMode: ["light", "dark"],
   voiceShortcut: ["F2", "F8", "Control+Shift+Space", "click"],
   walletPattern: ["none", "pinstripe", "grid", "dots", "orbit", "contour"],
