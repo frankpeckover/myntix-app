@@ -1,8 +1,25 @@
+const dateTimeFormatter = new Intl.DateTimeFormat("en-AU", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+const amountFormatter = new Intl.NumberFormat("en-AU", {
+  maximumFractionDigits: 0,
+});
+const signedAmountFormatter = new Intl.NumberFormat("en-AU", {
+  maximumFractionDigits: 0,
+  signDisplay: "exceptZero",
+});
+
 export function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat("en-AU", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return dateTimeFormatter.format(new Date(value));
+}
+
+export function formatDateKey(date: Date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
 }
 
 export function formatCurrencyAmount(amount: number, currencyName: string) {
@@ -17,16 +34,9 @@ export function formatSignedCurrencyAmount(
 }
 
 export function formatAmount(amount: number) {
-  return new Intl.NumberFormat("en-AU", {
-    maximumFractionDigits: 0,
-  }).format(Math.abs(amount));
+  return amountFormatter.format(Math.abs(amount));
 }
 
 export function formatSignedAmount(amount: number) {
-  const formattedAmount = new Intl.NumberFormat("en-AU", {
-    maximumFractionDigits: 0,
-    signDisplay: "exceptZero",
-  }).format(amount);
-
-  return formattedAmount;
+  return signedAmountFormatter.format(amount);
 }

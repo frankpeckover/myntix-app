@@ -19,16 +19,13 @@ import {
   chartStrokeWidth,
   findPointLabel,
   getBalanceAxisTicks,
-  getCompactMovementAxisTicks,
   getDistributionAxisTicks,
-  getMovementAxisTicks,
   getPurchaseAxisTicks,
   getTimeAxisTicks,
 } from "@/components/analytics/charts/analytics-chart-utils";
 import {
   BalanceHistoryTooltip,
   DistributionTooltip,
-  NetMovementTooltip,
   PurchaseTrendTooltip,
 } from "@/components/analytics/charts/analytics-tooltips";
 import {
@@ -37,6 +34,10 @@ import {
   UsersIcon,
   WalletIcon,
 } from "@/components/ui/icons";
+import {
+  ActivityHeatmap,
+  type ActivityHeatmapDetail,
+} from "@/components/ui/activity-heatmap";
 import { FixedNotification } from "@/components/ui/fixed-notification";
 import { InlineSelectMenu } from "@/components/ui/inline-select-menu";
 import { LoadFailure } from "@/components/ui/load-failure";
@@ -100,6 +101,7 @@ export function CreditAnalyticsPanel({
   );
   const [summary, setSummary] = useState<CreditAnalyticsSummary | null>(null);
   const [trend, setTrend] = useState<CreditAnalyticsTrendPoint[]>([]);
+  const [movementTrend, setMovementTrend] = useState<CreditAnalyticsTrendPoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -136,7 +138,6 @@ export function CreditAnalyticsPanel({
       : analyticsWindowOptions.find(
           (option) => option.days === selectedWindowKey,
         )?.label.toLowerCase() ?? "selected range";
-
   useEffect(() => {
     let isMounted = true;
 
@@ -189,6 +190,7 @@ export function CreditAnalyticsPanel({
           setBalanceHistory(analytics.balanceHistory);
           setSummary(analytics.summary);
           setTrend(analytics.trend);
+          setMovementTrend(analytics.movementTrend);
           setError(null);
         }
       } catch {
@@ -197,6 +199,7 @@ export function CreditAnalyticsPanel({
           setBalanceHistory([]);
           setSummary(null);
           setTrend([]);
+          setMovementTrend([]);
           setError("Could not load analytics.");
         }
       } finally {
@@ -277,7 +280,7 @@ export function CreditAnalyticsPanel({
             error={error}
             isLoading={isLoading}
             scopeLabel={selectedScope?.label ?? "Cohort"}
-            trend={trend}
+            trend={movementTrend}
           />
         </div>
       )}
@@ -301,7 +304,7 @@ export function CreditAnalyticsPanel({
             summary={summary}
           />
           <PurchaseTrendCard
-            className="lg:col-span-2"
+            className="col-span-full"
             error={error}
             isLoading={isLoading}
             scopeLabel={selectedScope?.label ?? "Cohort"}
@@ -449,31 +452,41 @@ function NetMovementCard({
   scopeLabel: string;
   trend: CreditAnalyticsTrendPoint[];
 }) {
+  const hasMovement = trend.some((point) =>
+    point.issued + point.removed + point.spent > 0,
+  );
+
   return (
-    <section className={`${className} theme-panel min-w-0 p-4`}>
+    <section className={`${className} theme-panel flex min-w-0 flex-col p-4`}>
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-base font-semibold text-foreground">
-          Daily movement
-        </h3>
+        <div>
+          <h3 className="text-base font-semibold text-foreground">Daily movement</h3>
+          <p className="mt-1 text-xs text-text-muted">Past 12 months</p>
+        </div>
         <span className="rounded-sm bg-chip-bg px-2 py-1 text-xs font-semibold text-chip-text">
           {scopeLabel}
         </span>
       </div>
 
       {!error && isLoading && (
-        <div className="flex h-52 items-center justify-center">
+        <div className="flex min-h-52 flex-1 items-center justify-center">
           <LoadingSkeleton className="px-0" lines={4} />
         </div>
       )}
 
-      {!error && !isLoading && trend.length === 0 && (
-        <div className="flex h-52 items-center justify-center text-center">
+      {!error && !isLoading && !hasMovement && (
+        <div className="flex min-h-52 flex-1 items-center justify-center text-center">
           <p className="text-sm text-text-muted">No movement history found.</p>
         </div>
       )}
 
-      {!error && !isLoading && trend.length > 0 && (
-        <NetMovementChart currencyName={currencyName} trend={trend} />
+      {!error && !isLoading && hasMovement && trend.length > 0 && (
+        <div className="flex flex-1 items-center justify-center">
+          <NetMovementChart
+            currencyName={currencyName}
+            trend={trend}
+          />
+        </div>
       )}
     </section>
   );
@@ -486,83 +499,47 @@ function NetMovementChart({
   currencyName: string;
   trend: CreditAnalyticsTrendPoint[];
 }) {
-  const yAxisTicks = getMovementAxisTicks(trend);
-  const compactYAxisTicks = getCompactMovementAxisTicks(trend);
-  const yAxisMinimum = yAxisTicks[0] ?? -1;
-  const yAxisMaximum = yAxisTicks[yAxisTicks.length - 1] ?? 1;
-  const xAxisTicks = getTimeAxisTicks(trend);
-
   return (
-    <div className="mt-4 h-52 w-full">
-      <ResponsiveContainer height="100%" width="100%">
-        <BarChart
-          data={trend}
-          margin={{ bottom: 0, left: 4, right: 8, top: 8 }}
-        >
-          <CartesianGrid
-            horizontal={false}
-            vertical={false}
-          />
-          <XAxis
-            axisLine={false}
-            dataKey="timestamp"
-            minTickGap={12}
-            padding={{ left: 12, right: 8 }}
-            tick={{ fill: "var(--text-muted)", fontSize: 11 }}
-            tickFormatter={(timestamp) =>
-              findPointLabel(trend, Number(timestamp))
-            }
-            tickLine={false}
-            ticks={xAxisTicks}
-            type="category"
-          />
-          <YAxis
-            axisLine={false}
-            domain={[yAxisMinimum, yAxisMaximum]}
-            tick={{ fill: "var(--text-muted)", fontSize: 11 }}
-            tickMargin={12}
-            tickLine={false}
-            ticks={compactYAxisTicks}
-            type="number"
-            width={56}
-          />
-          {compactYAxisTicks.map((tick) => (
-            <ReferenceLine
-              ifOverflow="extendDomain"
-              key={tick}
-              stroke="var(--border-subtle)"
-              strokeOpacity={0.45}
-              y={tick}
-            />
-          ))}
-          <Tooltip
-            content={<NetMovementTooltip currencyName={currencyName} />}
-            cursor={false}
-          />
-          <Bar
-            activeBar={{
-              fillOpacity: 0.85,
-              stroke: "var(--brand)",
-              strokeOpacity: 0.45,
-              strokeWidth: 1,
-            }}
-            dataKey="net"
-            maxBarSize={32}
-            radius={[6, 6, 2, 2]}
-          >
-            {trend.map((point) => (
-              <Cell
-                fill={point.net >= 0 ? "var(--positive-fill)" : "var(--negative-fill)"}
-                key={point.timestamp}
-                stroke={point.net >= 0 ? "var(--positive-ink)" : "var(--negative-ink)"}
-                strokeWidth={1}
-              />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
+    <ActivityHeatmap
+      ariaLabel="Daily credit movement over the past year"
+      days={trend.map((point) => ({
+        amount: point.issued + point.removed + point.spent,
+        date: new Date(point.timestamp),
+        details: getMovementDetails(point, currencyName),
+        net: point.net,
+        label: point.label,
+      }))}
+    />
   );
+}
+
+function getMovementDetails(
+  point: CreditAnalyticsTrendPoint,
+  currencyName: string,
+): ActivityHeatmapDetail[] {
+  const netTone = point.net > 0 ? "positive" : point.net < 0 ? "negative" : "default";
+  return [
+    {
+      label: "Issued",
+      tone: "positive" as const,
+      value: `+${formatWholeNumber(point.issued)} ${currencyName}`,
+    },
+    {
+      label: "Removed",
+      tone: "negative" as const,
+      value: `-${formatWholeNumber(point.removed)} ${currencyName}`,
+    },
+    {
+      label: "Rewards spent",
+      tone: "negative" as const,
+      value: `-${formatWholeNumber(point.spent)} ${currencyName}`,
+    },
+    {
+      label: "Net",
+      tone: netTone,
+      value: `${point.net > 0 ? "+" : ""}${formatWholeNumber(point.net)} ${currencyName}`,
+    },
+  ];
 }
 
 function getLoadingMetricValue(isLoading: boolean) {
@@ -1058,6 +1035,10 @@ function PurchaseTrendCard({
   scopeLabel: string;
   trend: CreditAnalyticsTrendPoint[];
 }) {
+  const hasPurchases = trend.some((point) =>
+    point.pendingPurchases + point.approvedPurchases + point.deniedPurchases > 0,
+  );
+
   return (
     <section className={`${className} theme-panel min-w-0 p-4`}>
       <div className="flex items-center justify-between gap-3">
@@ -1075,13 +1056,13 @@ function PurchaseTrendCard({
         </div>
       )}
 
-      {!error && !isLoading && trend.length === 0 && (
+      {!error && !isLoading && !hasPurchases && (
         <div className="flex h-64 items-center justify-center text-center">
           <p className="text-sm text-text-muted">No purchasing history found.</p>
         </div>
       )}
 
-      {!error && !isLoading && trend.length > 0 && (
+      {!error && !isLoading && hasPurchases && (
         <PurchaseTrendChart trend={trend} />
       )}
     </section>
@@ -1098,67 +1079,84 @@ function PurchaseTrendChart({
   const xAxisTicks = getTimeAxisTicks(trend);
 
   return (
-    <div className="mt-4 h-64 w-full">
-      <ResponsiveContainer height="100%" width="100%">
-        <BarChart
-          data={trend}
-          margin={{ bottom: 0, left: 0, right: 8, top: 8 }}
-        >
-          <CartesianGrid
-            stroke="var(--border-subtle)"
-            strokeOpacity={0.45}
-            vertical={false}
-          />
-          <XAxis
-            axisLine={false}
-            dataKey="timestamp"
-            domain={["dataMin", "dataMax"]}
-            minTickGap={12}
-            tick={{ fill: "var(--text-muted)", fontSize: 11 }}
-            tickFormatter={(timestamp) =>
-              findPointLabel(trend, Number(timestamp))
-            }
-            tickLine={false}
-            ticks={xAxisTicks}
-            type="number"
-          />
-          <YAxis
-            axisLine={false}
-            domain={[0, yAxisMax]}
-            tick={{ fill: "var(--text-muted)", fontSize: 11 }}
-            tickLine={false}
-            ticks={yAxisTicks}
-            type="number"
-            width={32}
-          />
-          <Tooltip
-            content={<PurchaseTrendTooltip />}
-            cursor={false}
-          />
-          <Bar
-            activeBar={{ fill: "var(--brand-hover)" }}
-            dataKey="pendingPurchases"
-            fill="var(--brand)"
-            name="Pending"
-            radius={[7, 7, 2, 2]}
-          />
-          <Bar
-            activeBar={{ fill: "var(--positive-border)" }}
-            dataKey="approvedPurchases"
-            fill="var(--positive-fill)"
-            name="Approved"
-            radius={[7, 7, 2, 2]}
-          />
-          <Bar
-            activeBar={{ fill: "var(--negative-border)" }}
-            dataKey="deniedPurchases"
-            fill="var(--negative-fill)"
-            name="Denied"
-            radius={[7, 7, 2, 2]}
-          />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
+    <>
+      <div className="mt-3 h-64 w-full sm:h-72">
+        <ResponsiveContainer height="100%" width="100%">
+          <BarChart
+            data={trend}
+            margin={{ bottom: 0, left: 0, right: 12, top: 8 }}
+          >
+            <CartesianGrid
+              stroke="var(--border-subtle)"
+              strokeOpacity={0.45}
+              vertical={false}
+            />
+            <XAxis
+              axisLine={false}
+              dataKey="timestamp"
+              domain={["dataMin", "dataMax"]}
+              minTickGap={18}
+              tick={{ fill: "var(--text-muted)", fontSize: 11 }}
+              tickFormatter={(timestamp) =>
+                findPointLabel(trend, Number(timestamp))
+              }
+              tickLine={false}
+              ticks={xAxisTicks}
+              type="number"
+            />
+            <YAxis
+              axisLine={false}
+              domain={[0, yAxisMax]}
+              tick={{ fill: "var(--text-muted)", fontSize: 11 }}
+              tickLine={false}
+              ticks={yAxisTicks}
+              type="number"
+              width={32}
+            />
+            <Tooltip content={<PurchaseTrendTooltip />} cursor={false} />
+            <Bar
+              activeBar={{ fill: "var(--brand-hover)" }}
+              dataKey="pendingPurchases"
+              fill="var(--brand)"
+              name="Pending"
+              stackId="requests"
+            />
+            <Bar
+              activeBar={{ fill: "var(--positive-border)" }}
+              dataKey="approvedPurchases"
+              fill="var(--positive-fill)"
+              name="Approved"
+              stackId="requests"
+            />
+            <Bar
+              activeBar={{ fill: "var(--negative-border)" }}
+              dataKey="deniedPurchases"
+              fill="var(--negative-fill)"
+              name="Denied"
+              stackId="requests"
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <div
+        aria-label="Reward request status legend"
+        className="mt-1 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-text-muted"
+        role="group"
+      >
+        <span className="inline-flex items-center gap-2">
+          <span aria-hidden="true" className="h-2.5 w-2.5 rounded-sm bg-brand" />
+          Pending
+        </span>
+        <span className="inline-flex items-center gap-2">
+          <span aria-hidden="true" className="h-2.5 w-2.5 rounded-sm bg-positive-fill" />
+          Approved
+        </span>
+        <span className="inline-flex items-center gap-2">
+          <span aria-hidden="true" className="h-2.5 w-2.5 rounded-sm bg-negative-fill" />
+          Denied
+        </span>
+      </div>
+    </>
   );
 }
 

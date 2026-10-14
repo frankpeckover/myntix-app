@@ -58,7 +58,7 @@ export function StudentShopRequestsPanel({
 
   return (
     <section
-      className={`student-dashboard-card student-cart-card rounded-2xl border border-transparent bg-surface p-4 sm:p-5 ${className}`}
+      className={`student-dashboard-card student-cart-card min-w-0 rounded-2xl border border-transparent bg-surface p-4 sm:p-5 ${className}`}
     >
       <FixedNotification error={error} />
       <div className="flex items-center gap-3">

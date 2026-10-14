@@ -63,6 +63,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { sortTableItems, type TableSortDirection } from "@/components/ui/table-sorting";
 import { updateSelectedIds } from "@/components/ui/selection-utils";
+import { useTableLayout } from "@/components/ui/use-table-layout";
 import { archiveBulkActionsForFilter, archiveStatusFilterOptions, matchesArchiveStatus, type ArchiveStatusFilter } from "@/components/ui/archive-status-filter";
 
 type ShopPanelProps = {
@@ -579,6 +580,7 @@ function ShopManagementList({
   visibleItemCount: number;
 }) {
   const selectedItemIdSet = new Set(selectedItemIds);
+  const tableLayout = useTableLayout();
   const selectableItemIds = items.map((item) => item.id);
   const areAllVisibleItemsSelected =
     items.length > 0 && items.every((item) => selectedItemIdSet.has(item.id));
@@ -680,174 +682,178 @@ function ShopManagementList({
 
   return (
     <>
-      <div className="mb-3 md:hidden">{tableToolbar}</div>
-      <DataTable ariaLabel="Rewards" responsive="desktop" toolbar={tableToolbar}>
-        <colgroup>
-          <col className="w-10" />
-          <col className="w-[26%]" />
-          <col />
-          <col className="w-28" />
-          <col className="w-24" />
-          <col className="w-24" />
-          <col className="table-action-column" />
-        </colgroup>
-        <thead>
-          <tr className="border-b border-border-subtle text-text-muted">
-            <DataTableSelectionHeader
-              checked={areAllVisibleItemsSelected}
-              label={
-                areAllVisibleItemsSelected
-                  ? "Clear selected rewards"
-                  : "Select all rewards"
-              }
-              onChange={onVisibleItemsSelectionChange}
-            />
-            <th scope="col" className="py-2 pr-4 font-semibold">
-              <TableHeaderFilter
-                isActive={Boolean(filters.name)}
-                label="Reward"
-                onClear={() => onSearchChange("name", "")}
-                onSortDirectionChange={(direction) => onSortChange("name", direction)}
-                sortDirection={tableSort?.column === "name" ? tableSort.direction : null}
-              >
-                <TableHeaderFilterInput
-                  label="Search items"
-                  onChange={(value) => onSearchChange("name", value)}
-                  value={filters.name}
-                />
-              </TableHeaderFilter>
-            </th>
-            <th scope="col" className="py-2 pr-4 font-semibold">
-              <TableHeaderFilter
-                isActive={Boolean(filters.description)}
-                label="Description"
-                onClear={() => onSearchChange("description", "")}
-                onSortDirectionChange={(direction) => onSortChange("description", direction)}
-                sortDirection={tableSort?.column === "description" ? tableSort.direction : null}
-              >
-                <TableHeaderFilterInput
-                  label="Search descriptions"
-                  onChange={(value) => onSearchChange("description", value)}
-                  value={filters.description}
-                />
-              </TableHeaderFilter>
-            </th>
-            <th scope="col" className="py-2 pr-4 text-right font-semibold">
-              <TableHeaderFilter
-                isActive={Boolean(filters.priceMin || filters.priceMax)}
-                label="Cost"
-                onClear={() => {
-                  onPriceMaxChange("");
-                  onPriceMinChange("");
-                }}
-                onSortDirectionChange={(direction) => onSortChange("cost", direction)}
-                sortDirection={tableSort?.column === "cost" ? tableSort.direction : null}
-              >
-                <div className="grid gap-3">
-                  <TableHeaderFilterInput
-                    label="Minimum"
-                    onChange={onPriceMinChange}
-                    type="number"
-                    value={filters.priceMin}
-                  />
-                  <TableHeaderFilterInput
-                    label="Maximum"
-                    onChange={onPriceMaxChange}
-                    type="number"
-                    value={filters.priceMax}
-                  />
-                </div>
-              </TableHeaderFilter>
-            </th>
-            <th scope="col" className="py-2 pr-4 text-right font-semibold">
-              <TableHeaderFilter label="Quantity" onSortDirectionChange={(direction) => onSortChange("quantity", direction)} sortDirection={tableSort?.column === "quantity" ? tableSort.direction : null} />
-            </th>
-            <th scope="col" className="py-2 pr-4 font-semibold">
-              <TableHeaderFilter
-                isActive={filters.statusFilter !== "active"}
-                label="Status"
-                onClear={() => onStatusFilterChange("active")}
-                onSortDirectionChange={(direction) => onSortChange("status", direction)}
-                sortDirection={tableSort?.column === "status" ? tableSort.direction : null}
-              >
-                <TableHeaderFilterSelect
-                  label="Status"
-                  onChange={(value) => onStatusFilterChange(value as ArchiveStatusFilter)}
-                  options={archiveStatusFilterOptions}
-                  value={filters.statusFilter}
-                />
-              </TableHeaderFilter>
-            </th>
-            <th scope="col" className="py-2 text-right font-semibold">
-              <span className="sr-only">Actions</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((item) => (
-            <tr className="border-b border-border-subtle" key={item.id}>
-              <DataTableSelectionCell
-                checked={selectedItemIdSet.has(item.id)}
-                label={`Select ${item.name}`}
-                rangeKey="rewards-table"
-                rowId={item.id}
-                selectableRowIds={selectableItemIds}
-                onRangeChange={(ids, isSelected) =>
-                  ids.forEach((id) => onSelectionChange(id, isSelected))
+      {tableLayout !== "desktop" && <div className="mb-3 md:hidden">{tableToolbar}</div>}
+      {tableLayout !== "mobile" && (
+        <DataTable ariaLabel="Rewards" responsive="desktop" toolbar={tableToolbar}>
+          <colgroup>
+            <col className="w-10" />
+            <col className="w-[26%]" />
+            <col />
+            <col className="w-28" />
+            <col className="w-24" />
+            <col className="w-24" />
+            <col className="table-action-column" />
+          </colgroup>
+          <thead>
+            <tr className="border-b border-border-subtle text-text-muted">
+              <DataTableSelectionHeader
+                checked={areAllVisibleItemsSelected}
+                label={
+                  areAllVisibleItemsSelected
+                    ? "Clear selected rewards"
+                    : "Select all rewards"
                 }
-                onChange={(isSelected) =>
-                  onSelectionChange(item.id, isSelected)
-                }
+                onChange={onVisibleItemsSelectionChange}
               />
-              <td className="py-3 pr-4">
-                <div className="flex min-w-0 items-center gap-3">
-                  <ShopTableImage item={item} />
-                  <span className="truncate font-semibold">{item.name}</span>
-                </div>
-              </td>
-              <td className="py-3 pr-4 text-text-muted">
-                <span className="line-clamp-2">{item.description || "-"}</span>
-              </td>
-              <td className="py-3 pr-4 text-right font-semibold">
-                <DataTableCurrencyValue
-                  amount={formatAmount(item.price)}
-                  currencyName={currencyName}
-                />
-              </td>
-              <td className="py-3 pr-4 text-right text-text-muted">
-                {formatItemQuantity(item)}
-              </td>
-              <td className="py-3 pr-4">
-                <ShopItemStatusBadge item={item} />
-              </td>
-              <td className="py-3 text-right">
-                <ShopManagementActions
-                  item={item}
-                  onDuplicate={onDuplicate}
-                  onEdit={onEdit}
-                  onStatusChange={onStatusChange}
-                  onView={onView}
-                />
-              </td>
+              <th scope="col" className="py-2 pr-4 font-semibold">
+                <TableHeaderFilter
+                  isActive={Boolean(filters.name)}
+                  label="Reward"
+                  onClear={() => onSearchChange("name", "")}
+                  onSortDirectionChange={(direction) => onSortChange("name", direction)}
+                  sortDirection={tableSort?.column === "name" ? tableSort.direction : null}
+                >
+                  <TableHeaderFilterInput
+                    label="Search items"
+                    onChange={(value) => onSearchChange("name", value)}
+                    value={filters.name}
+                  />
+                </TableHeaderFilter>
+              </th>
+              <th scope="col" className="py-2 pr-4 font-semibold">
+                <TableHeaderFilter
+                  isActive={Boolean(filters.description)}
+                  label="Description"
+                  onClear={() => onSearchChange("description", "")}
+                  onSortDirectionChange={(direction) => onSortChange("description", direction)}
+                  sortDirection={tableSort?.column === "description" ? tableSort.direction : null}
+                >
+                  <TableHeaderFilterInput
+                    label="Search descriptions"
+                    onChange={(value) => onSearchChange("description", value)}
+                    value={filters.description}
+                  />
+                </TableHeaderFilter>
+              </th>
+              <th scope="col" className="py-2 pr-4 text-right font-semibold">
+                <TableHeaderFilter
+                  isActive={Boolean(filters.priceMin || filters.priceMax)}
+                  label="Cost"
+                  onClear={() => {
+                    onPriceMaxChange("");
+                    onPriceMinChange("");
+                  }}
+                  onSortDirectionChange={(direction) => onSortChange("cost", direction)}
+                  sortDirection={tableSort?.column === "cost" ? tableSort.direction : null}
+                >
+                  <div className="grid gap-3">
+                    <TableHeaderFilterInput
+                      label="Minimum"
+                      onChange={onPriceMinChange}
+                      type="number"
+                      value={filters.priceMin}
+                    />
+                    <TableHeaderFilterInput
+                      label="Maximum"
+                      onChange={onPriceMaxChange}
+                      type="number"
+                      value={filters.priceMax}
+                    />
+                  </div>
+                </TableHeaderFilter>
+              </th>
+              <th scope="col" className="py-2 pr-4 text-right font-semibold">
+                <TableHeaderFilter label="Quantity" onSortDirectionChange={(direction) => onSortChange("quantity", direction)} sortDirection={tableSort?.column === "quantity" ? tableSort.direction : null} />
+              </th>
+              <th scope="col" className="py-2 pr-4 font-semibold">
+                <TableHeaderFilter
+                  isActive={filters.statusFilter !== "active"}
+                  label="Status"
+                  onClear={() => onStatusFilterChange("active")}
+                  onSortDirectionChange={(direction) => onSortChange("status", direction)}
+                  sortDirection={tableSort?.column === "status" ? tableSort.direction : null}
+                >
+                  <TableHeaderFilterSelect
+                    label="Status"
+                    onChange={(value) => onStatusFilterChange(value as ArchiveStatusFilter)}
+                    options={archiveStatusFilterOptions}
+                    value={filters.statusFilter}
+                  />
+                </TableHeaderFilter>
+              </th>
+              <th scope="col" className="py-2 text-right font-semibold">
+                <span className="sr-only">Actions</span>
+              </th>
             </tr>
+          </thead>
+          <tbody>
+            {items.map((item) => (
+              <tr className="border-b border-border-subtle" key={item.id}>
+                <DataTableSelectionCell
+                  checked={selectedItemIdSet.has(item.id)}
+                  label={`Select ${item.name}`}
+                  rangeKey="rewards-table"
+                  rowId={item.id}
+                  selectableRowIds={selectableItemIds}
+                  onRangeChange={(ids, isSelected) =>
+                    ids.forEach((id) => onSelectionChange(id, isSelected))
+                  }
+                  onChange={(isSelected) =>
+                    onSelectionChange(item.id, isSelected)
+                  }
+                />
+                <td className="py-3 pr-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <ShopTableImage item={item} />
+                    <span className="truncate font-semibold">{item.name}</span>
+                  </div>
+                </td>
+                <td className="py-3 pr-4 text-text-muted">
+                  <span className="line-clamp-2">{item.description || "-"}</span>
+                </td>
+                <td className="py-3 pr-4 text-right font-semibold">
+                  <DataTableCurrencyValue
+                    amount={formatAmount(item.price)}
+                    currencyName={currencyName}
+                  />
+                </td>
+                <td className="py-3 pr-4 text-right text-text-muted">
+                  {formatItemQuantity(item)}
+                </td>
+                <td className="py-3 pr-4">
+                  <ShopItemStatusBadge item={item} />
+                </td>
+                <td className="py-3 text-right">
+                  <ShopManagementActions
+                    item={item}
+                    onDuplicate={onDuplicate}
+                    onEdit={onEdit}
+                    onStatusChange={onStatusChange}
+                    onView={onView}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </DataTable>
+      )}
+      {tableLayout !== "desktop" && (
+        <div className="mt-3 grid min-w-0 gap-2 md:hidden sm:mt-4">
+          {items.map((item) => (
+            <ShopManagementCard
+              currencyName={currencyName}
+              item={item}
+              key={item.id}
+              onDuplicate={onDuplicate}
+              onEdit={onEdit}
+              onStatusChange={onStatusChange}
+              onSelectionChange={onSelectionChange}
+              onView={onView}
+              selected={selectedItemIdSet.has(item.id)}
+            />
           ))}
-        </tbody>
-      </DataTable>
-      <div className="mt-3 grid min-w-0 gap-2 md:hidden sm:mt-4">
-        {items.map((item) => (
-          <ShopManagementCard
-            currencyName={currencyName}
-            item={item}
-            key={item.id}
-            onDuplicate={onDuplicate}
-            onEdit={onEdit}
-            onStatusChange={onStatusChange}
-            onSelectionChange={onSelectionChange}
-            onView={onView}
-            selected={selectedItemIdSet.has(item.id)}
-          />
-        ))}
-      </div>
+        </div>
+      )}
       {visibleItemCount === 0 && (
         <ShopEmptyState
           action={

@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ReactNode } from "react";
-import { ArrowDownIcon, ArrowUpIcon } from "@/components/ui/icons";
+import { ArrowDownIcon, ArrowUpIcon, FilterIcon } from "@/components/ui/icons";
 import type { TableSortDirection } from "@/components/ui/table-sorting";
 
 type TableHeaderFilterProps = {
@@ -113,24 +113,27 @@ export function TableHeaderFilter({
   }, [isOpen]);
 
   return (
-    <div className="relative inline-flex items-center whitespace-nowrap">
+    <div className="relative inline-flex max-w-full items-center whitespace-nowrap">
       <button
         aria-expanded={isOpen}
         aria-controls={isOpen ? panelId : undefined}
         aria-haspopup="dialog"
-        aria-label={`Open ${label} filter and sort options${sortDirection ? `, sorted ${sortDirection}` : ""}`}
-        className={`inline-flex min-h-8 items-center gap-1.5 rounded-md px-1.5 py-0 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
-          isActive || sortDirection
-            ? "text-brand-ink hover:bg-brand-soft"
-            : "text-inherit hover:bg-panel-soft hover:text-text-control"
+        aria-label={`Open ${label} filter and sort options${isActive ? ", filter active" : ""}${sortDirection ? `, sorted ${sortDirection}` : ""}`}
+        className={`inline-flex min-h-8 min-w-0 max-w-full items-center gap-1.5 rounded-md px-1.5 py-0 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
+          isActive
+            ? "bg-brand-soft-strong text-brand-ink ring-1 ring-inset ring-brand/30 hover:ring-brand/60"
+            : sortDirection
+              ? "text-brand-ink hover:bg-brand-soft"
+              : "text-inherit hover:bg-panel-soft hover:text-text-control"
         }`}
         onClick={() => setIsOpen((currentValue) => !currentValue)}
         ref={triggerRef}
         type="button"
       >
-        <span>{label}</span>
+        <span className="truncate">{label}</span>
+        {isActive && <FilterIcon aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />}
         {sortDirection && (
-          <span aria-hidden="true" className="text-brand-ink">
+          <span aria-hidden="true" className="shrink-0 text-brand-ink">
             {sortDirection === "ascending" ? <ArrowUpIcon className="h-3 w-3" /> : <ArrowDownIcon className="h-3 w-3" />}
           </span>
         )}

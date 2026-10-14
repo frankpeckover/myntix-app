@@ -1,4 +1,4 @@
-import { useOptimistic, useRef, useTransition, type ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import {
   type TableActionMenuItem,
 } from "@/components/ui/table-action-menu";
@@ -19,12 +19,6 @@ export function BulkSelectionControls({
   onVisibleSelectionChange,
   selectedCount,
 }: BulkSelectionControlsProps) {
-  const [, startTransition] = useTransition();
-  const [optimisticAllSelected, setOptimisticAllSelected] = useOptimistic(
-    isAllSelected,
-    (_current, next: boolean) => next,
-  );
-
   if (!onVisibleSelectionChange && selectedCount === 0) {
     return null;
   }
@@ -34,14 +28,9 @@ export function BulkSelectionControls({
       {onVisibleSelectionChange && (
         <div className="flex items-center gap-2 md:hidden">
           <RowSelectionCheckbox
-            checked={optimisticAllSelected}
+            checked={isAllSelected}
             label={allSelectedLabel}
-            onChange={(nextSelected) => {
-              startTransition(() => {
-                setOptimisticAllSelected(nextSelected);
-                onVisibleSelectionChange(nextSelected);
-              });
-            }}
+            onChange={onVisibleSelectionChange}
           />
           <span className="text-xs text-text-muted">Select all</span>
         </div>

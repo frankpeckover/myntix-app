@@ -26,11 +26,11 @@ export function getDistributionAxisTicks(buckets: CreditAnalyticsBucket[]) {
 
 export function getPurchaseAxisTicks(trend: CreditAnalyticsTrendPoint[]) {
   const maximumCount = Math.max(
-    ...trend.flatMap((point) => [
-      point.approvedPurchases,
-      point.deniedPurchases,
+    ...trend.map((point) =>
+      point.approvedPurchases +
+      point.deniedPurchases +
       point.pendingPurchases,
-    ]),
+    ),
     0,
   );
   return getAxisTicks(maximumCount);

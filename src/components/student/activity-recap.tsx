@@ -1,21 +1,16 @@
 "use client";
 
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { useMemo } from "react";
 import { SparkleIcon, TrophyIcon } from "@/components/ui/icons";
-import { PanelTitle } from "@/components/ui/panel-title";
+import {
+  ActivityHeatmap,
+  type ActivityHeatmapDetail,
+} from "@/components/ui/activity-heatmap";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { PanelTitle } from "@/components/ui/panel-title";
 import type { TransactionLogItem } from "@/domains/ledger/transaction-service";
-import { formatAmount } from "@/lib/presentation/formatters";
+import { formatAmount, formatDateKey, formatSignedAmount } from "@/lib/presentation/formatters";
+import { getActivityYearRange } from "@/lib/presentation/activity-calendar";
 
 type StudentActivityRecapProps = {
   className?: string;
@@ -26,22 +21,13 @@ type StudentActivityRecapProps = {
   transactions: TransactionLogItem[];
 };
 
-type WeekdayMovement = {
-  day: string;
+type ActivityDay = {
+  date: Date;
   earned: number;
-  isFuture: boolean;
   net: number;
   outgoing: number;
-  timestamp: number;
+  transactionCount: number;
 };
-
-type MovementTooltipProps = {
-  active?: boolean;
-  currencyName: string;
-  payload?: { payload: WeekdayMovement }[];
-};
-
-const millisecondsPerDay = 24 * 60 * 60 * 1000;
 
 export function StudentActivityRecap({
   className = "",
@@ -51,18 +37,18 @@ export function StudentActivityRecap({
   onSelectDate,
   transactions,
 }: StudentActivityRecapProps) {
-  const movement = buildWeekdayMovement(transactions, 0);
-  const elapsedWeekdayCount = movement.filter((day) => !day.isFuture).length;
-  const weeklyNet = movement
-    .slice(0, elapsedWeekdayCount)
-    .reduce((total, day) => total + day.net, 0);
-  const hasWeeklyActivity = movement.some(
-    (day) => !day.isFuture && (day.earned > 0 || day.outgoing > 0),
+  const days = useMemo(
+    () => buildActivityCalendar(transactions),
+    [transactions],
   );
+  const totalNet = days.reduce((total, day) => total + day.net, 0);
+  const hasActivity = days.some((day) => day.transactionCount > 0);
 
   return (
-    <section className={`student-dashboard-card student-activity-recap min-w-0 overflow-hidden rounded-2xl bg-surface px-4 py-4 sm:px-5 ${className}`}>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+    <section
+      className={`student-dashboard-card student-activity-recap flex min-w-0 flex-col overflow-hidden rounded-2xl bg-surface px-4 py-4 sm:px-5 ${className}`}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <span className="flex h-6 w-6 shrink-0 items-center justify-center text-brand">
@@ -70,35 +56,38 @@ export function StudentActivityRecap({
             </span>
             <PanelTitle title="Daily movement" />
           </div>
-          <p className="mt-1 text-xs text-text-muted">This week · Monday to Friday</p>
+          <p className="mt-1 text-xs text-text-muted">
+            Past 12 months · Mon-Fri
+          </p>
         </div>
-
-        {!isLoading && hasWeeklyActivity && (
-          <div className="sm:text-right">
+        <div className="flex items-center gap-3">
+          {!isLoading && hasActivity && (
             <p
-              className={`font-number text-2xl font-semibold leading-none ${
-                weeklyNet > 0
+              className={`font-number text-xl font-semibold leading-none ${
+                totalNet > 0
                   ? "text-positive-ink"
-                  : weeklyNet < 0
+                  : totalNet < 0
                     ? "text-negative-ink"
                     : "text-text-control"
               }`}
+              title={`Past-year net movement: ${formatSignedAmount(totalNet)} ${currencyName}`}
             >
-              {weeklyNet > 0 ? "+" : ""}
-              {formatAmount(weeklyNet)}
+              {formatSignedAmount(totalNet)}
             </p>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {isLoading ? (
         <LoadingSkeleton className="mt-3 min-h-40 px-0" lines={3} />
-      ) : !hasWeeklyActivity ? (
+      ) : !hasActivity ? (
         <div className="mt-4 flex min-h-32 flex-col justify-between gap-4 rounded-xl bg-panel-soft px-4 py-3 sm:flex-row sm:items-center">
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-text-control">Your week is ready</p>
+            <p className="text-sm font-semibold text-text-control">
+              Your activity calendar is ready
+            </p>
             <p className="mt-1 text-xs text-text-muted">
-              Credits earned or spent during the school week will show here.
+              Credits earned or spent in this period will show here.
             </p>
           </div>
           <button
@@ -111,209 +100,98 @@ export function StudentActivityRecap({
           </button>
         </div>
       ) : (
-        <WeekdayMovementChart
-          currencyName={currencyName}
-          movement={movement}
-          onSelectDate={onSelectDate}
-        />
+        <div className="mt-4 flex flex-1 items-center justify-center">
+          <ActivityHeatmap
+            ariaLabel="Daily movement over the past year, weekdays only"
+            days={days.map((day) => ({
+              amount: day.earned + day.outgoing,
+              date: day.date,
+              details: getActivityDayDetails(day, currencyName),
+              net: day.net,
+              label: formatActivityDayLabel(day.date),
+            }))}
+            onSelectDate={onSelectDate}
+            size="large"
+            weekdaysOnly
+          />
+        </div>
       )}
     </section>
   );
 }
 
-function WeekdayMovementChart({
-  currencyName,
-  movement,
-  onSelectDate,
-}: {
-  currencyName: string;
-  movement: WeekdayMovement[];
-  onSelectDate: (date: string) => void;
-}) {
-  const maximumMovement = Math.max(
-    ...movement.map((day) => Math.abs(day.net)),
-    1,
-  );
-  const axisMaximum = getRoundedAxisMaximum(maximumMovement);
+function buildActivityCalendar(transactions: TransactionLogItem[]) {
+  const { endDateExclusive, startDate } = getActivityYearRange();
+  const days: ActivityDay[] = [];
+  const date = new Date(startDate);
+  while (date < endDateExclusive) {
+    if (date.getDay() !== 0 && date.getDay() !== 6) {
+      days.push({
+        date: new Date(date),
+        earned: 0,
+        net: 0,
+        outgoing: 0,
+        transactionCount: 0,
+      });
+    }
+    date.setDate(date.getDate() + 1);
+  }
+  const dayByKey = new Map(days.map((day) => [formatDateKey(day.date), day]));
 
-  return (
-    <div className="mt-2 h-44 w-full sm:h-48">
-      <ResponsiveContainer height="100%" width="100%">
-        <BarChart
-          accessibilityLayer
-          data={movement}
-          margin={{ bottom: 0, left: 2, right: 4, top: 12 }}
-        >
-          <CartesianGrid horizontal={false} vertical={false} />
-          <XAxis
-            axisLine={false}
-            dataKey="day"
-            tick={{ fill: "var(--text-muted)", fontSize: 11 }}
-            tickLine={false}
-          />
-          <YAxis
-            axisLine={false}
-            domain={[-axisMaximum, axisMaximum]}
-            tick={false}
-            tickLine={false}
-            width={8}
-          />
-          <ReferenceLine
-            stroke="var(--border-strong)"
-            strokeOpacity={0.75}
-            y={0}
-          />
-          <Tooltip
-            content={<MovementTooltip currencyName={currencyName} />}
-            cursor={{ fill: "var(--panel-soft)", opacity: 0.55 }}
-          />
-          <Bar dataKey="net" maxBarSize={52} radius={[6, 6, 6, 6]}>
-            {movement.map((day) => (
-              <Cell
-                fill={
-                  day.isFuture
-                    ? "var(--border-muted)"
-                    : day.net >= 0
-                      ? "var(--positive-fill)"
-                      : "var(--negative-fill)"
-                }
-                fillOpacity={day.isFuture ? 0.6 : 1}
-                key={day.timestamp}
-                stroke={
-                  day.isFuture
-                    ? "var(--border-muted)"
-                    : day.net >= 0
-                      ? "var(--positive-ink)"
-                      : "var(--negative-ink)"
-                }
-                strokeWidth={day.isFuture ? 0 : 1}
-                cursor={day.isFuture ? "default" : "pointer"}
-                role={day.isFuture ? undefined : "button"}
-                tabIndex={day.isFuture ? -1 : 0}
-                aria-label={
-                  day.isFuture
-                    ? undefined
-                    : `${day.day}: ${formatAmount(day.net)} net credits. Open transactions for this day.`
-                }
-                onClick={() => {
-                  if (!day.isFuture) onSelectDate(formatDateFilterValue(day.timestamp));
-                }}
-                onKeyDown={(event) => {
-                  if (!day.isFuture && (event.key === "Enter" || event.key === " ")) {
-                    event.preventDefault();
-                    onSelectDate(formatDateFilterValue(day.timestamp));
-                  }
-                }}
-              />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
+  for (const transaction of transactions) {
+    if (
+      transaction.isVoided ||
+      transaction.entryStatus !== "posted"
+    ) {
+      continue;
+    }
 
-function MovementTooltip({
-  active,
-  currencyName,
-  payload,
-}: MovementTooltipProps) {
-  const day = payload?.[0]?.payload;
+    const createdAt = new Date(transaction.createdAt);
+    const day = dayByKey.get(formatDateKey(createdAt));
+    if (!day) continue;
 
-  if (!active || !day || day.isFuture) {
-    return null;
+    if (transaction.amount > 0) day.earned += transaction.amount;
+    if (transaction.amount < 0) day.outgoing += Math.abs(transaction.amount);
+    day.net += transaction.amount;
+    day.transactionCount += 1;
   }
 
-  return (
-    <div className="rounded-md border border-border bg-surface px-3 py-2 text-xs shadow-md">
-      <p className="font-semibold text-text-control">{day.day}</p>
-      <div className="mt-2 grid grid-cols-[auto_auto] gap-x-4 gap-y-1">
-        <span className="text-text-muted">Earned</span>
-        <span className="text-right font-medium text-positive-ink">
-          +{formatAmount(day.earned)}
-        </span>
-        <span className="text-text-muted">Outgoing</span>
-        <span className="text-right font-medium text-negative-ink">
-          -{formatAmount(day.outgoing)}
-        </span>
-        <span className="border-t border-border-subtle pt-1 text-text-control">
-          Net
-        </span>
-        <span className="border-t border-border-subtle pt-1 text-right font-semibold text-text-control">
-          {day.net > 0 ? "+" : ""}
-          {formatAmount(day.net)} {currencyName}
-        </span>
-      </div>
-    </div>
-  );
+  return days;
 }
 
-function buildWeekdayMovement(
-  transactions: TransactionLogItem[],
-  weekOffsetDays: number,
-) {
-  const currentWeekStart = startOfCurrentWeek();
-  const weekStart = new Date(
-    currentWeekStart.getTime() + weekOffsetDays * millisecondsPerDay,
-  );
-  const now = new Date();
-  const postedTransactions = transactions.filter(
-    (transaction) =>
-      !transaction.isVoided && transaction.entryStatus === "posted",
-  );
-
-  return Array.from({ length: 5 }, (_, dayIndex): WeekdayMovement => {
-    const dayStart = new Date(
-      weekStart.getTime() + dayIndex * millisecondsPerDay,
-    );
-    const dayEnd = new Date(dayStart.getTime() + millisecondsPerDay);
-    const dailyTransactions = postedTransactions.filter((transaction) => {
-      const createdAt = new Date(transaction.createdAt);
-      return createdAt >= dayStart && createdAt < dayEnd;
-    });
-    const earned = dailyTransactions.reduce(
-      (total, transaction) =>
-        transaction.amount > 0 ? total + transaction.amount : total,
-      0,
-    );
-    const outgoing = dailyTransactions.reduce(
-      (total, transaction) =>
-        transaction.amount < 0
-          ? total + Math.abs(transaction.amount)
-          : total,
-      0,
-    );
-
-    return {
-      day: new Intl.DateTimeFormat("en-AU", { weekday: "short" }).format(
-        dayStart,
-      ),
-      earned,
-      isFuture: weekOffsetDays === 0 && dayStart > now,
-      net: earned - outgoing,
-      outgoing,
-      timestamp: dayStart.getTime(),
-    };
-  });
+function formatActivityDayLabel(date: Date) {
+  return new Intl.DateTimeFormat("en-AU", {
+    day: "numeric",
+    month: "long",
+    weekday: "long",
+    year: "numeric",
+  }).format(date);
 }
 
-function startOfCurrentWeek() {
-  const start = new Date();
-  start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
-  start.setHours(0, 0, 0, 0);
-  return start;
-}
+function getActivityDayDetails(
+  day: ActivityDay,
+  currencyName: string,
+): ActivityHeatmapDetail[] {
+  if (day.transactionCount === 0) {
+    return [{ label: "Activity", value: "No transactions" }];
+  }
 
-function getRoundedAxisMaximum(value: number) {
-  const magnitude = 10 ** Math.floor(Math.log10(value));
-  return Math.ceil(value / magnitude) * magnitude;
-}
-
-function formatDateFilterValue(timestamp: number) {
-  const date = new Date(timestamp);
+  const netTone = day.net > 0 ? "positive" : day.net < 0 ? "negative" : "default";
   return [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, "0"),
-    String(date.getDate()).padStart(2, "0"),
-  ].join("-");
+    {
+      label: "Earned",
+      tone: "positive" as const,
+      value: `+${formatAmount(day.earned)} ${currencyName}`,
+    },
+    {
+      label: "Spent",
+      tone: "negative" as const,
+      value: `-${formatAmount(day.outgoing)} ${currencyName}`,
+    },
+    {
+      label: "Net",
+      tone: netTone,
+      value: `${day.net > 0 ? "+" : ""}${formatAmount(day.net)} ${currencyName}`,
+    },
+  ];
 }

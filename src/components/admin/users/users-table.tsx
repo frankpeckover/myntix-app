@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { memo, type ReactNode } from "react";
+import { useTableLayout } from "@/components/ui/use-table-layout";
 import type { Role } from "@/lib/auth/session";
 import {
   type UserFilters,
@@ -63,6 +64,7 @@ export function UsersTable({
   users,
 }: UsersTableProps) {
   const selectedUserIdSet = new Set(selectedUserIds);
+  const tableLayout = useTableLayout();
   const selectableUserIds = users.map((user) => user.id);
 
   function updateFilter<Field extends keyof UserFilters>(
@@ -76,220 +78,224 @@ export function UsersTable({
 
   return (
     <>
-      {toolbar && <div className="mb-3 md:hidden">{toolbar}</div>}
-      <div className="grid gap-3 md:hidden">
-        {users.map((user) => (
-          <UserCard
-            key={user.id}
-            onDuplicate={onDuplicate}
-            onEdit={onEdit}
-            onPasswordReset={onPasswordReset}
-            onSelectionChange={onUserSelectionChange}
-            onUserActiveChange={onUserActiveChange}
-            selected={selectedUserIdSet.has(user.id)}
-            user={user}
-          />
-        ))}
-      </div>
-
-      <DataTable ariaLabel="Users" responsive="desktop" toolbar={toolbar}>
-        <colgroup>
-          <col className="w-10" />
-          <col className="w-14" />
-          <col className="w-[18%]" />
-          <col className="w-[14%]" />
-          <col />
-          <col className="w-24" />
-          <col className="w-36" />
-          <col className="w-24" />
-          <col className="table-action-column" />
-        </colgroup>
-        <thead>
-          <tr className="border-b border-border-subtle text-text-muted">
-            <DataTableSelectionHeader
-              checked={areAllVisibleUsersSelected}
-              label={
-                areAllVisibleUsersSelected
-                  ? "Clear selected users"
-                  : "Select all users"
-              }
-              onChange={onVisibleUsersSelectionChange}
-            />
-            <th scope="col" className="py-3 pr-3 text-center font-semibold">
-              <span className="sr-only">Photo</span>
-            </th>
-            <th scope="col" className="py-3 pr-4 font-semibold">
-              <TableHeaderFilter
-                isActive={Boolean(filters.firstName || filters.lastName)}
-                label="Name"
-                onClear={() =>
-                  onFiltersChange({ ...filters, firstName: "", lastName: "" })
-                }
-                onSortDirectionChange={(direction) => onSortChange("name", direction)}
-                sortDirection={tableSort?.column === "name" ? tableSort.direction : null}
-              >
-                <div className="grid gap-3">
-                  <TableHeaderFilterInput
-                    label="First name"
-                    onChange={(value) => updateFilter("firstName", value)}
-                    value={filters.firstName}
-                  />
-                  <TableHeaderFilterInput
-                    label="Last name"
-                    onChange={(value) => updateFilter("lastName", value)}
-                    value={filters.lastName}
-                  />
-                </div>
-              </TableHeaderFilter>
-            </th>
-            <th scope="col" className="py-3 pr-4 font-semibold">
-              <TableHeaderFilter
-                isActive={Boolean(filters.username)}
-                label="Username"
-                onClear={() => updateFilter("username", "")}
-                onSortDirectionChange={(direction) => onSortChange("username", direction)}
-                sortDirection={tableSort?.column === "username" ? tableSort.direction : null}
-              >
-                <TableHeaderFilterInput
-                  label="Username"
-                  onChange={(value) => updateFilter("username", value)}
-                  value={filters.username}
-                />
-              </TableHeaderFilter>
-            </th>
-            <th scope="col" className="py-3 pr-4 font-semibold">
-              <TableHeaderFilter
-                isActive={Boolean(filters.email)}
-                label="Email"
-                onClear={() => updateFilter("email", "")}
-                onSortDirectionChange={(direction) => onSortChange("email", direction)}
-                sortDirection={tableSort?.column === "email" ? tableSort.direction : null}
-              >
-                <TableHeaderFilterInput
-                  label="Email"
-                  onChange={(value) => updateFilter("email", value)}
-                  value={filters.email}
-                />
-              </TableHeaderFilter>
-            </th>
-            <th scope="col" className="py-3 pr-4 font-semibold">
-              <TableHeaderFilter
-                isActive={Boolean(filters.role)}
-                label="Role"
-                onClear={() => updateFilter("role", "")}
-                onSortDirectionChange={(direction) => onSortChange("role", direction)}
-                sortDirection={tableSort?.column === "role" ? tableSort.direction : null}
-              >
-                <TableHeaderFilterSelect
-                  label="Role"
-                  onChange={(value) => updateFilter("role", value as Role | "")}
-                  options={[
-                    { label: "Any role", value: "" },
-                    ...userRoles.map((role) => ({
-                      label: role,
-                      value: role,
-                    })),
-                  ]}
-                  value={filters.role}
-                />
-              </TableHeaderFilter>
-            </th>
-            <th scope="col" className="py-3 pr-4 font-semibold">
-              <TableHeaderFilter
-                isActive={Boolean(filters.lastActivity)}
-                label="Last activity"
-                onClear={() => updateFilter("lastActivity", "")}
-                onSortDirectionChange={(direction) => onSortChange("activity", direction)}
-                sortDirection={tableSort?.column === "activity" ? tableSort.direction : null}
-              >
-                <TableHeaderFilterSelect
-                  label="Last activity"
-                  onChange={(value) =>
-                    updateFilter(
-                      "lastActivity",
-                      value as UserFilters["lastActivity"],
-                    )
-                  }
-                  options={[
-                    { label: "Any activity", value: "" },
-                    { label: "Has activity", value: "active" },
-                    { label: "Never active", value: "never" },
-                  ]}
-                  value={filters.lastActivity}
-                />
-              </TableHeaderFilter>
-            </th>
-            <th scope="col" className="py-3 pr-4 font-semibold">
-              <TableHeaderFilter
-                isActive={statusFilter !== "active"}
-                label="Status"
-                onClear={() => onStatusFilterChange("active")}
-                onSortDirectionChange={(direction) => onSortChange("status", direction)}
-                sortDirection={tableSort?.column === "status" ? tableSort.direction : null}
-              >
-                <TableHeaderFilterSelect
-                  label="Status"
-                  onChange={(value) => onStatusFilterChange(value as ArchiveStatusFilter)}
-                  options={archiveStatusFilterOptions}
-                  value={statusFilter}
-                />
-              </TableHeaderFilter>
-            </th>
-            <th scope="col" className="py-3 text-right font-semibold">
-              <span className="sr-only">Actions</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
+      {tableLayout !== "desktop" && toolbar && <div className="mb-3 md:hidden">{toolbar}</div>}
+      {tableLayout !== "desktop" && (
+        <div className="grid gap-3 md:hidden">
           {users.map((user) => (
-            <tr className="border-b border-border-subtle" key={user.id}>
-              <DataTableSelectionCell
-                checked={selectedUserIdSet.has(user.id)}
-                label={`Select ${user.displayName}`}
-                rangeKey="users-table"
-                rowId={user.id}
-                selectableRowIds={selectableUserIds}
-                onRangeChange={(ids, isSelected) =>
-                  ids.forEach((id) => onUserSelectionChange(id, isSelected))
-                }
-                onChange={(isSelected) =>
-                  onUserSelectionChange(user.id, isSelected)
-                }
-              />
-              <td className="py-3 pr-3">
-                <div className="flex justify-center">
-                  <UserAvatar
-                    displayName={user.displayName}
-                    imageUrl={user.profileImageUrl}
-                    size="sm"
-                  />
-                </div>
-              </td>
-              <td className="py-3 pr-4">
-                <UserName user={user} />
-              </td>
-              <td className="py-3 pr-4 text-text-muted">{user.username}</td>
-              <td className="py-3 pr-4 text-text-muted">{user.email}</td>
-              <td className="py-3 pr-4 capitalize text-text-muted">{user.role}</td>
-              <td className="py-3 pr-4 text-text-muted">
-                {formatLastActivity(user.lastActivityAt)}
-              </td>
-              <td className="py-3 pr-4">
-                <UserStatusBadge isActive={user.isActive} />
-              </td>
-              <td className="py-3 text-right">
-                <UserActions
-                  onDuplicate={onDuplicate}
-                  onEdit={onEdit}
-                  onPasswordReset={onPasswordReset}
-                  onUserActiveChange={onUserActiveChange}
-                  user={user}
-                />
-              </td>
-            </tr>
+            <UserCard
+              key={user.id}
+              onDuplicate={onDuplicate}
+              onEdit={onEdit}
+              onPasswordReset={onPasswordReset}
+              onSelectionChange={onUserSelectionChange}
+              onUserActiveChange={onUserActiveChange}
+              selected={selectedUserIdSet.has(user.id)}
+              user={user}
+            />
           ))}
-        </tbody>
-      </DataTable>
+        </div>
+      )}
+
+      {tableLayout !== "mobile" && (
+        <DataTable ariaLabel="Users" responsive="desktop" toolbar={toolbar}>
+          <colgroup>
+            <col className="w-10" />
+            <col className="w-14" />
+            <col className="w-[18%]" />
+            <col className="w-[14%]" />
+            <col />
+            <col className="w-24" />
+            <col className="w-36" />
+            <col className="w-24" />
+            <col className="table-action-column" />
+          </colgroup>
+          <thead>
+            <tr className="border-b border-border-subtle text-text-muted">
+              <DataTableSelectionHeader
+                checked={areAllVisibleUsersSelected}
+                label={
+                  areAllVisibleUsersSelected
+                    ? "Clear selected users"
+                    : "Select all users"
+                }
+                onChange={onVisibleUsersSelectionChange}
+              />
+              <th scope="col" className="py-3 pr-3 text-center font-semibold">
+                <span className="sr-only">Photo</span>
+              </th>
+              <th scope="col" className="py-3 pr-4 font-semibold">
+                <TableHeaderFilter
+                  isActive={Boolean(filters.firstName || filters.lastName)}
+                  label="Name"
+                  onClear={() =>
+                    onFiltersChange({ ...filters, firstName: "", lastName: "" })
+                  }
+                  onSortDirectionChange={(direction) => onSortChange("name", direction)}
+                  sortDirection={tableSort?.column === "name" ? tableSort.direction : null}
+                >
+                  <div className="grid gap-3">
+                    <TableHeaderFilterInput
+                      label="First name"
+                      onChange={(value) => updateFilter("firstName", value)}
+                      value={filters.firstName}
+                    />
+                    <TableHeaderFilterInput
+                      label="Last name"
+                      onChange={(value) => updateFilter("lastName", value)}
+                      value={filters.lastName}
+                    />
+                  </div>
+                </TableHeaderFilter>
+              </th>
+              <th scope="col" className="py-3 pr-4 font-semibold">
+                <TableHeaderFilter
+                  isActive={Boolean(filters.username)}
+                  label="Username"
+                  onClear={() => updateFilter("username", "")}
+                  onSortDirectionChange={(direction) => onSortChange("username", direction)}
+                  sortDirection={tableSort?.column === "username" ? tableSort.direction : null}
+                >
+                  <TableHeaderFilterInput
+                    label="Username"
+                    onChange={(value) => updateFilter("username", value)}
+                    value={filters.username}
+                  />
+                </TableHeaderFilter>
+              </th>
+              <th scope="col" className="py-3 pr-4 font-semibold">
+                <TableHeaderFilter
+                  isActive={Boolean(filters.email)}
+                  label="Email"
+                  onClear={() => updateFilter("email", "")}
+                  onSortDirectionChange={(direction) => onSortChange("email", direction)}
+                  sortDirection={tableSort?.column === "email" ? tableSort.direction : null}
+                >
+                  <TableHeaderFilterInput
+                    label="Email"
+                    onChange={(value) => updateFilter("email", value)}
+                    value={filters.email}
+                  />
+                </TableHeaderFilter>
+              </th>
+              <th scope="col" className="py-3 pr-4 font-semibold">
+                <TableHeaderFilter
+                  isActive={Boolean(filters.role)}
+                  label="Role"
+                  onClear={() => updateFilter("role", "")}
+                  onSortDirectionChange={(direction) => onSortChange("role", direction)}
+                  sortDirection={tableSort?.column === "role" ? tableSort.direction : null}
+                >
+                  <TableHeaderFilterSelect
+                    label="Role"
+                    onChange={(value) => updateFilter("role", value as Role | "")}
+                    options={[
+                      { label: "Any role", value: "" },
+                      ...userRoles.map((role) => ({
+                        label: role,
+                        value: role,
+                      })),
+                    ]}
+                    value={filters.role}
+                  />
+                </TableHeaderFilter>
+              </th>
+              <th scope="col" className="py-3 pr-4 font-semibold">
+                <TableHeaderFilter
+                  isActive={Boolean(filters.lastActivity)}
+                  label="Last activity"
+                  onClear={() => updateFilter("lastActivity", "")}
+                  onSortDirectionChange={(direction) => onSortChange("activity", direction)}
+                  sortDirection={tableSort?.column === "activity" ? tableSort.direction : null}
+                >
+                  <TableHeaderFilterSelect
+                    label="Last activity"
+                    onChange={(value) =>
+                      updateFilter(
+                        "lastActivity",
+                        value as UserFilters["lastActivity"],
+                      )
+                    }
+                    options={[
+                      { label: "Any activity", value: "" },
+                      { label: "Has activity", value: "active" },
+                      { label: "Never active", value: "never" },
+                    ]}
+                    value={filters.lastActivity}
+                  />
+                </TableHeaderFilter>
+              </th>
+              <th scope="col" className="py-3 pr-4 font-semibold">
+                <TableHeaderFilter
+                  isActive={statusFilter !== "active"}
+                  label="Status"
+                  onClear={() => onStatusFilterChange("active")}
+                  onSortDirectionChange={(direction) => onSortChange("status", direction)}
+                  sortDirection={tableSort?.column === "status" ? tableSort.direction : null}
+                >
+                  <TableHeaderFilterSelect
+                    label="Status"
+                    onChange={(value) => onStatusFilterChange(value as ArchiveStatusFilter)}
+                    options={archiveStatusFilterOptions}
+                    value={statusFilter}
+                  />
+                </TableHeaderFilter>
+              </th>
+              <th scope="col" className="py-3 text-right font-semibold">
+                <span className="sr-only">Actions</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map((user) => (
+              <tr className="border-b border-border-subtle" key={user.id}>
+                <DataTableSelectionCell
+                  checked={selectedUserIdSet.has(user.id)}
+                  label={`Select ${user.displayName}`}
+                  rangeKey="users-table"
+                  rowId={user.id}
+                  selectableRowIds={selectableUserIds}
+                  onRangeChange={(ids, isSelected) =>
+                    ids.forEach((id) => onUserSelectionChange(id, isSelected))
+                  }
+                  onChange={(isSelected) =>
+                    onUserSelectionChange(user.id, isSelected)
+                  }
+                />
+                <td className="py-3 pr-3">
+                  <div className="flex justify-center">
+                    <UserAvatar
+                      displayName={user.displayName}
+                      imageUrl={user.profileImageUrl}
+                      size="sm"
+                    />
+                  </div>
+                </td>
+                <td className="py-3 pr-4">
+                  <UserName user={user} />
+                </td>
+                <td className="py-3 pr-4 text-text-muted">{user.username}</td>
+                <td className="py-3 pr-4 text-text-muted">{user.email}</td>
+                <td className="py-3 pr-4 capitalize text-text-muted">{user.role}</td>
+                <td className="py-3 pr-4 text-text-muted">
+                  {formatLastActivity(user.lastActivityAt)}
+                </td>
+                <td className="py-3 pr-4">
+                  <UserStatusBadge isActive={user.isActive} />
+                </td>
+                <td className="py-3 text-right">
+                  <UserActions
+                    onDuplicate={onDuplicate}
+                    onEdit={onEdit}
+                    onPasswordReset={onPasswordReset}
+                    onUserActiveChange={onUserActiveChange}
+                    user={user}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </DataTable>
+      )}
     </>
   );
 }
@@ -356,7 +362,7 @@ function UserCard({
   );
 }
 
-function UserActions({
+const UserActions = memo(function UserActions({
   onDuplicate,
   onEdit,
   onPasswordReset,
@@ -397,7 +403,7 @@ function UserActions({
       ]}
     />
   );
-}
+});
 
 function UserName({ user }: { user: UserListItem }) {
   return (

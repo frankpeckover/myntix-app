@@ -134,6 +134,10 @@
   --activity-meta: #566173;
   --shell-gradient-accent: color-mix(in srgb, var(--accent-primary) 10%, transparent);
   --shell-gradient-surface: rgba(255, 255, 255, 0.8);
+  --dashboard-canvas: color-mix(in srgb, var(--brand) 1.5%, var(--background));
+  --dashboard-pattern-ink: color-mix(in srgb, var(--brand-ink) 65%, var(--foreground));
+  --dashboard-pattern-line: color-mix(in srgb, var(--dashboard-pattern-ink) 7%, transparent);
+  --dashboard-pattern-dot: color-mix(in srgb, var(--dashboard-pattern-ink) 18%, transparent);
   --shadow-panel: rgba(17, 24, 39, 0.07);
   --radius-control: 0.75rem;
   --radius-card: 1rem;
@@ -146,6 +150,9 @@
 
 html[data-theme="dark"] {
   color-scheme: dark;
+  --dashboard-canvas: color-mix(in srgb, var(--brand) 2%, var(--background));
+  --dashboard-pattern-line: color-mix(in srgb, var(--dashboard-pattern-ink) 10%, transparent);
+  --dashboard-pattern-dot: color-mix(in srgb, var(--dashboard-pattern-ink) 22%, transparent);
   --background: #050608;
   --background-gradient-start: #090b0f;
   --foreground: #fafbfc;
@@ -705,32 +712,6 @@ button:disabled {
     var(--background);
 }
 
-html[data-dashboard-theme="soft-grid"] {
-  --student-dashboard-background:
-    repeating-linear-gradient(90deg, transparent 0 31px, color-mix(in srgb, var(--accent-primary) 7%, transparent) 31px 32px),
-    repeating-linear-gradient(0deg, transparent 0 31px, color-mix(in srgb, var(--accent-primary) 6%, transparent) 31px 32px),
-    linear-gradient(180deg, var(--shell-gradient-surface), transparent 18rem),
-    var(--background);
-}
-
-html[data-dashboard-theme="notebook"] {
-  --student-dashboard-background:
-    repeating-linear-gradient(0deg, transparent 0 35px, color-mix(in srgb, var(--accent-secondary) 10%, transparent) 35px 36px),
-    linear-gradient(180deg, var(--shell-gradient-surface), transparent 18rem),
-    var(--background);
-}
-
-html[data-dashboard-theme="confetti"] {
-  --student-dashboard-background:
-    radial-gradient(circle at 8% 14%, color-mix(in srgb, var(--accent-primary) 15%, transparent) 0 2px, transparent 3px),
-    radial-gradient(circle at 24% 42%, color-mix(in srgb, var(--accent-secondary) 17%, transparent) 0 2px, transparent 3px),
-    radial-gradient(circle at 74% 18%, color-mix(in srgb, var(--accent-highlight) 20%, transparent) 0 2px, transparent 3px),
-    radial-gradient(circle at 92% 54%, color-mix(in srgb, var(--accent-primary) 12%, transparent) 0 2px, transparent 3px),
-    linear-gradient(180deg, var(--shell-gradient-surface), transparent 18rem),
-    var(--background);
-  --student-dashboard-background-size: 180px 180px, 230px 230px, 210px 210px, 260px 260px, auto, auto;
-}
-
 .professional-shell {
   --radius-control: 0.55rem;
   --radius-card: 0.7rem;
@@ -747,8 +728,10 @@ html[data-theme="dark"] .professional-shell {
 }
 
 .dashboard-grid {
+  --dashboard-height-unit: 4rem;
+  --dashboard-gap: 1rem;
   display: grid;
-  gap: 1rem;
+  gap: var(--dashboard-gap);
   grid-template-columns: minmax(0, 1fr);
 }
 
@@ -779,6 +762,14 @@ html[data-theme="dark"] .professional-shell {
 
   .dashboard-unit-4 {
     grid-column: span 4 / span 4;
+  }
+
+  .dashboard-height-3 {
+    min-height: calc(3 * var(--dashboard-height-unit) + 2 * var(--dashboard-gap));
+  }
+
+  .dashboard-height-4 {
+    min-height: calc(4 * var(--dashboard-height-unit) + 3 * var(--dashboard-gap));
   }
 }
 
@@ -1763,6 +1754,11 @@ textarea:focus-visible,
 [tabindex]:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--brand) 78%, white);
   outline-offset: 2px;
+}
+
+.recharts-wrapper:focus:not(:focus-visible),
+.recharts-wrapper .recharts-surface:focus:not(:focus-visible) {
+  outline: none;
 }
 
 .professional-shell .theme-card p,

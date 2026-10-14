@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useTableLayout } from "@/components/ui/use-table-layout";
 import { weekDays } from "@/components/admin/timetable/timetable-constants";
 import { CheckIcon, CopyIcon, PencilIcon, TrashIcon } from "@/components/ui/icons";
 import {
@@ -50,6 +51,7 @@ export function TimetableEntryTable({
   toolbar?: ReactNode;
 }) {
   const selectedEntryIdSet = new Set(selectedEntryIds);
+  const tableLayout = useTableLayout();
   const selectableEntryIds = entries.map((entry) => entry.id);
 
   function updateFilter<Field extends keyof TimetableFiltersState>(
@@ -64,160 +66,164 @@ export function TimetableEntryTable({
 
   return (
     <>
-      {toolbar && <div className="mb-3 md:hidden">{toolbar}</div>}
-      <div className="grid gap-3 md:hidden">
-        {entries.map((entry) => (
-          <TimetableEntryMobileRow
-            entry={entry}
-            key={entry.id}
-            onDeleteEntry={onDeleteEntry}
-            onDuplicateEntry={onDuplicateEntry}
-            onEntrySelectionChange={onEntrySelectionChange}
-            onEditEntry={onEditEntry}
-            selected={selectedEntryIdSet.has(entry.id)}
-          />
-        ))}
-      </div>
-
-      <DataTable ariaLabel="Timetable entries" responsive="desktop" toolbar={toolbar}>
-        <colgroup>
-          <col className="w-10" />
-          <col className="w-[26%]" />
-          <col />
-          <col className="w-28" />
-          <col className="w-32" />
-          <col className="w-24" />
-          <col className="table-action-column" />
-        </colgroup>
-        <thead>
-          <tr className="border-b border-border-subtle text-text-muted">
-            <DataTableSelectionHeader
-              checked={areAllVisibleEntriesSelected}
-              label={
-                areAllVisibleEntriesSelected
-                  ? "Clear selected timetable entries"
-                  : "Select all timetable entries"
-              }
-              onChange={onVisibleEntriesSelectionChange}
-            />
-            <th scope="col" className="py-2 pr-4 font-semibold">
-              <TableHeaderFilter
-                isActive={Boolean(filters.groupName)}
-                label="Group"
-                onClear={() => updateFilter("groupName", "")}
-                onSortDirectionChange={(direction) => onSortChange("group", direction)}
-                sortDirection={tableSort?.column === "group" ? tableSort.direction : null}
-              >
-                <TableHeaderFilterInput
-                  label="Search groups"
-                  onChange={(value) => updateFilter("groupName", value)}
-                  value={filters.groupName}
-                />
-              </TableHeaderFilter>
-            </th>
-            <th scope="col" className="py-2 pr-4 font-semibold">
-              <TableHeaderFilter
-                isActive={Boolean(filters.teacherName)}
-                label="Teacher"
-                onClear={() => updateFilter("teacherName", "")}
-                onSortDirectionChange={(direction) => onSortChange("teacher", direction)}
-                sortDirection={tableSort?.column === "teacher" ? tableSort.direction : null}
-              >
-                <TableHeaderFilterInput
-                  label="Search teachers"
-                  onChange={(value) => updateFilter("teacherName", value)}
-                  value={filters.teacherName}
-                />
-              </TableHeaderFilter>
-            </th>
-            <th scope="col" className="py-2 pr-4 font-semibold">
-              <TableHeaderFilter
-                isActive={Boolean(filters.dayOfWeek)}
-                label="Day"
-                onClear={() => updateFilter("dayOfWeek", "")}
-                onSortDirectionChange={(direction) => onSortChange("day", direction)}
-                sortDirection={tableSort?.column === "day" ? tableSort.direction : null}
-              >
-                <TableHeaderFilterSelect
-                  label="Day"
-                  onChange={(value) => updateFilter("dayOfWeek", value)}
-                  options={[
-                    { label: "All days", value: "" },
-                    ...weekDays.map((day, index) => ({
-                      label: day,
-                      value: String(index),
-                    })),
-                  ]}
-                  value={filters.dayOfWeek}
-                />
-              </TableHeaderFilter>
-            </th>
-            <th scope="col" className="py-2 pr-4 font-semibold">
-              <TableHeaderFilter label="Time" onSortDirectionChange={(direction) => onSortChange("time", direction)} sortDirection={tableSort?.column === "time" ? tableSort.direction : null} />
-            </th>
-            <th scope="col" className="py-2 pr-4 font-semibold">
-              <TableHeaderFilter
-                isActive={filters.status !== "active"}
-                label="Status"
-                onClear={() => updateFilter("status", "active")}
-                onSortDirectionChange={(direction) => onSortChange("status", direction)}
-                sortDirection={tableSort?.column === "status" ? tableSort.direction : null}
-              >
-                <TableHeaderFilterSelect
-                  label="Status"
-                  onChange={(value) =>
-                    updateFilter("status", value as TimetableFiltersState["status"])
-                  }
-                  options={archiveStatusFilterOptions}
-                  value={filters.status}
-                />
-              </TableHeaderFilter>
-            </th>
-            <th scope="col" className="py-2 text-right font-semibold">
-              <span className="sr-only">Actions</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
+      {tableLayout !== "desktop" && toolbar && <div className="mb-3 md:hidden">{toolbar}</div>}
+      {tableLayout !== "desktop" && (
+        <div className="grid gap-3 md:hidden">
           {entries.map((entry) => (
-            <tr className="border-b border-border-subtle" key={entry.id}>
-              <DataTableSelectionCell
-                checked={selectedEntryIdSet.has(entry.id)}
-                label={`Select ${entry.groupName} timetable entry`}
-                rangeKey="timetable-table"
-                rowId={entry.id}
-                selectableRowIds={selectableEntryIds}
-                onRangeChange={(ids, isSelected) =>
-                  ids.forEach((id) => onEntrySelectionChange(id, isSelected))
-                }
-                onChange={(isSelected) =>
-                  onEntrySelectionChange(entry.id, isSelected)
-                }
-              />
-              <td className="py-3 pr-4 font-semibold">{entry.groupName}</td>
-              <td className="py-3 pr-4 text-text-muted">{entry.teacherName}</td>
-              <td className="py-3 pr-4 text-text-muted">
-                {weekDays[entry.dayOfWeek]}
-                <span className="mt-0.5 block text-xs">{formatCycleWeek(entry.cycleWeek)}</span>
-              </td>
-              <td className="py-3 pr-4 text-text-muted">
-                {formatTimeRange(entry)}
-              </td>
-              <td className="py-3 pr-4">
-                <TimetableStatusBadge isActive={entry.isActive} />
-              </td>
-              <td className="py-3 text-right">
-                <TimetableActions
-                  entry={entry}
-                  onDeleteEntry={onDeleteEntry}
-                  onDuplicateEntry={onDuplicateEntry}
-                  onEditEntry={onEditEntry}
-                />
-              </td>
-            </tr>
+            <TimetableEntryMobileRow
+              entry={entry}
+              key={entry.id}
+              onDeleteEntry={onDeleteEntry}
+              onDuplicateEntry={onDuplicateEntry}
+              onEntrySelectionChange={onEntrySelectionChange}
+              onEditEntry={onEditEntry}
+              selected={selectedEntryIdSet.has(entry.id)}
+            />
           ))}
-        </tbody>
-      </DataTable>
+        </div>
+      )}
+
+      {tableLayout !== "mobile" && (
+        <DataTable ariaLabel="Timetable entries" responsive="desktop" toolbar={toolbar}>
+          <colgroup>
+            <col className="w-10" />
+            <col className="w-[26%]" />
+            <col />
+            <col className="w-28" />
+            <col className="w-32" />
+            <col className="w-24" />
+            <col className="table-action-column" />
+          </colgroup>
+          <thead>
+            <tr className="border-b border-border-subtle text-text-muted">
+              <DataTableSelectionHeader
+                checked={areAllVisibleEntriesSelected}
+                label={
+                  areAllVisibleEntriesSelected
+                    ? "Clear selected timetable entries"
+                    : "Select all timetable entries"
+                }
+                onChange={onVisibleEntriesSelectionChange}
+              />
+              <th scope="col" className="py-2 pr-4 font-semibold">
+                <TableHeaderFilter
+                  isActive={Boolean(filters.groupName)}
+                  label="Group"
+                  onClear={() => updateFilter("groupName", "")}
+                  onSortDirectionChange={(direction) => onSortChange("group", direction)}
+                  sortDirection={tableSort?.column === "group" ? tableSort.direction : null}
+                >
+                  <TableHeaderFilterInput
+                    label="Search groups"
+                    onChange={(value) => updateFilter("groupName", value)}
+                    value={filters.groupName}
+                  />
+                </TableHeaderFilter>
+              </th>
+              <th scope="col" className="py-2 pr-4 font-semibold">
+                <TableHeaderFilter
+                  isActive={Boolean(filters.teacherName)}
+                  label="Teacher"
+                  onClear={() => updateFilter("teacherName", "")}
+                  onSortDirectionChange={(direction) => onSortChange("teacher", direction)}
+                  sortDirection={tableSort?.column === "teacher" ? tableSort.direction : null}
+                >
+                  <TableHeaderFilterInput
+                    label="Search teachers"
+                    onChange={(value) => updateFilter("teacherName", value)}
+                    value={filters.teacherName}
+                  />
+                </TableHeaderFilter>
+              </th>
+              <th scope="col" className="py-2 pr-4 font-semibold">
+                <TableHeaderFilter
+                  isActive={Boolean(filters.dayOfWeek)}
+                  label="Day"
+                  onClear={() => updateFilter("dayOfWeek", "")}
+                  onSortDirectionChange={(direction) => onSortChange("day", direction)}
+                  sortDirection={tableSort?.column === "day" ? tableSort.direction : null}
+                >
+                  <TableHeaderFilterSelect
+                    label="Day"
+                    onChange={(value) => updateFilter("dayOfWeek", value)}
+                    options={[
+                      { label: "All days", value: "" },
+                      ...weekDays.map((day, index) => ({
+                        label: day,
+                        value: String(index),
+                      })),
+                    ]}
+                    value={filters.dayOfWeek}
+                  />
+                </TableHeaderFilter>
+              </th>
+              <th scope="col" className="py-2 pr-4 font-semibold">
+                <TableHeaderFilter label="Time" onSortDirectionChange={(direction) => onSortChange("time", direction)} sortDirection={tableSort?.column === "time" ? tableSort.direction : null} />
+              </th>
+              <th scope="col" className="py-2 pr-4 font-semibold">
+                <TableHeaderFilter
+                  isActive={filters.status !== "active"}
+                  label="Status"
+                  onClear={() => updateFilter("status", "active")}
+                  onSortDirectionChange={(direction) => onSortChange("status", direction)}
+                  sortDirection={tableSort?.column === "status" ? tableSort.direction : null}
+                >
+                  <TableHeaderFilterSelect
+                    label="Status"
+                    onChange={(value) =>
+                      updateFilter("status", value as TimetableFiltersState["status"])
+                    }
+                    options={archiveStatusFilterOptions}
+                    value={filters.status}
+                  />
+                </TableHeaderFilter>
+              </th>
+              <th scope="col" className="py-2 text-right font-semibold">
+                <span className="sr-only">Actions</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map((entry) => (
+              <tr className="border-b border-border-subtle" key={entry.id}>
+                <DataTableSelectionCell
+                  checked={selectedEntryIdSet.has(entry.id)}
+                  label={`Select ${entry.groupName} timetable entry`}
+                  rangeKey="timetable-table"
+                  rowId={entry.id}
+                  selectableRowIds={selectableEntryIds}
+                  onRangeChange={(ids, isSelected) =>
+                    ids.forEach((id) => onEntrySelectionChange(id, isSelected))
+                  }
+                  onChange={(isSelected) =>
+                    onEntrySelectionChange(entry.id, isSelected)
+                  }
+                />
+                <td className="py-3 pr-4 font-semibold">{entry.groupName}</td>
+                <td className="py-3 pr-4 text-text-muted">{entry.teacherName}</td>
+                <td className="py-3 pr-4 text-text-muted">
+                  {weekDays[entry.dayOfWeek]}
+                  <span className="mt-0.5 block text-xs">{formatCycleWeek(entry.cycleWeek)}</span>
+                </td>
+                <td className="py-3 pr-4 text-text-muted">
+                  {formatTimeRange(entry)}
+                </td>
+                <td className="py-3 pr-4">
+                  <TimetableStatusBadge isActive={entry.isActive} />
+                </td>
+                <td className="py-3 text-right">
+                  <TimetableActions
+                    entry={entry}
+                    onDeleteEntry={onDeleteEntry}
+                    onDuplicateEntry={onDuplicateEntry}
+                    onEditEntry={onEditEntry}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </DataTable>
+      )}
     </>
   );
 }

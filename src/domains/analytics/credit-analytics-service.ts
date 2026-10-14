@@ -1,4 +1,5 @@
 import { db } from "@/lib/database/db";
+import { getActivityYearRange } from "@/lib/presentation/activity-calendar";
 
 export type CreditAnalyticsSummary = {
   activeShopRequests: number;
@@ -66,6 +67,7 @@ export type CreditAnalyticsSummaryResult = {
   balanceBuckets: CreditAnalyticsBucket[];
   balanceHistory: CreditAnalyticsBalanceHistoryPoint[];
   movementLeaders: CreditAnalyticsStudentMovement[];
+  movementTrend: CreditAnalyticsTrendPoint[];
   summary: CreditAnalyticsSummary;
   topBalances: CreditAnalyticsStudentBalance[];
   trend: CreditAnalyticsTrendPoint[];
@@ -150,10 +152,12 @@ export class CreditAnalyticsService {
   ): Promise<CreditAnalyticsSummaryResult> {
     const scope = parseScopeKey(scopeKey);
     const analyticsWindow = sanitizeAnalyticsWindow(windowInput);
+    const movementWindow = { ...getActivityYearRange(), bucketMode: "day" as const };
     const [
       summaryResult,
       bucketResult,
       trendResult,
+      movementTrendResult,
       balanceHistoryResult,
       topBalancesResult,
       movementLeadersResult,
@@ -407,6 +411,55 @@ export class CreditAnalyticsService {
         scope.id,
         analyticsWindow.bucketMode,
       ]),
+      db.query<TrendRow>(`
+        with filtered_students as (${filteredStudentsQuery}),
+        days as (
+          select generate_series(
+            $1::timestamp,
+            $2::timestamp - interval '1 day',
+            interval '1 day'
+          ) as bucket_date
+        ),
+        daily_ledger_entries as (
+          select
+            date_trunc('day', ledger_entries.created_at) as bucket_date,
+            ledger_entries.amount,
+            ledger_entries.entry_type
+          from ledger_entries
+          join accounts on accounts.id = ledger_entries.account_id
+          join filtered_students on filtered_students.id = accounts.user_id
+          where ledger_entries.status in ('pending', 'posted')
+            and not (
+              ledger_entries.status = 'pending'
+              and ledger_entries.is_voided = true
+            )
+            and ledger_entries.created_at >= $1::timestamp
+            and ledger_entries.created_at < $2::timestamp
+        )
+        select
+          days.bucket_date,
+          coalesce(sum(daily_ledger_entries.amount) filter (where daily_ledger_entries.amount > 0), 0) as issued,
+          coalesce(abs(sum(daily_ledger_entries.amount) filter (
+            where daily_ledger_entries.amount < 0
+              and daily_ledger_entries.entry_type not in ('shop_hold', 'shop_purchase')
+          )), 0) as removed,
+          coalesce(abs(sum(daily_ledger_entries.amount) filter (
+            where daily_ledger_entries.amount < 0
+              and daily_ledger_entries.entry_type in ('shop_hold', 'shop_purchase')
+          )), 0) as spent,
+          0::bigint as pending_purchases,
+          0::bigint as approved_purchases,
+          0::bigint as denied_purchases
+        from days
+        left join daily_ledger_entries on daily_ledger_entries.bucket_date = days.bucket_date
+        group by days.bucket_date
+        order by days.bucket_date
+      `, [
+        movementWindow.startDate,
+        movementWindow.endDateExclusive,
+        scope.kind,
+        scope.id,
+      ]),
       db.query<BalanceHistoryRow>(`
         with filtered_students as (${filteredStudentsQuery}),
         days as (
@@ -526,6 +579,9 @@ export class CreditAnalyticsService {
         mapBalanceHistoryRow(row, analyticsWindow.bucketMode),
       ),
       movementLeaders: movementLeadersResult.rows.map(mapStudentMovementRow),
+      movementTrend: movementTrendResult.rows.map((row) =>
+        mapTrendRow(row, movementWindow.bucketMode),
+      ),
       summary: mapSummaryRow(summaryResult.rows[0]),
       topBalances: topBalancesResult.rows.map(mapStudentBalanceRow),
       trend: trendResult.rows.map((row) =>

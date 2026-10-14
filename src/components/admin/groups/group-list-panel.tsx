@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { useTableLayout } from "@/components/ui/use-table-layout";
 import {
   CheckIcon,
   CopyIcon,
@@ -216,6 +217,7 @@ function GroupList({
   toolbar?: ReactNode;
 }) {
   const selectedGroupIdSet = new Set(selectedGroupIds);
+  const tableLayout = useTableLayout();
   const selectableGroupIds = groups.map((group) => group.id);
   const areAllVisibleGroupsSelected =
     groups.length > 0 &&
@@ -227,170 +229,174 @@ function GroupList({
 
   return (
     <>
-      {toolbar && <div className="mb-3 md:hidden">{toolbar}</div>}
-      <div className="grid min-w-0 gap-2 md:hidden">
-        {groups.map((group) => (
-          <GroupCard
-            group={group}
-            isSelected={selectedGroupId === group.id}
-            key={group.id}
-            onDuplicateGroup={onDuplicateGroup}
-            onEditGroup={onEditGroup}
-            onEditMembers={onEditMembers}
-            onGroupSelect={onGroupSelect}
-            onGroupSelectionChange={onGroupSelectionChange}
-            onGroupStatusChange={onGroupStatusChange}
-            selected={selectedGroupIdSet.has(group.id)}
-          />
-        ))}
-      </div>
-
-      <DataTable ariaLabel="Groups" responsive="desktop" toolbar={toolbar}>
-        <colgroup>
-          <col className="w-10" />
-          <col className="w-[28%]" />
-          <col />
-          <col className="w-28" />
-          <col className="w-24" />
-          <col className="table-action-column" />
-        </colgroup>
-        <thead>
-          <tr className="border-b border-border-subtle text-text-muted">
-            <DataTableSelectionHeader
-              checked={areAllVisibleGroupsSelected}
-              label={
-                areAllVisibleGroupsSelected
-                  ? "Clear selected groups"
-                  : "Select all groups"
-              }
-              onChange={onVisibleGroupsSelectionChange}
-            />
-            <th scope="col" className="py-2 pr-4 font-semibold">
-              <TableHeaderFilter
-                isActive={Boolean(filters.name)}
-                label="Name"
-                onClear={() => updateFilter("name", "")}
-                onSortDirectionChange={(direction) => onSortChange("name", direction)}
-                sortDirection={tableSort?.column === "name" ? tableSort.direction : null}
-              >
-                <TableHeaderFilterInput
-                  label="Search names"
-                  onChange={(value) => updateFilter("name", value)}
-                  value={filters.name}
-                />
-              </TableHeaderFilter>
-            </th>
-            <th scope="col" className="py-2 pr-4 font-semibold">
-              <TableHeaderFilter
-                isActive={Boolean(filters.description)}
-                label="Description"
-                onClear={() => updateFilter("description", "")}
-                onSortDirectionChange={(direction) => onSortChange("description", direction)}
-                sortDirection={tableSort?.column === "description" ? tableSort.direction : null}
-              >
-                <TableHeaderFilterInput
-                  label="Search descriptions"
-                  onChange={(value) => updateFilter("description", value)}
-                  value={filters.description}
-                />
-              </TableHeaderFilter>
-            </th>
-            <th scope="col" className="py-2 pr-4 text-right font-semibold">
-              <TableHeaderFilter
-                isActive={Boolean(filters.memberMin || filters.memberMax)}
-                label="Members"
-                onClear={() =>
-                  onFiltersChange({
-                    ...filters,
-                    memberMax: "",
-                    memberMin: "",
-                  })
-                }
-                onSortDirectionChange={(direction) => onSortChange("members", direction)}
-                sortDirection={tableSort?.column === "members" ? tableSort.direction : null}
-              >
-                <div className="grid gap-3">
-                  <TableHeaderFilterInput
-                    label="Minimum"
-                    onChange={(value) => updateFilter("memberMin", value)}
-                    type="number"
-                    value={filters.memberMin}
-                  />
-                  <TableHeaderFilterInput
-                    label="Maximum"
-                    onChange={(value) => updateFilter("memberMax", value)}
-                    type="number"
-                    value={filters.memberMax}
-                  />
-                </div>
-              </TableHeaderFilter>
-            </th>
-            <th scope="col" className="py-2 pr-4 font-semibold">
-              <TableHeaderFilter
-                isActive={statusFilter !== "active"}
-                label="Status"
-                onClear={() => onStatusFilterChange("active")}
-                onSortDirectionChange={(direction) => onSortChange("status", direction)}
-                sortDirection={tableSort?.column === "status" ? tableSort.direction : null}
-              >
-                <TableHeaderFilterSelect
-                  label="Status"
-                  onChange={(value) => onStatusFilterChange(value as ArchiveStatusFilter)}
-                  options={archiveStatusFilterOptions}
-                  value={statusFilter}
-                />
-              </TableHeaderFilter>
-            </th>
-            <th scope="col" className="py-2 text-right font-semibold">
-              <span className="sr-only">Actions</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
+      {tableLayout !== "desktop" && toolbar && <div className="mb-3 md:hidden">{toolbar}</div>}
+      {tableLayout !== "desktop" && (
+        <div className="grid min-w-0 gap-2 md:hidden">
           {groups.map((group) => (
-            <tr
-              className={`border-b border-border-subtle ${
-                selectedGroupId === group.id ? "bg-brand-soft" : ""
-              }`}
+            <GroupCard
+              group={group}
+              isSelected={selectedGroupId === group.id}
               key={group.id}
-            >
-              <DataTableSelectionCell
-                checked={selectedGroupIdSet.has(group.id)}
-                label={`Select ${group.name}`}
-                rangeKey="groups-table"
-                rowId={group.id}
-                selectableRowIds={selectableGroupIds}
-                onRangeChange={(ids, isSelected) =>
-                  ids.forEach((id) => onGroupSelectionChange(id, isSelected))
-                }
-                onChange={(isSelected) =>
-                  onGroupSelectionChange(group.id, isSelected)
-                }
-              />
-              <td className="py-3 pr-4 font-semibold">{group.name}</td>
-              <td className="py-3 pr-4 text-text-muted">
-                {group.description || "-"}
-              </td>
-              <td className="py-3 pr-4 text-right text-text-muted">
-                {group.memberCount}
-              </td>
-              <td className="py-3 pr-4">
-                <GroupStatusBadge group={group} />
-              </td>
-              <td className="py-3 text-right">
-                <GroupActions
-                  group={group}
-                  onDuplicateGroup={onDuplicateGroup}
-                  onEditGroup={onEditGroup}
-                  onEditMembers={onEditMembers}
-                  onGroupSelect={onGroupSelect}
-                  onGroupStatusChange={onGroupStatusChange}
-                />
-              </td>
-            </tr>
+              onDuplicateGroup={onDuplicateGroup}
+              onEditGroup={onEditGroup}
+              onEditMembers={onEditMembers}
+              onGroupSelect={onGroupSelect}
+              onGroupSelectionChange={onGroupSelectionChange}
+              onGroupStatusChange={onGroupStatusChange}
+              selected={selectedGroupIdSet.has(group.id)}
+            />
           ))}
-        </tbody>
-      </DataTable>
+        </div>
+      )}
+
+      {tableLayout !== "mobile" && (
+        <DataTable ariaLabel="Groups" responsive="desktop" toolbar={toolbar}>
+          <colgroup>
+            <col className="w-10" />
+            <col className="w-[28%]" />
+            <col />
+            <col className="w-28" />
+            <col className="w-24" />
+            <col className="table-action-column" />
+          </colgroup>
+          <thead>
+            <tr className="border-b border-border-subtle text-text-muted">
+              <DataTableSelectionHeader
+                checked={areAllVisibleGroupsSelected}
+                label={
+                  areAllVisibleGroupsSelected
+                    ? "Clear selected groups"
+                    : "Select all groups"
+                }
+                onChange={onVisibleGroupsSelectionChange}
+              />
+              <th scope="col" className="py-2 pr-4 font-semibold">
+                <TableHeaderFilter
+                  isActive={Boolean(filters.name)}
+                  label="Name"
+                  onClear={() => updateFilter("name", "")}
+                  onSortDirectionChange={(direction) => onSortChange("name", direction)}
+                  sortDirection={tableSort?.column === "name" ? tableSort.direction : null}
+                >
+                  <TableHeaderFilterInput
+                    label="Search names"
+                    onChange={(value) => updateFilter("name", value)}
+                    value={filters.name}
+                  />
+                </TableHeaderFilter>
+              </th>
+              <th scope="col" className="py-2 pr-4 font-semibold">
+                <TableHeaderFilter
+                  isActive={Boolean(filters.description)}
+                  label="Description"
+                  onClear={() => updateFilter("description", "")}
+                  onSortDirectionChange={(direction) => onSortChange("description", direction)}
+                  sortDirection={tableSort?.column === "description" ? tableSort.direction : null}
+                >
+                  <TableHeaderFilterInput
+                    label="Search descriptions"
+                    onChange={(value) => updateFilter("description", value)}
+                    value={filters.description}
+                  />
+                </TableHeaderFilter>
+              </th>
+              <th scope="col" className="py-2 pr-4 text-right font-semibold">
+                <TableHeaderFilter
+                  isActive={Boolean(filters.memberMin || filters.memberMax)}
+                  label="Members"
+                  onClear={() =>
+                    onFiltersChange({
+                      ...filters,
+                      memberMax: "",
+                      memberMin: "",
+                    })
+                  }
+                  onSortDirectionChange={(direction) => onSortChange("members", direction)}
+                  sortDirection={tableSort?.column === "members" ? tableSort.direction : null}
+                >
+                  <div className="grid gap-3">
+                    <TableHeaderFilterInput
+                      label="Minimum"
+                      onChange={(value) => updateFilter("memberMin", value)}
+                      type="number"
+                      value={filters.memberMin}
+                    />
+                    <TableHeaderFilterInput
+                      label="Maximum"
+                      onChange={(value) => updateFilter("memberMax", value)}
+                      type="number"
+                      value={filters.memberMax}
+                    />
+                  </div>
+                </TableHeaderFilter>
+              </th>
+              <th scope="col" className="py-2 pr-4 font-semibold">
+                <TableHeaderFilter
+                  isActive={statusFilter !== "active"}
+                  label="Status"
+                  onClear={() => onStatusFilterChange("active")}
+                  onSortDirectionChange={(direction) => onSortChange("status", direction)}
+                  sortDirection={tableSort?.column === "status" ? tableSort.direction : null}
+                >
+                  <TableHeaderFilterSelect
+                    label="Status"
+                    onChange={(value) => onStatusFilterChange(value as ArchiveStatusFilter)}
+                    options={archiveStatusFilterOptions}
+                    value={statusFilter}
+                  />
+                </TableHeaderFilter>
+              </th>
+              <th scope="col" className="py-2 text-right font-semibold">
+                <span className="sr-only">Actions</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {groups.map((group) => (
+              <tr
+                className={`border-b border-border-subtle ${
+                  selectedGroupId === group.id ? "bg-brand-soft" : ""
+                }`}
+                key={group.id}
+              >
+                <DataTableSelectionCell
+                  checked={selectedGroupIdSet.has(group.id)}
+                  label={`Select ${group.name}`}
+                  rangeKey="groups-table"
+                  rowId={group.id}
+                  selectableRowIds={selectableGroupIds}
+                  onRangeChange={(ids, isSelected) =>
+                    ids.forEach((id) => onGroupSelectionChange(id, isSelected))
+                  }
+                  onChange={(isSelected) =>
+                    onGroupSelectionChange(group.id, isSelected)
+                  }
+                />
+                <td className="py-3 pr-4 font-semibold">{group.name}</td>
+                <td className="py-3 pr-4 text-text-muted">
+                  {group.description || "-"}
+                </td>
+                <td className="py-3 pr-4 text-right text-text-muted">
+                  {group.memberCount}
+                </td>
+                <td className="py-3 pr-4">
+                  <GroupStatusBadge group={group} />
+                </td>
+                <td className="py-3 text-right">
+                  <GroupActions
+                    group={group}
+                    onDuplicateGroup={onDuplicateGroup}
+                    onEditGroup={onEditGroup}
+                    onEditMembers={onEditMembers}
+                    onGroupSelect={onGroupSelect}
+                    onGroupStatusChange={onGroupStatusChange}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </DataTable>
+      )}
     </>
   );
 }

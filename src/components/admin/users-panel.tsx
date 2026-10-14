@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { listUsers, setUserActive } from "@/lib/actions";
 import { matchesUserFilters } from "@/components/admin/users/user-filter-utils";
 import {
@@ -127,7 +127,7 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
     refreshUsers();
   }
 
-  function handleDuplicateUser(user: UserListItem) {
+  const handleDuplicateUser = useCallback((user: UserListItem) => {
     setEditingUser(null);
     setDuplicatingUserForm({
       firstName: user.firstName,
@@ -137,7 +137,7 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
       role: user.role,
     });
     setIsCreateModalOpen(true);
-  }
+  }, []);
 
   function handleUsersImported(messageText: string, shouldClose = true) {
     setMessage(messageText);
@@ -147,9 +147,9 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
     }
   }
 
-  function handleSetUserActive(user: UserListItem, isActive: boolean) {
+  const handleSetUserActive = useCallback((user: UserListItem, isActive: boolean) => {
     setPendingUserStatusChange({ isActive, user });
-  }
+  }, []);
 
   function handleUserSelectionChange(userId: string, isSelected: boolean) {
     setSelectedUserIds((currentUserIds) =>

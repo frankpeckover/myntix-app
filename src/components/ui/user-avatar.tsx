@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 
 type UserAvatarProps = {
   displayName: string;
@@ -15,7 +15,7 @@ const sizeClasses = {
   lg: "h-12 w-12 text-base",
 };
 
-export function UserAvatar({
+export const UserAvatar = memo(function UserAvatar({
   displayName,
   imageUrl,
   size = "md",
@@ -49,7 +49,7 @@ export function UserAvatar({
       )}
     </span>
   );
-}
+});
 
 function getInitials(displayName: string) {
   const initials = displayName

@@ -1,5 +1,5 @@
 import { syncBrandForeground } from "@/lib/presentation/brand-contrast";
-import { dashboardThemeBackgrounds } from "@/lib/theme/dashboard-theme-config";
+import { dashboardThemeBackgrounds, dashboardThemeBackgroundSizes } from "@/lib/theme/dashboard-theme-config";
 import { walletPatternBackgrounds, walletStyleBackgrounds } from "@/lib/theme/wallet-style-config";
 import type { UserPreferences } from "@/lib/theme/user-preferences";
 
@@ -19,9 +19,7 @@ export function applyUserPreferences(preferences: UserPreferences) {
   );
   root.style.setProperty(
     "--student-dashboard-background-size",
-    preferences.dashboardTheme === "confetti"
-      ? "180px 180px, 230px 230px, 210px 210px, 260px 260px, auto, auto"
-      : "auto",
+    dashboardThemeBackgroundSizes[preferences.dashboardTheme] ?? "auto",
   );
   root.style.setProperty(
     "--student-card-background",

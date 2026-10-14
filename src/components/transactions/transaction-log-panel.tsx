@@ -120,11 +120,14 @@ export function TransactionLogPanel({
   const { pageSize, setPageSize } = useResponsiveListPageSize();
   const [filters, setFilters] = useState<TransactionFilters>(() => ({
     ...emptyTransactionFilters,
-    createdDate: initialDateFilter ?? "",
+    createdDate: typeof initialDateFilter === "string" && getLocalDateRange(initialDateFilter).createdAtFrom
+      ? initialDateFilter
+      : "",
   }));
   const [tableSort, setTableSort] = useState<{ column: string; direction: TableSortDirection } | null>(null);
   const [refreshVersion, setRefreshVersion] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [viewingTransaction, setViewingTransaction] =
@@ -173,6 +176,7 @@ export function TransactionLogPanel({
         setHasAnyTransactions(result.hasAnyTransactions);
         setPage(result.page);
         setError(null);
+        setHasLoaded(true);
       } catch {
         if (isActive && requestId === requestSequence.current) {
           setError("Could not load transactions.");
@@ -255,11 +259,11 @@ export function TransactionLogPanel({
   return (
     <section className={`theme-panel motion-panel mt-5 min-w-0 overflow-hidden p-0 ${className}`}>
       <FixedNotification error={error} message={message} />
-      <div>
-        {isLoading && (
+      <div aria-busy={isLoading}>
+        {isLoading && !hasLoaded && (
           <LoadingSkeleton lines={isPreview ? 5 : 7} />
         )}
-        {!isLoading && error && transactions.length === 0 && (
+        {!isLoading && error && !hasLoaded && (
           <LoadFailure
             description="The ledger history is temporarily unavailable."
             onRetry={refreshTransactions}
@@ -273,7 +277,7 @@ export function TransactionLogPanel({
             title="No transactions yet"
           />
         )}
-        {!isLoading && !error && hasAnyTransactions && (
+        {hasLoaded && hasAnyTransactions && (
           <>
             {!isPreview && filters.createdDate && (
               <div className="mx-3 mb-3 flex items-center justify-between gap-3 rounded-md bg-panel-soft px-3 py-2 text-sm md:hidden">
@@ -306,7 +310,7 @@ export function TransactionLogPanel({
                       <button
                         aria-label="View all transactions"
                         className="rounded-sm px-1 py-1 text-sm font-semibold text-brand underline decoration-brand/50 underline-offset-4 transition hover:decoration-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
-                        onClick={onViewAll}
+                        onClick={() => onViewAll()}
                         type="button"
                       >
                         View all
@@ -331,6 +335,9 @@ export function TransactionLogPanel({
                       ? `Latest ${displayedTransactions.length} transactions`
                       : `Showing ${visibleTransactions.length} of ${totalCount} transactions.`}
                   </p>
+                  <span className="sr-only" role="status">
+                    {isLoading ? "Updating transactions." : ""}
+                  </span>
                 </TableToolbar>
               }
               transactions={displayedTransactions}
@@ -388,7 +395,9 @@ export function TransactionLogPanel({
 }
 
 function formatTransactionDateFilter(dateValue: string) {
-  const date = new Date(`${dateValue}T00:00:00`);
+  const { createdAtFrom } = getLocalDateRange(dateValue);
+  if (!createdAtFrom) return "All transactions";
+  const date = new Date(createdAtFrom);
   return `Transactions for ${new Intl.DateTimeFormat("en-AU", {
     day: "numeric",
     month: "short",

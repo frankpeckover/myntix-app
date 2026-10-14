@@ -5,6 +5,7 @@ import {
 } from "@/lib/theme/accent-theme-config";
 import {
   defaultDashboardTheme,
+  dashboardThemeOptions,
   type DashboardTheme,
 } from "@/lib/theme/dashboard-theme-config";
 import {
@@ -48,7 +49,7 @@ export const defaultUserPreferences: UserPreferences = {
 
 const allowedValues = {
   accentTheme: ["teal", "blue", "purple", "orange", "custom"],
-  dashboardTheme: ["clean", "soft-grid", "notebook", "confetti"],
+  dashboardTheme: dashboardThemeOptions.map((option) => option.value),
   tableDensity: ["compact", "default", "roomy"],
   textSize: ["small", "default", "large"],
   themeMode: ["light", "dark"],

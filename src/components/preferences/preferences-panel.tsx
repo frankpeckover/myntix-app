@@ -296,7 +296,7 @@ function WalletAppearancePreferences() {
             title={option.label}
             type="button"
           >
-            <span className="h-9 w-full shrink-0 rounded-sm" style={{ background: option.preview }} />
+            <span className="h-9 w-full shrink-0 rounded-sm" style={{ backgroundImage: option.preview }} />
             <span className="truncate px-0.5 text-xs text-text-control">{option.label}</span>
           </button>
         ))}
@@ -320,11 +320,11 @@ function WalletAppearancePreferences() {
             <span
               className="h-9 w-full shrink-0 rounded-sm"
               style={{
-                background:
+                backgroundImage:
                   option.value === "none"
                     ? walletStyleBackgrounds[walletStyle]
                     : `${walletPatternBackgrounds[option.value]}, ${walletStyleBackgrounds[walletStyle]}`,
-                backgroundSize: option.value === "dots" ? "18px 18px, auto" : "auto",
+                backgroundSize: option.value === "dots" ? "18px 18px, auto, auto, auto" : "auto",
               }}
             />
             <span className="truncate px-0.5 text-xs text-text-control">{option.label}</span>
@@ -333,12 +333,12 @@ function WalletAppearancePreferences() {
       </div>
 
       <div className="mt-5 border-t border-border-subtle pt-4">
-      <p className="text-sm font-medium text-text-control">Dashboard background</p>
+      <p className="text-sm font-medium text-text-control">Background</p>
       <p className="mt-1 text-xs text-text-muted">A subtle pattern behind your dashboard cards.</p>
       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {dashboardThemeOptions.map((option) => (
           <button
-            aria-label={`${option.label} dashboard background`}
+            aria-label={`${option.label} background`}
             aria-pressed={dashboardTheme === option.value}
             className={`flex min-h-22 min-w-0 flex-col gap-2 rounded-md border bg-surface p-2 text-left transition hover:border-border-strong ${
               dashboardTheme === option.value
@@ -350,8 +350,13 @@ function WalletAppearancePreferences() {
             type="button"
           >
             <span
-              className="h-12 w-full shrink-0 rounded-sm border border-border-muted bg-[length:12px_12px]"
-              style={{ background: option.preview }}
+              aria-hidden="true"
+              className="h-12 w-full shrink-0 rounded-sm border border-border-subtle"
+              style={{
+                backgroundImage: option.previewImage,
+                backgroundColor: option.previewColor ?? "var(--dashboard-canvas)",
+                backgroundSize: option.previewSize ?? "auto",
+              }}
             />
             <span className="truncate text-xs text-text-control">{option.label}</span>
           </button>

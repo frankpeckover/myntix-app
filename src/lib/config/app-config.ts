@@ -13,15 +13,17 @@ export const appConfig = {
   logoUrl:
     process.env.NEXT_PUBLIC_APP_LOGO_URL?.trim() ||
     "/brand/myntix-stacked-coins.png",
-  lockupUrl:
-    process.env.NEXT_PUBLIC_APP_LOCKUP_URL?.trim() ||
+  lockupUrl: getVersionedBrandUrl(
+    process.env.NEXT_PUBLIC_APP_LOCKUP_URL,
     "/brand/myntix-lockup.png",
+  ),
   marketingSiteUrl:
     process.env.NEXT_PUBLIC_MARKETING_SITE_URL?.trim() ||
     "https://myntix.com",
-  wordmarkUrl:
-    process.env.NEXT_PUBLIC_APP_WORDMARK_URL?.trim() ||
+  wordmarkUrl: getVersionedBrandUrl(
+    process.env.NEXT_PUBLIC_APP_WORDMARK_URL,
     "/brand/myntix-wordmark.png",
+  ),
   name: configuredAppName,
   supportEmail:
     process.env.NEXT_PUBLIC_APP_SUPPORT_EMAIL?.trim() || "support@example.com",
@@ -30,6 +32,11 @@ export const appConfig = {
     "Internal currency, made simple.",
   version: process.env.NEXT_PUBLIC_APP_VERSION?.trim() || "1.0",
 } as const;
+
+function getVersionedBrandUrl(configuredUrl: string | undefined, defaultUrl: string) {
+  const url = configuredUrl?.trim() || defaultUrl;
+  return url === defaultUrl ? `${url}?v=20261014` : url;
+}
 
 function getInitials(value: string) {
   const words = value

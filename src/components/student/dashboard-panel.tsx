@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -13,11 +13,17 @@ import {
 import { StudentShopRequestsPanel } from "@/components/rewards/student-shop-requests-panel";
 import { StudentGoalCard } from "@/components/student/goal-card";
 import { StudentActivityRecap } from "@/components/student/activity-recap";
+import { StudentBestDayCard } from "@/components/student/best-day-card";
+import {
+  studentActivityTimeframeOptions,
+  getStudentActivityRange,
+  type StudentActivityRange,
+  type StudentActivityWindow,
+} from "@/components/student/activity-timeframes";
 import { StudentTransactionNotificationModal } from "@/components/student/transaction-notification-modal";
 import { TransactionLogPanel } from "@/components/transactions/transaction-log-panel";
 import { FixedNotification } from "@/components/ui/fixed-notification";
-import { CrownIcon, SparkleIcon, TrophyIcon, WalletIcon } from "@/components/ui/icons";
-import { InfoTooltip } from "@/components/ui/info-tooltip";
+import { SparkleIcon, TrophyIcon, WalletIcon } from "@/components/ui/icons";
 import { InlineSelectMenu } from "@/components/ui/inline-select-menu";
 import { LoadFailure } from "@/components/ui/load-failure";
 import { PanelTitle } from "@/components/ui/panel-title";
@@ -33,7 +39,7 @@ import {
   getTimeAxisTicks,
   type BalanceTimePoint,
 } from "@/lib/presentation/chart-time-scale";
-import { formatAmount, formatCurrencyAmount } from "@/lib/presentation/formatters";
+import { formatAmount, formatCurrencyAmount, formatSignedAmount } from "@/lib/presentation/formatters";
 import type { SessionUser } from "@/lib/auth/session";
 import type { TransactionLogItem } from "@/domains/ledger/transaction-service";
 import type { UnseenTransaction } from "@/domains/ledger/transaction-notification-service";
@@ -53,32 +59,11 @@ type BalanceTrendTooltipProps = {
   payload?: { payload: BalanceTimePoint }[];
 };
 
-type BalanceHistoryWindow = "day" | "week" | "month" | "year" | "custom";
-
 const ACTIVE_CHART_POINT_RADIUS = 6;
 const CHART_STROKE_WIDTH = 2;
 const CHART_CURSOR_WIDTH = 2;
 const BALANCE_COUNT_ANIMATION_DURATION_MS = 650;
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
-const balanceHistoryWindowOptions: {
-  label: string;
-  value: BalanceHistoryWindow;
-}[] = [
-  { label: "Last 24 hours", value: "day" },
-  { label: "Last 7 days", value: "week" },
-  { label: "Last 30 days", value: "month" },
-  { label: "Last 365 days", value: "year" },
-  { label: "Custom", value: "custom" },
-];
-const studentMetricTimeframeOptions = [
-  { label: "Last 7 days", value: 7 },
-  { label: "Last 30 days", value: 30 },
-  { label: "Last 90 days", value: 90 },
-  { label: "Last 365 days", value: 365 },
-] as const;
-type StudentMetricTimeframeDays =
-  (typeof studentMetricTimeframeOptions)[number]["value"];
-
 export function StudentDashboardPanel({
   currencyName,
   currentUser,
@@ -101,6 +86,18 @@ export function StudentDashboardPanel({
   );
   const [isDismissingNotifications, setIsDismissingNotifications] =
     useState(false);
+  const [selectedWindow, setSelectedWindow] = useState<StudentActivityWindow>("month");
+  const [customStartDate, setCustomStartDate] = useState(() =>
+    formatDateInput(addDays(new Date(), -29)),
+  );
+  const [customEndDate, setCustomEndDate] = useState(() => formatDateInput(new Date()));
+  const activityRange = useMemo(
+    () => getStudentActivityRange(selectedWindow, {
+      startDate: customStartDate,
+      endDate: customEndDate,
+    }),
+    [selectedWindow, customStartDate, customEndDate],
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -220,6 +217,42 @@ export function StudentDashboardPanel({
           />
         </div>
       )}
+      <div className="mb-2 mt-2 flex flex-wrap items-end justify-end gap-3">
+        {selectedWindow === "custom" && (
+          <div className="grid w-full grid-cols-2 gap-2 sm:w-auto">
+            <label className="text-xs font-medium text-text-muted">
+              Start
+              <input
+                className="mt-1 w-full min-w-0 rounded-md border border-border bg-surface px-2 py-1.5 text-xs text-text-control outline-none ring-brand focus:ring-2"
+                max={customEndDate}
+                onChange={(event) => setCustomStartDate(event.target.value)}
+                type="date"
+                value={customStartDate}
+              />
+            </label>
+            <label className="text-xs font-medium text-text-muted">
+              End
+              <input
+                className="mt-1 w-full min-w-0 rounded-md border border-border bg-surface px-2 py-1.5 text-xs text-text-control outline-none ring-brand focus:ring-2"
+                max={formatDateInput(new Date())}
+                min={customStartDate}
+                onChange={(event) => setCustomEndDate(event.target.value)}
+                type="date"
+                value={customEndDate}
+              />
+            </label>
+          </div>
+        )}
+        <div className="flex items-center gap-1">
+          <span className="text-xs text-text-muted">Period</span>
+          <InlineSelectMenu
+            ariaLabel="Change student dashboard timeframe"
+            onChange={setSelectedWindow}
+            options={studentActivityTimeframeOptions}
+            value={selectedWindow}
+          />
+        </div>
+      </div>
       <section className="student-dashboard-section dashboard-grid motion-panel mt-2">
         <StudentWalletCard
           balance={balance}
@@ -232,36 +265,44 @@ export function StudentDashboardPanel({
         <BalanceTrendCard
           currencyName={currencyName}
           isLoading={isTransactionsLoading && !transactionsError}
+          range={activityRange}
+          selectedWindow={selectedWindow}
           transactions={transactions}
         />
         <StudentGoalCard
           balance={balance}
-          className="dashboard-unit-1"
+          className="dashboard-unit-1 dashboard-height-4"
           currencyName={currencyName}
         />
       </section>
 
       <section className="student-dashboard-section dashboard-grid mt-5">
         <StudentActivityRecap
-          className="dashboard-unit-3"
+          className="dashboard-unit-3 dashboard-height-4 lg:row-start-1"
           currencyName={currencyName}
           isLoading={isTransactionsLoading && !transactionsError}
           onBrowseRewards={onBrowseRewards}
           onSelectDate={onOpenTransactionHistory}
           transactions={transactions}
         />
+        <StudentShopRequestsPanel
+          className="dashboard-unit-3 dashboard-height-3 lg:row-start-2"
+          onBrowseRewards={onBrowseRewards}
+        />
         <StudentMetricStrip
-          className="dashboard-unit-1"
+          className="dashboard-unit-1 dashboard-height-4 lg:row-start-1"
           currencyName={currencyName}
           onBrowseRewards={onBrowseRewards}
+          range={activityRange}
           transactions={transactions}
         />
-      </section>
-
-      <section className="student-dashboard-section dashboard-grid mt-5">
-        <StudentShopRequestsPanel
-          className="dashboard-unit-4"
-          onBrowseRewards={onBrowseRewards}
+        <StudentBestDayCard
+          className="dashboard-unit-1 dashboard-height-3 lg:row-start-2"
+          currencyName={currencyName}
+          isLoading={isTransactionsLoading && !transactionsError}
+          onSelectDate={onOpenTransactionHistory}
+          range={activityRange}
+          transactions={transactions}
         />
       </section>
 
@@ -311,7 +352,7 @@ function StudentWalletCard({
   }, []);
 
   return (
-    <article className={`student-dashboard-card student-wallet-card dashboard-unit-2 wallet-card rounded-2xl ${celebrate ? "student-wallet-celebrate" : ""}`}>
+    <article className={`student-dashboard-card student-wallet-card dashboard-unit-2 dashboard-height-4 wallet-card rounded-2xl ${celebrate ? "student-wallet-celebrate" : ""}`}>
       <div className="relative flex h-full min-h-52 flex-col">
         <div className="relative z-10 flex flex-1 flex-col p-5 sm:p-6">
           <div className="flex items-start justify-between gap-4">
@@ -378,24 +419,17 @@ function formatWalletDate(date: Date) {
 function BalanceTrendCard({
   currencyName,
   isLoading,
+  range,
+  selectedWindow,
   transactions,
 }: {
   currencyName: string;
   isLoading: boolean;
+  range: StudentActivityRange;
+  selectedWindow: StudentActivityWindow;
   transactions: TransactionLogItem[];
 }) {
-  const [selectedWindow, setSelectedWindow] =
-    useState<BalanceHistoryWindow>("month");
-  const [customStartDate, setCustomStartDate] = useState(() =>
-    formatDateInput(addDays(new Date(), -29)),
-  );
-  const [customEndDate, setCustomEndDate] = useState(() =>
-    formatDateInput(new Date()),
-  );
-  const chartPoints = buildBalanceChartPoints(transactions, selectedWindow, {
-    endDate: customEndDate,
-    startDate: customStartDate,
-  });
+  const chartPoints = buildBalanceChartPoints(transactions, selectedWindow, range);
   const balanceTicks = getBalanceAxisTicks(chartPoints);
   const balanceLabelTicks = [
     balanceTicks[0],
@@ -405,7 +439,7 @@ function BalanceTrendCard({
   const timeTicks = getTimeAxisTicks(chartPoints, 4);
 
   return (
-    <article className="student-dashboard-card student-balance-trend-card dashboard-unit-1 flex min-h-52 rounded-2xl border border-transparent bg-surface p-4 sm:p-5">
+    <article className="student-dashboard-card student-balance-trend-card dashboard-unit-1 dashboard-height-4 flex min-h-52 rounded-2xl border border-transparent bg-surface p-4 sm:p-5">
       <div className="flex min-h-56 w-full flex-col">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
@@ -414,36 +448,7 @@ function BalanceTrendCard({
             </span>
             <PanelTitle title="Balance" />
           </div>
-          <ChartScaleMenu
-            onWindowChange={setSelectedWindow}
-            selectedWindow={selectedWindow}
-          />
         </div>
-        {selectedWindow === "custom" && (
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <label className="text-xs font-medium text-text-muted">
-              Start
-              <input
-                className="mt-1 w-full rounded-md border border-border bg-surface px-2 py-1.5 text-xs text-text-control outline-none ring-brand focus:ring-2"
-                max={customEndDate}
-                onChange={(event) => setCustomStartDate(event.target.value)}
-                type="date"
-                value={customStartDate}
-              />
-            </label>
-            <label className="text-xs font-medium text-text-muted">
-              End
-              <input
-                className="mt-1 w-full rounded-md border border-border bg-surface px-2 py-1.5 text-xs text-text-control outline-none ring-brand focus:ring-2"
-                max={formatDateInput(new Date())}
-                min={customStartDate}
-                onChange={(event) => setCustomEndDate(event.target.value)}
-                type="date"
-                value={customEndDate}
-              />
-            </label>
-          </div>
-        )}
         {isLoading && (
           <div className="flex flex-1 items-center justify-center">
             <p className="text-sm text-text-muted">Loading trend...</p>
@@ -531,36 +536,30 @@ function StudentMetricStrip({
   className = "",
   currencyName,
   onBrowseRewards,
+  range,
   transactions,
 }: {
   className?: string;
   currencyName: string;
   onBrowseRewards: () => void;
+  range: StudentActivityRange;
   transactions: TransactionLogItem[];
 }) {
-  const [timeframeDays, setTimeframeDays] =
-    useState<StudentMetricTimeframeDays>(30);
-  const metrics = getStudentMetrics(transactions, timeframeDays);
+  const metrics = getStudentMetrics(transactions, range);
 
   return (
-    <section className={`student-dashboard-card student-metric-strip min-w-0 rounded-2xl bg-surface p-4 sm:p-5 ${className}`}>
-      <div className="flex items-center justify-between gap-2">
+    <section className={`student-dashboard-card student-metric-strip flex min-w-0 flex-col rounded-2xl bg-surface p-4 sm:p-5 ${className}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <PanelTitle title="Activity snapshot" />
-        <InlineSelectMenu
-          ariaLabel="Change activity snapshot timeframe"
-          onChange={setTimeframeDays}
-          options={studentMetricTimeframeOptions}
-          value={timeframeDays}
-        />
       </div>
 
       {metrics.hasActivity ? (
-      <>
+      <div className="flex flex-1 flex-col justify-center">
       <div className="mt-4 flex items-center justify-between gap-2">
         <div className="min-w-0">
           <p className="text-[11px] text-text-muted">Average net per day</p>
           <p className={`mt-1 font-number text-2xl font-semibold leading-none ${metrics.averageDailyNet >= 0 ? "text-positive-ink" : "text-negative-ink"}`}>
-            {metrics.averageDailyNet > 0 ? "+" : ""}{formatAmount(metrics.averageDailyNet)}
+            {formatSignedAmount(metrics.averageDailyNet)}
             <span className="ml-1 text-xs font-medium text-text-muted">{currencyName}</span>
           </p>
           <p
@@ -575,60 +574,15 @@ function StudentMetricStrip({
         <MiniMetricSparkline values={metrics.trend} />
       </div>
 
-      <div className="mt-4 space-y-3 border-y border-border-subtle py-3">
-        <MetricComparisonBar
-          label="Earned"
-          maxValue={Math.max(metrics.averageDailyGain, metrics.averageDailyLoss, 1)}
-          tone="positive"
-          value={metrics.averageDailyGain}
-          currencyName={currencyName}
-        />
-        <MetricComparisonBar
-          label="Spent"
-          maxValue={Math.max(metrics.averageDailyGain, metrics.averageDailyLoss, 1)}
-          tone="negative"
-          value={metrics.averageDailyLoss}
+      <div className="mt-4 border-t border-border-subtle pt-3">
+        <CreditMovementSplitBar
+          earned={metrics.totalGain}
+          spent={metrics.totalLoss}
           currencyName={currencyName}
         />
       </div>
 
-      <div className="mt-3 flex min-w-0 items-center justify-between gap-2 text-xs">
-        <span className="inline-flex items-center gap-1 text-text-muted">
-          <CrownIcon className="h-3.5 w-3.5 shrink-0 text-accent" /> Best day
-        </span>
-        <span
-          aria-label={`${metrics.bestDay}${metrics.bestDayAmount > 0 ? `, ${formatCurrencyAmount(metrics.bestDayAmount, currencyName)} earned` : ""}`}
-          className="truncate text-right font-medium text-text-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-          role="img"
-          tabIndex={0}
-          title={metrics.bestDayAmount > 0 ? `+${formatCurrencyAmount(metrics.bestDayAmount, currencyName)}` : metrics.bestDay}
-        >
-          {metrics.bestDay}
-        </span>
       </div>
-
-      <div className="mt-3 border-t border-border-subtle pt-3">
-        <div className="flex items-center justify-between gap-2 text-[11px]">
-          <span className="inline-flex items-center gap-1 text-text-muted">
-            Weekday consistency
-            <InfoTooltip label="Weekdays in this period with at least one credit transaction." />
-          </span>
-        </div>
-        <div
-          aria-label={`${metrics.activeSchoolDays} of ${metrics.schoolDays} school days with activity`}
-          aria-valuemax={metrics.schoolDays}
-          aria-valuemin={0}
-          aria-valuenow={metrics.activeSchoolDays}
-          className="mt-2 h-1.5 overflow-hidden rounded-full bg-panel-soft"
-          role="progressbar"
-        >
-          <span
-            className="block h-full rounded-full bg-brand transition-[width] duration-500"
-            style={{ width: `${Math.min((metrics.activeSchoolDays / Math.max(metrics.schoolDays, 1)) * 100, 100)}%` }}
-          />
-        </div>
-      </div>
-      </>
       ) : (
         <div className="mt-4 flex min-h-40 flex-col justify-between gap-4 rounded-xl bg-panel-soft px-4 py-3">
           <div>
@@ -651,37 +605,49 @@ function StudentMetricStrip({
   );
 }
 
-function MetricComparisonBar({
+function CreditMovementSplitBar({
   currencyName,
-  label,
-  maxValue,
-  tone,
-  value,
+  earned,
+  spent,
 }: {
   currencyName: string;
-  label: string;
-  maxValue: number;
-  tone: "negative" | "positive";
-  value: number;
+  earned: number;
+  spent: number;
 }) {
+  const totalMovement = earned + spent;
+  const earnedShare = totalMovement > 0 ? (earned / totalMovement) * 100 : 0;
+  const spentShare = totalMovement > 0 ? (spent / totalMovement) * 100 : 0;
+  const description = `Earned ${formatCurrencyAmount(earned, currencyName)} (${Math.round(earnedShare)}%); spent ${formatCurrencyAmount(spent, currencyName)} (${Math.round(spentShare)}%) in this period.`;
+
   return (
     <div
-      aria-label={`${label}: ${formatCurrencyAmount(value, currencyName)} per day`}
+      aria-label={description}
       className="min-w-0 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
       role="img"
       tabIndex={0}
-      title={`${label}: ${formatCurrencyAmount(value, currencyName)} per day`}
+      title={description}
     >
-      <div className="mb-1.5 flex items-center justify-between gap-2">
-        <p className="truncate text-[10px] text-text-muted">{label}</p>
-        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${tone === "positive" ? "bg-positive-ink" : "bg-negative-ink"}`} />
-      </div>
-      <div className="h-2 overflow-hidden rounded-full bg-panel-soft">
+      <div aria-hidden="true" className="flex h-3.5 overflow-hidden rounded-full bg-panel-soft">
         <span
-          className={`block h-full rounded-full transition-[width] duration-500 ${tone === "positive" ? "bg-positive-ink" : "bg-negative-ink"}`}
-          style={{ width: `${Math.min((value / Math.max(maxValue, 1)) * 100, 100)}%` }}
+          className="block h-full bg-positive-ink transition-[width] duration-500 motion-reduce:transition-none"
+          style={{ width: `${earnedShare}%` }}
+        />
+        <span
+          className="block h-full bg-negative-ink transition-[width] duration-500 motion-reduce:transition-none"
+          style={{ width: `${spentShare}%` }}
         />
       </div>
+      <div aria-hidden="true" className="mt-2 grid grid-cols-2 gap-3">
+        <div className="min-w-0">
+          <p className="text-xs text-text-muted">Earned</p>
+          <p className="mt-0.5 font-number text-base font-semibold text-positive-ink">{formatSignedAmount(earned)}</p>
+        </div>
+        <div className="min-w-0 text-right">
+          <p className="text-xs text-text-muted">Spent</p>
+          <p className="mt-0.5 font-number text-base font-semibold text-negative-ink">{formatSignedAmount(-spent)}</p>
+        </div>
+      </div>
+      <p aria-hidden="true" className="mt-1 text-center text-[11px] text-text-muted">{currencyName} this period</p>
     </div>
   );
 }
@@ -780,11 +746,11 @@ function BalanceTrendTooltip({
 
 function buildBalanceChartPoints(
   transactions: TransactionLogItem[],
-  selectedWindow: BalanceHistoryWindow,
-  customRange: { endDate: string; startDate: string },
+  selectedWindow: StudentActivityWindow,
+  range: StudentActivityRange,
 ): BalanceTimePoint[] {
   const balanceTransactions = transactions.filter(doesTransactionAffectBalance);
-  const { end, start } = getBalanceHistoryRange(selectedWindow, customRange);
+  const { end, start } = range;
   const scale = selectedWindow === "day" ? "hourly" : "daily";
   const openingBalance = balanceTransactions.reduce((total, transaction) => {
     const transactionTime = new Date(transaction.createdAt).getTime();
@@ -809,38 +775,6 @@ function buildBalanceChartPoints(
   });
 }
 
-function getBalanceHistoryRange(
-  selectedWindow: BalanceHistoryWindow,
-  customRange: { endDate: string; startDate: string },
-) {
-  const now = new Date();
-
-  if (selectedWindow === "custom") {
-    const start = parseDateInput(customRange.startDate, false);
-    const end = parseDateInput(customRange.endDate, true);
-
-    if (start && end && start <= end) {
-      return { end: end > now ? now : end, start };
-    }
-  }
-
-  const days =
-    selectedWindow === "day"
-      ? 1
-      : selectedWindow === "week"
-        ? 7
-        : selectedWindow === "year"
-          ? 365
-          : 30;
-  return { end: now, start: new Date(now.getTime() - days * MILLISECONDS_PER_DAY) };
-}
-
-function parseDateInput(value: string, endOfDay: boolean) {
-  if (!value) return null;
-  const date = new Date(`${value}T${endOfDay ? "23:59:59.999" : "00:00:00"}`);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
 function addDays(date: Date, days: number) {
   const nextDate = new Date(date);
   nextDate.setDate(nextDate.getDate() + days);
@@ -860,11 +794,13 @@ function doesTransactionAffectBalance(transaction: TransactionLogItem) {
 
 function getStudentMetrics(
   transactions: TransactionLogItem[],
-  timeframeDays: StudentMetricTimeframeDays,
+  range: StudentActivityRange,
 ) {
-  const windowEndTime = Date.now();
-  const windowStartTime = windowEndTime - timeframeDays * MILLISECONDS_PER_DAY;
-  const previousWindowStartTime = windowStartTime - timeframeDays * MILLISECONDS_PER_DAY;
+  const windowEndTime = range.end.getTime();
+  const windowStartTime = range.start.getTime();
+  const duration = windowEndTime - windowStartTime;
+  const timeframeDays = Math.max(1, duration / MILLISECONDS_PER_DAY);
+  const previousWindowStartTime = windowStartTime - duration;
   const validTransactions = transactions.filter((transaction) => {
     const transactionTime = new Date(transaction.createdAt).getTime();
     return (
@@ -885,29 +821,17 @@ function getStudentMetrics(
   const totalLoss = getNegativeTotal(recentTransactions);
   const previousNet =
     getPositiveTotal(previousTransactions) - getNegativeTotal(previousTransactions);
-  const dailyActivity = getDailyActivity(recentTransactions);
-  const bestDay = [...dailyActivity.values()].sort(
-    (first, second) => second.net - first.net,
-  )[0];
-  const schoolDays = countSchoolDays(windowStartTime, windowEndTime);
-  const activeSchoolDays = [...dailyActivity.values()].filter(
-    (day) => day.isSchoolDay,
-  ).length;
   const averageDailyGain = Math.round(totalGain / timeframeDays);
   const averageDailyLoss = Math.round(totalLoss / timeframeDays);
   const averageDailyNet = averageDailyGain - averageDailyLoss;
   const previousAverageDailyNet = Math.round(previousNet / timeframeDays);
 
   return {
-    activeSchoolDays,
-    averageDailyGain,
-    averageDailyLoss,
     averageDailyNet,
-    bestDay: bestDay?.net > 0 ? bestDay.label : "No gain yet",
-    bestDayAmount: Math.max(bestDay?.net ?? 0, 0),
+    totalGain,
+    totalLoss,
     comparison: averageDailyNet - previousAverageDailyNet,
     hasActivity: recentTransactions.length > 0,
-    schoolDays,
     trend: buildMetricTrend(
       recentTransactions,
       windowStartTime,
@@ -930,43 +854,6 @@ function getNegativeTotal(transactions: TransactionLogItem[]) {
       transaction.amount < 0 ? total + Math.abs(transaction.amount) : total,
     0,
   );
-}
-
-function getDailyActivity(transactions: TransactionLogItem[]) {
-  const activity = new Map<
-    string,
-    { isSchoolDay: boolean; label: string; net: number }
-  >();
-
-  transactions.forEach((transaction) => {
-    const date = new Date(transaction.createdAt);
-    const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-    const current = activity.get(key);
-    activity.set(key, {
-      isSchoolDay: date.getDay() >= 1 && date.getDay() <= 5,
-      label: new Intl.DateTimeFormat("en-AU", {
-        day: "numeric",
-        month: "short",
-        weekday: "short",
-      }).format(date),
-      net: (current?.net ?? 0) + transaction.amount,
-    });
-  });
-
-  return activity;
-}
-
-function countSchoolDays(startTime: number, endTime: number) {
-  const date = new Date(startTime);
-  date.setHours(0, 0, 0, 0);
-  let count = 0;
-
-  while (date.getTime() <= endTime) {
-    if (date.getDay() >= 1 && date.getDay() <= 5) count += 1;
-    date.setDate(date.getDate() + 1);
-  }
-
-  return Math.max(count, 1);
 }
 
 function buildMetricTrend(
@@ -996,25 +883,6 @@ function formatMetricComparison(comparison: number, currencyName: string) {
   return `${formatAmount(Math.abs(comparison))} ${currencyName} ${
     comparison > 0 ? "better" : "lower"
   } per day than the previous period`;
-}
-
-function ChartScaleMenu({
-  onWindowChange,
-  selectedWindow,
-}: {
-  onWindowChange: (window: BalanceHistoryWindow) => void;
-  selectedWindow: BalanceHistoryWindow;
-}) {
-  return (
-    <div className="ml-auto flex items-center gap-2">
-      <InlineSelectMenu
-        ariaLabel="Change balance graph scale"
-        onChange={onWindowChange}
-        options={balanceHistoryWindowOptions}
-        value={selectedWindow}
-      />
-    </div>
-  );
 }
 
 function findChartPointLabel(points: BalanceTimePoint[], timestamp: number) {

@@ -133,6 +133,9 @@ Core student dashboard content:
 - A student-scoped transaction history with all of that student's ledger activity.
 - A savings-style goal with an animated progress ring and concise progress wording.
 - Small personal account metrics such as average movement over a selected period.
+- One dashboard-level period selector controls balance history, activity snapshot,
+  and best day together, including custom dates. Daily movement remains a fixed
+  past-12-month heatmap and is labelled separately.
 - Recent activity showing description first, then less-prominent date/time, and one signed colour-coded amount.
 - Current and historical reward requests under `My Orders` or the established rewards wording.
 - Student group memberships where appropriate.
