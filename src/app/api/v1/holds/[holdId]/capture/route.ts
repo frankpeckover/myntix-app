@@ -7,7 +7,12 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request, context: Context) {
   const { holdId } = await context.params;
-  return handleApiWrite(request, "holds:write", async (client, body) =>
-    apiSuccessResult(await service.captureHold(client, holdId, body)),
+  return handleApiWrite(
+    request,
+    "holds:write",
+    async (client, body, transaction) =>
+      apiSuccessResult(
+        await service.captureHold(client, holdId, body, transaction),
+      ),
   );
 }

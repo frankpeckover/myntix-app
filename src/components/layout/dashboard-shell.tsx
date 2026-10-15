@@ -47,6 +47,7 @@ import type { SchoolInfo } from "@/domains/organisation/school-service";
 import { VoiceCreditAssistant } from "@/components/voice/voice-credit-assistant";
 import { UserPreferencesProvider } from "@/components/preferences/user-preferences-provider";
 import type { UserPreferences } from "@/lib/theme/user-preferences";
+import { useDashboardNavigation } from "@/components/layout/use-dashboard-navigation";
 
 type DashboardShellProps = {
   initialPreferences: UserPreferences | null;
@@ -67,10 +68,11 @@ export function DashboardShell({
   user,
   onLogout,
 }: DashboardShellProps) {
-  const [activeNavItem, setActiveNavItem] =
-    useState<NavigationItem>("Dashboard");
-  const [transactionHistoryDateFilter, setTransactionHistoryDateFilter] =
-    useState<string | null>(null);
+  const {
+    activeItem: activeNavItem,
+    navigateTo,
+    transactionDateFilter: transactionHistoryDateFilter,
+  } = useDashboardNavigation(user.role);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [teacherGroupNavigation, setTeacherGroupNavigation] =
     useState<TeacherGroupNavigation | null>(null);
@@ -142,13 +144,6 @@ export function DashboardShell({
   const clearTeacherGroupNavigation = useCallback(() => {
     setTeacherGroupNavigation(null);
   }, []);
-
-  function navigateTo(target: NavigationItem) {
-    if (target !== "Transaction History") {
-      setTransactionHistoryDateFilter(null);
-    }
-    setActiveNavItem(target);
-  }
 
   return (
     <UserPreferencesProvider
@@ -284,8 +279,7 @@ export function DashboardShell({
             currentUser={user}
             onBrowseRewards={() => navigateTo("Rewards")}
             onOpenTransactionHistory={(date) => {
-              setTransactionHistoryDateFilter(date ?? null);
-              setActiveNavItem("Transaction History");
+              navigateTo("Transaction History", date);
             }}
             schoolLogoUrl={schoolInfo.logoUrl}
             schoolName={schoolName}
@@ -329,6 +323,7 @@ export function DashboardShell({
         {(activeNavItem === "Transaction Log" ||
           (isStudent(user) && activeNavItem === "Transaction History")) && (
           <TransactionLogPanel
+            key={`${activeNavItem}:${transactionHistoryDateFilter ?? ""}`}
             currencyName={schoolInfo.currencyName}
             currentUser={user}
             initialDateFilter={

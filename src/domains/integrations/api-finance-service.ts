@@ -136,7 +136,7 @@ export class ApiFinanceService {
         accountId,
         entries: entries.map(mapLedgerEntry),
         nextBefore: hasMore
-          ? entries.at(-1)?.created_at.toISOString() ?? null
+          ? (entries.at(-1)?.created_at.toISOString() ?? null)
           : null,
       };
     } finally {
@@ -148,44 +148,36 @@ export class ApiFinanceService {
     apiClient: ApiClient,
     accountId: string,
     body: Record<string, unknown>,
+    client: PoolClient,
   ) {
-    return this.createMovement(apiClient, accountId, body, 1, "credit");
+    return this.createMovement(apiClient, accountId, body, 1, "credit", client);
   }
 
   async createDebit(
     apiClient: ApiClient,
     accountId: string,
     body: Record<string, unknown>,
+    client: PoolClient,
   ) {
-    return this.createMovement(apiClient, accountId, body, -1, "debit");
+    return this.createMovement(apiClient, accountId, body, -1, "debit", client);
   }
 
   async createHold(
     apiClient: ApiClient,
     accountId: string,
     body: Record<string, unknown>,
+    client: PoolClient,
   ) {
     assertUuid(accountId, "accountId");
     const amount = parsePositiveInteger(body.amount, "amount");
     const description = parseDescription(body.description);
     const expiresAt = parseFutureDate(body.expiresAt);
-    const client = await db.connect();
+    const account = await getAccount(client, accountId, true);
+    const balances = await getBalances(client, accountId);
+    await validateMovement(client, balances, -amount);
 
-    try {
-      await client.query("begin");
-      const account = await getAccount(client, accountId, true);
-      const balances = await getBalances(client, accountId);
-
-      if (balances.availableBalance < amount) {
-        throw new ApiFinanceError(
-          "insufficient_funds",
-          "The account does not have enough available balance.",
-          409,
-        );
-      }
-
-      const result = await client.query<HoldRow>(
-        `
+    const result = await client.query<HoldRow>(
+      `
           insert into account_holds (
             account_id, amount, description, status, expires_at,
             created_by_api_client_id
@@ -194,29 +186,21 @@ export class ApiFinanceService {
           returning id, account_id, amount, description, status, expires_at,
                     captured_ledger_entry_id, created_at, updated_at
         `,
-        [accountId, amount, description, expiresAt, apiClient.id],
-      );
-      const hold = result.rows[0];
-      await logAction(
-        client,
-        apiClient,
-        "finance_api.hold_created",
-        hold.id,
-        "account_hold",
-        { accountId, amount, studentUserId: account.user_id },
-      );
-      await client.query("commit");
-
-      return {
-        ...mapHold(hold),
-        availableBalance: balances.availableBalance - amount,
-      };
-    } catch (error) {
-      await rollback(client);
-      throw error;
-    } finally {
-      client.release();
-    }
+      [accountId, amount, description, expiresAt, apiClient.id],
+    );
+    const hold = result.rows[0];
+    await logAction(
+      client,
+      apiClient,
+      "finance_api.hold_created",
+      hold.id,
+      "account_hold",
+      { accountId, amount, studentUserId: account.user_id },
+    );
+    return {
+      ...mapHold(hold),
+      availableBalance: balances.availableBalance - amount,
+    };
   }
 
   async getHold(apiClient: ApiClient, holdId: string) {
@@ -237,33 +221,32 @@ export class ApiFinanceService {
     apiClient: ApiClient,
     holdId: string,
     body: Record<string, unknown>,
+    client: PoolClient,
   ) {
-    return this.completeHold(apiClient, holdId, body, "captured");
+    return this.completeHold(apiClient, holdId, body, "captured", client);
   }
 
   async releaseHold(
     apiClient: ApiClient,
     holdId: string,
     body: Record<string, unknown>,
+    client: PoolClient,
   ) {
-    return this.completeHold(apiClient, holdId, body, "released");
+    return this.completeHold(apiClient, holdId, body, "released", client);
   }
 
   async reverseEntry(
     apiClient: ApiClient,
     entryId: string,
     body: Record<string, unknown>,
+    client: PoolClient,
   ) {
     assertUuid(entryId, "entryId");
     const reason = parseDescription(body.reason);
-    const client = await db.connect();
-
-    try {
-      await client.query("begin");
-      const result = await client.query<
-        LedgerRow & { account_id: string; user_id: string }
-      >(
-        `
+    const result = await client.query<
+      LedgerRow & { account_id: string; user_id: string }
+    >(
+      `
           select le.id, le.account_id, le.amount, le.entry_type, le.status,
                  le.description, le.created_at, le.reversal_of_ledger_entry_id,
                  accounts.user_id
@@ -273,73 +256,74 @@ export class ApiFinanceService {
             and le.related_entity_type = $2
             and le.related_entity_id = $3
             and le.status = 'posted'
+            and le.is_voided = false
             and le.entry_type in ('credit', 'debit')
           for update of le, accounts
         `,
-        [entryId, apiRelatedEntityType, apiClient.id],
-      );
-      const entry = result.rows[0];
+      [entryId, apiRelatedEntityType, apiClient.id],
+    );
+    const entry = result.rows[0];
 
-      if (!entry) {
-        throw new ApiFinanceError(
-          "entry_not_found",
-          "Reversible ledger entry was not found.",
-          404,
-        );
-      }
-
-      const duplicate = await client.query(
-        `select 1 from ledger_entries where reversal_of_ledger_entry_id = $1 limit 1`,
-        [entryId],
+    if (!entry) {
+      throw new ApiFinanceError(
+        "entry_not_found",
+        "Reversible ledger entry was not found.",
+        404,
       );
-      if (duplicate.rowCount) {
-        throw new ApiFinanceError(
-          "already_reversed",
-          "This ledger entry has already been reversed.",
-          409,
-        );
-      }
-
-      const balances = await getBalances(client, entry.account_id);
-      const reversalAmount = -Number(entry.amount);
-      await validateMovement(client, balances, reversalAmount, false);
-      const reversalId = await ledgerService.createEntry(client, {
-        amount: reversalAmount,
-        description: `Reversal: ${entry.description} (${reason})`,
-        entryType: "void_reversal",
-        relatedEntityId: apiClient.id,
-        relatedEntityType: apiRelatedEntityType,
-        status: "posted",
-        userId: entry.user_id,
-      });
-      await client.query(
-        `update ledger_entries set reversal_of_ledger_entry_id = $2 where id = $1`,
-        [reversalId, entryId],
-      );
-      const updatedBalances = await getBalances(client, entry.account_id);
-      await logAction(
-        client,
-        apiClient,
-        "finance_api.entry_reversed",
-        reversalId,
-        "ledger_entry",
-        { accountId: entry.account_id, originalEntryId: entryId, reason },
-      );
-      await client.query("commit");
-
-      return {
-        accountId: entry.account_id,
-        entryId: reversalId,
-        reversedEntryId: entryId,
-        amount: reversalAmount,
-        ...updatedBalances,
-      };
-    } catch (error) {
-      await rollback(client);
-      throw error;
-    } finally {
-      client.release();
     }
+
+    const duplicate = await client.query(
+      `select 1 from ledger_entries where reversal_of_ledger_entry_id = $1 limit 1`,
+      [entryId],
+    );
+    if (duplicate.rowCount) {
+      throw new ApiFinanceError(
+        "already_reversed",
+        "This ledger entry has already been reversed.",
+        409,
+      );
+    }
+
+    const balances = await getBalances(client, entry.account_id);
+    await getAccount(client, entry.account_id, true);
+    const reversalAmount = -Number(entry.amount);
+    if (reversalAmount > 0 && !apiClient.scopes.includes("ledger:credit")) {
+      throw new ApiFinanceError(
+        "insufficient_scope",
+        "Reversing a debit requires the ledger:credit scope.",
+        403,
+      );
+    }
+    await validateMovement(client, balances, reversalAmount, false);
+    const reversalId = await ledgerService.createEntry(client, {
+      amount: reversalAmount,
+      description: `Reversal: ${entry.description} (${reason})`,
+      entryType: "void_reversal",
+      relatedEntityId: apiClient.id,
+      relatedEntityType: apiRelatedEntityType,
+      status: "posted",
+      userId: entry.user_id,
+    });
+    await client.query(
+      `update ledger_entries set reversal_of_ledger_entry_id = $2 where id = $1`,
+      [reversalId, entryId],
+    );
+    const updatedBalances = await getBalances(client, entry.account_id);
+    await logAction(
+      client,
+      apiClient,
+      "finance_api.entry_reversed",
+      reversalId,
+      "ledger_entry",
+      { accountId: entry.account_id, originalEntryId: entryId, reason },
+    );
+    return {
+      accountId: entry.account_id,
+      entryId: reversalId,
+      reversedEntryId: entryId,
+      amount: reversalAmount,
+      ...updatedBalances,
+    };
   }
 
   private async createMovement(
@@ -348,50 +332,39 @@ export class ApiFinanceService {
     body: Record<string, unknown>,
     direction: 1 | -1,
     entryType: "credit" | "debit",
+    client: PoolClient,
   ) {
     assertUuid(accountId, "accountId");
     const amount = parsePositiveInteger(body.amount, "amount") * direction;
     const description = parseDescription(body.description);
-    const client = await db.connect();
-
-    try {
-      await client.query("begin");
-      const account = await getAccount(client, accountId, true);
-      const balances = await getBalances(client, accountId);
-      await validateMovement(client, balances, amount);
-      const entryId = await ledgerService.createEntry(client, {
-        amount,
-        description,
-        entryType,
-        relatedEntityId: apiClient.id,
-        relatedEntityType: apiRelatedEntityType,
-        status: "posted",
-        userId: account.user_id,
-      });
-      const updatedBalances = await getBalances(client, accountId);
-      await logAction(
-        client,
-        apiClient,
-        `finance_api.${entryType}_created`,
-        entryId,
-        "ledger_entry",
-        { accountId, amount, studentUserId: account.user_id },
-      );
-      await client.query("commit");
-
-      return {
-        accountId,
-        entryId,
-        amount,
-        description,
-        ...updatedBalances,
-      };
-    } catch (error) {
-      await rollback(client);
-      throw error;
-    } finally {
-      client.release();
-    }
+    const account = await getAccount(client, accountId, true);
+    const balances = await getBalances(client, accountId);
+    await validateMovement(client, balances, amount);
+    const entryId = await ledgerService.createEntry(client, {
+      amount,
+      description,
+      entryType,
+      relatedEntityId: apiClient.id,
+      relatedEntityType: apiRelatedEntityType,
+      status: "posted",
+      userId: account.user_id,
+    });
+    const updatedBalances = await getBalances(client, accountId);
+    await logAction(
+      client,
+      apiClient,
+      `finance_api.${entryType}_created`,
+      entryId,
+      "ledger_entry",
+      { accountId, amount, studentUserId: account.user_id },
+    );
+    return {
+      accountId,
+      entryId,
+      amount,
+      description,
+      ...updatedBalances,
+    };
   }
 
   private async completeHold(
@@ -399,53 +372,60 @@ export class ApiFinanceService {
     holdId: string,
     body: Record<string, unknown>,
     status: "captured" | "released",
+    client: PoolClient,
   ) {
     assertUuid(holdId, "holdId");
     const description = parseOptionalDescription(body.description);
-    const client = await db.connect();
-
-    try {
-      await client.query("begin");
-      const result = await client.query<HoldRow & { user_id: string }>(
-        `
+    const result = await client.query<HoldRow & { user_id: string }>(
+      `
           select h.id, h.account_id, h.amount, h.description, h.status,
                  h.expires_at, h.captured_ledger_entry_id, h.created_at,
                  h.updated_at, accounts.user_id
           from account_holds h
           join accounts on accounts.id = h.account_id
           where h.id = $1 and h.created_by_api_client_id = $2
+            and h.related_purchase_id is null
           for update of h, accounts
         `,
-        [holdId, apiClient.id],
-      );
-      const hold = requireHold(result.rows[0]);
+      [holdId, apiClient.id],
+    );
+    const hold = requireHold(result.rows[0]);
 
-      if (
-        hold.status !== "active" ||
-        (hold.expires_at && hold.expires_at <= new Date())
-      ) {
+    if (
+      hold.status !== "active" ||
+      (hold.expires_at && hold.expires_at <= new Date())
+    ) {
+      throw new ApiFinanceError(
+        "hold_not_active",
+        "The hold is no longer active.",
+        409,
+      );
+    }
+
+    let ledgerEntryId: string | null = null;
+    if (status === "captured") {
+      await getAccount(client, hold.account_id, true);
+      if ((await getBalances(client, hold.account_id)).availableBalance < 0) {
         throw new ApiFinanceError(
-          "hold_not_active",
-          "The hold is no longer active.",
+          "insufficient_funds",
+          "The reserved balance is no longer available.",
           409,
         );
       }
+      await assertApiTransactionCap(client, Number(hold.amount));
+      ledgerEntryId = await ledgerService.createEntry(client, {
+        amount: -Number(hold.amount),
+        description: description || hold.description,
+        entryType: "debit",
+        relatedEntityId: apiClient.id,
+        relatedEntityType: apiRelatedEntityType,
+        status: "posted",
+        userId: result.rows[0].user_id,
+      });
+    }
 
-      let ledgerEntryId: string | null = null;
-      if (status === "captured") {
-        ledgerEntryId = await ledgerService.createEntry(client, {
-          amount: -Number(hold.amount),
-          description: description || hold.description,
-          entryType: "debit",
-          relatedEntityId: apiClient.id,
-          relatedEntityType: apiRelatedEntityType,
-          status: "posted",
-          userId: result.rows[0].user_id,
-        });
-      }
-
-      const updated = await client.query<HoldRow>(
-        `
+    const updated = await client.query<HoldRow>(
+      `
           update account_holds
           set status = $2,
               captured_ledger_entry_id = $3,
@@ -454,26 +434,18 @@ export class ApiFinanceService {
           returning id, account_id, amount, description, status, expires_at,
                     captured_ledger_entry_id, created_at, updated_at
         `,
-        [holdId, status, ledgerEntryId],
-      );
-      const balances = await getBalances(client, hold.account_id);
-      await logAction(
-        client,
-        apiClient,
-        `finance_api.hold_${status}`,
-        holdId,
-        "account_hold",
-        { accountId: hold.account_id, ledgerEntryId },
-      );
-      await client.query("commit");
-
-      return { ...mapHold(updated.rows[0]), ...balances };
-    } catch (error) {
-      await rollback(client);
-      throw error;
-    } finally {
-      client.release();
-    }
+      [holdId, status, ledgerEntryId],
+    );
+    const balances = await getBalances(client, hold.account_id);
+    await logAction(
+      client,
+      apiClient,
+      `finance_api.hold_${status}`,
+      holdId,
+      "account_hold",
+      { accountId: hold.account_id, ledgerEntryId },
+    );
+    return { ...mapHold(updated.rows[0]), ...balances };
   }
 }
 
@@ -567,14 +539,7 @@ async function validateMovement(
   enforceTransactionCap = true,
 ) {
   if (enforceTransactionCap) {
-    const transactionCap = await ledgerService.getTransactionCap(client);
-    if (transactionCap !== null && Math.abs(amount) > transactionCap) {
-      throw new ApiFinanceError(
-        "transaction_cap_exceeded",
-        `The transaction exceeds the organisation limit of ${transactionCap}.`,
-        409,
-      );
-    }
+    await assertApiTransactionCap(client, amount);
   }
 
   if (amount < 0 && balances.availableBalance + amount < 0) {
@@ -593,6 +558,20 @@ async function validateMovement(
         409,
       );
     }
+  }
+}
+
+export async function assertApiTransactionCap(
+  client: PoolClient,
+  amount: number,
+) {
+  const cap = await ledgerService.getTransactionCap(client);
+  if (cap !== null && Math.abs(amount) > cap) {
+    throw new ApiFinanceError(
+      "transaction_cap_exceeded",
+      `The transaction exceeds the organisation limit of ${cap}.`,
+      409,
+    );
   }
 }
 
@@ -637,7 +616,11 @@ function mapLedgerEntry(row: LedgerRow) {
 }
 
 function parsePositiveInteger(value: unknown, field: string) {
-  const amount = typeof value === "number" ? value : Number(value);
+  const amount =
+    typeof value === "number" ||
+    (typeof value === "string" && /^\d{1,7}$/.test(value))
+      ? Number(value)
+      : NaN;
   if (!Number.isInteger(amount) || amount <= 0 || amount > maxApiAmount) {
     throw new ApiFinanceError(
       "invalid_amount",
@@ -671,7 +654,11 @@ function parseOptionalDescription(value: unknown) {
 }
 
 function parseEmail(value: unknown) {
-  if (typeof value !== "string" || !emailPattern.test(value.trim())) {
+  if (
+    typeof value !== "string" ||
+    value.length > 256 ||
+    !emailPattern.test(value.trim())
+  ) {
     throw new ApiFinanceError(
       "invalid_email",
       "email must be a valid email address.",
@@ -724,10 +711,7 @@ function parseBefore(value: string | null) {
 
 function assertUuid(value: string, field: string) {
   if (!uuidPattern.test(value)) {
-    throw new ApiFinanceError(
-      "invalid_uuid",
-      `${field} must be a valid UUID.`,
-    );
+    throw new ApiFinanceError("invalid_uuid", `${field} must be a valid UUID.`);
   }
 }
 
@@ -750,8 +734,4 @@ async function logAction(
     entityId,
     entityType,
   });
-}
-
-async function rollback(client: PoolClient) {
-  await client.query("rollback").catch(() => undefined);
 }

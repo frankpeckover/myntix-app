@@ -7,7 +7,13 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request, context: Context) {
   const { entryId } = await context.params;
-  return handleApiWrite(request, "ledger:debit", async (client, body) =>
-    apiSuccessResult(await service.reverseEntry(client, entryId, body), 201),
+  return handleApiWrite(
+    request,
+    "ledger:debit",
+    async (client, body, transaction) =>
+      apiSuccessResult(
+        await service.reverseEntry(client, entryId, body, transaction),
+        201,
+      ),
   );
 }

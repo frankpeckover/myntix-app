@@ -332,14 +332,20 @@ function AnalyticsMetricGrid({
   return (
     <section className={`${className} grid grid-cols-2 gap-3`}>
       <MetricCard
+        description={summary && summary.activeStudentCount > 0
+          ? `${Math.round((summary.studentsWithRecentActivity / summary.activeStudentCount) * 100)}% participation`
+          : undefined}
         icon={<UsersIcon />}
         label={`Active ${selectedWindowLabel}`}
         tone="brand"
         value={
           summary
-            ? `${summary.studentsWithRecentActivity} of ${summary.activeStudentCount}`
+            ? formatWholeNumber(summary.studentsWithRecentActivity)
             : getLoadingMetricValue(isLoading)
         }
+        valueLabel={summary
+          ? `${formatWholeNumber(summary.studentsWithRecentActivity)} active students out of ${formatWholeNumber(summary.activeStudentCount)}, ${selectedWindowLabel}.`
+          : undefined}
       />
       <MetricCard
         icon={<ShoppingCartIcon />}

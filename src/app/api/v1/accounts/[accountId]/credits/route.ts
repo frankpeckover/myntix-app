@@ -7,7 +7,13 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request, context: Context) {
   const { accountId } = await context.params;
-  return handleApiWrite(request, "ledger:credit", async (client, body) =>
-    apiSuccessResult(await service.createCredit(client, accountId, body), 201),
+  return handleApiWrite(
+    request,
+    "ledger:credit",
+    async (client, body, transaction) =>
+      apiSuccessResult(
+        await service.createCredit(client, accountId, body, transaction),
+        201,
+      ),
   );
 }

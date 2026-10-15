@@ -5,7 +5,13 @@ const service = new ApiPurchaseService();
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  return handleApiWrite(request, "purchases:write", async (client, body) =>
-    apiSuccessResult(await service.createPurchase(client, body), 201),
+  return handleApiWrite(
+    request,
+    "purchases:write",
+    async (client, body, transaction) =>
+      apiSuccessResult(
+        await service.createPurchase(client, body, transaction),
+        201,
+      ),
   );
 }

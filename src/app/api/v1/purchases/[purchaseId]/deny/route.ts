@@ -7,7 +7,12 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request, context: Context) {
   const { purchaseId } = await context.params;
-  return handleApiWrite(request, "purchases:write", async (client, body) =>
-    apiSuccessResult(await service.denyPurchase(client, purchaseId, body)),
+  return handleApiWrite(
+    request,
+    "purchases:write",
+    async (client, body, transaction) =>
+      apiSuccessResult(
+        await service.denyPurchase(client, purchaseId, body, transaction),
+      ),
   );
 }

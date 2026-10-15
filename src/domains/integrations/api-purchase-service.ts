@@ -1,7 +1,10 @@
 import type { PoolClient } from "pg";
 import { db } from "@/lib/database/db";
 import type { ApiClient } from "@/lib/api/api-types";
-import { ApiFinanceError } from "@/domains/integrations/api-finance-service";
+import {
+  ApiFinanceError,
+  assertApiTransactionCap,
+} from "@/domains/integrations/api-finance-service";
 import { LedgerService } from "@/domains/ledger/ledger-service";
 import { AuditService } from "@/domains/audit/audit-service";
 import { NotificationService } from "@/domains/notifications/notification-service";
@@ -28,6 +31,7 @@ type PurchaseRow = {
   shop_item_id: string;
   status: "pending" | "approved" | "denied";
   stock_reserved: boolean;
+  hold_status: "active" | "captured" | "released";
 };
 
 const ledgerService = new LedgerService();
@@ -54,15 +58,12 @@ export class ApiPurchaseService {
   async createPurchase(
     apiClient: ApiClient,
     body: Record<string, unknown>,
+    client: PoolClient,
   ) {
     const accountId = parseUuid(body.accountId, "accountId");
     const rewardId = parseUuid(body.rewardId, "rewardId");
-    const client = await db.connect();
-
-    try {
-      await client.query("begin");
-      const account = await client.query<{ user_id: string }>(
-        `
+    const account = await client.query<{ user_id: string }>(
+      `
           select accounts.user_id
           from accounts
           join users on users.id = accounts.user_id
@@ -74,53 +75,54 @@ export class ApiPurchaseService {
             and roles.role_key = 'student'
           for update of accounts, users
         `,
-        [accountId],
+      [accountId],
+    );
+    if (!account.rows[0]) {
+      throw new ApiFinanceError(
+        "account_not_found",
+        "Active student account was not found.",
+        404,
       );
-      if (!account.rows[0]) {
-        throw new ApiFinanceError(
-          "account_not_found",
-          "Active student account was not found.",
-          404,
-        );
-      }
+    }
 
-      const rewardResult = await client.query<RewardRow & { is_active: boolean }>(
-        `
+    const rewardResult = await client.query<RewardRow & { is_active: boolean }>(
+      `
           select id, name, description, image_url, price, quantity,
                  is_quantity_unlimited, is_active
           from shop_items
           where id = $1
           for update
         `,
-        [rewardId],
+      [rewardId],
+    );
+    const reward = rewardResult.rows[0];
+    if (
+      !reward ||
+      !reward.is_active ||
+      (!reward.is_quantity_unlimited && reward.quantity <= 0)
+    ) {
+      throw new ApiFinanceError(
+        "reward_unavailable",
+        "The reward is not available.",
+        409,
       );
-      const reward = rewardResult.rows[0];
-      if (
-        !reward ||
-        !reward.is_active ||
-        (!reward.is_quantity_unlimited && reward.quantity <= 0)
-      ) {
-        throw new ApiFinanceError(
-          "reward_unavailable",
-          "The reward is not available.",
-          409,
-        );
-      }
+    }
 
-      const availableBalance = await ledgerService.getAvailableBalance(
-        client,
-        account.rows[0].user_id,
+    const availableBalance = await ledgerService.getAvailableBalance(
+      client,
+      account.rows[0].user_id,
+    );
+    await assertApiTransactionCap(client, Number(reward.price));
+    if (availableBalance < Number(reward.price)) {
+      throw new ApiFinanceError(
+        "insufficient_funds",
+        "The account does not have enough available balance.",
+        409,
       );
-      if (availableBalance < Number(reward.price)) {
-        throw new ApiFinanceError(
-          "insufficient_funds",
-          "The account does not have enough available balance.",
-          409,
-        );
-      }
+    }
 
-      const purchaseResult = await client.query<{ id: string }>(
-        `
+    const purchaseResult = await client.query<{ id: string }>(
+      `
           insert into shop_purchases (
             shop_item_id, purchased_by_user_id, price_at_purchase, status,
             stock_reserved, requested_by_api_client_id
@@ -128,52 +130,48 @@ export class ApiPurchaseService {
           values ($1, $2, $3, 'pending', $4, $5)
           returning id
         `,
-        [
-          reward.id,
-          account.rows[0].user_id,
-          reward.price,
-          !reward.is_quantity_unlimited,
-          apiClient.id,
-        ],
-      );
-      const purchaseId = purchaseResult.rows[0].id;
-      await client.query(
-        `
+      [
+        reward.id,
+        account.rows[0].user_id,
+        reward.price,
+        !reward.is_quantity_unlimited,
+        apiClient.id,
+      ],
+    );
+    const purchaseId = purchaseResult.rows[0].id;
+    await client.query(
+      `
           insert into account_holds (
             account_id, amount, description, status,
             created_by_api_client_id, related_purchase_id
           )
           values ($1, $2, $3, 'active', $4, $5)
         `,
-        [accountId, reward.price, reward.name, apiClient.id, purchaseId],
+      [accountId, reward.price, reward.name, apiClient.id, purchaseId],
+    );
+    if (!reward.is_quantity_unlimited) {
+      await client.query(
+        `update shop_items set quantity = quantity - 1, updated_at = now() where id = $1`,
+        [reward.id],
       );
-      if (!reward.is_quantity_unlimited) {
-        await client.query(
-          `update shop_items set quantity = quantity - 1, updated_at = now() where id = $1`,
-          [reward.id],
-        );
-      }
-      await logPurchase(client, apiClient, "shop_purchase.api_requested", purchaseId, {
+    }
+    await logPurchase(
+      client,
+      apiClient,
+      "shop_purchase.api_requested",
+      purchaseId,
+      {
         accountId,
         rewardId,
         price: Number(reward.price),
-      });
-      const createdResult = await client.query<PurchaseRow>(purchaseSelect(), [
-        purchaseId,
-        apiClient.id,
-      ]);
-      const createdPurchase = mapPurchase(
-        requirePurchase(createdResult.rows[0]),
-      );
-      await client.query("commit");
-
-      return createdPurchase;
-    } catch (error) {
-      await client.query("rollback").catch(() => undefined);
-      throw error;
-    } finally {
-      client.release();
-    }
+      },
+    );
+    const createdResult = await client.query<PurchaseRow>(purchaseSelect(), [
+      purchaseId,
+      apiClient.id,
+    ]);
+    const createdPurchase = mapPurchase(requirePurchase(createdResult.rows[0]));
+    return createdPurchase;
   }
 
   async getPurchase(apiClient: ApiClient, purchaseIdValue: string) {
@@ -189,16 +187,18 @@ export class ApiPurchaseService {
     apiClient: ApiClient,
     purchaseId: string,
     body: Record<string, unknown>,
+    client: PoolClient,
   ) {
-    return this.decidePurchase(apiClient, purchaseId, body, "approved");
+    return this.decidePurchase(apiClient, purchaseId, body, "approved", client);
   }
 
   async denyPurchase(
     apiClient: ApiClient,
     purchaseId: string,
     body: Record<string, unknown>,
+    client: PoolClient,
   ) {
-    return this.decidePurchase(apiClient, purchaseId, body, "denied");
+    return this.decidePurchase(apiClient, purchaseId, body, "denied", client);
   }
 
   private async decidePurchase(
@@ -206,97 +206,119 @@ export class ApiPurchaseService {
     purchaseIdValue: string,
     body: Record<string, unknown>,
     status: "approved" | "denied",
+    client: PoolClient,
   ) {
     const purchaseId = parseUuid(purchaseIdValue, "purchaseId");
     const note = parseOptionalNote(body.note);
-    const client = await db.connect();
-
-    try {
-      await client.query("begin");
-      const result = await client.query<PurchaseRow>(
-        `${purchaseSelect()} for update of shop_purchases, account_holds`,
-        [purchaseId, apiClient.id],
+    const result = await client.query<PurchaseRow>(
+      `${purchaseSelect()} for update of sp, account_holds, accounts`,
+      [purchaseId, apiClient.id],
+    );
+    const purchase = requirePurchase(result.rows[0]);
+    if (purchase.status !== "pending") {
+      throw new ApiFinanceError(
+        "purchase_not_pending",
+        "The purchase has already been decided.",
+        409,
       );
-      const purchase = requirePurchase(result.rows[0]);
-      if (purchase.status !== "pending") {
+    }
+
+    let ledgerEntryId: string | null = null;
+    if (status === "approved") {
+      if (purchase.hold_status !== "active") {
         throw new ApiFinanceError(
-          "purchase_not_pending",
-          "The purchase has already been decided.",
+          "hold_not_active",
+          "The purchase no longer has an active reservation.",
           409,
         );
       }
-
-      let ledgerEntryId: string | null = null;
-      if (status === "approved") {
-        ledgerEntryId = await ledgerService.createEntry(client, {
-          amount: -Number(purchase.price_at_purchase),
-          description: purchase.item_name,
-          entryType: "shop_purchase",
-          relatedEntityId: purchase.id,
-          relatedEntityType: "shop_purchase",
-          status: "posted",
-          userId: purchase.purchased_by_user_id,
-        });
-      } else if (purchase.stock_reserved) {
-        await client.query(
-          `update shop_items set quantity = quantity + 1, updated_at = now() where id = $1`,
-          [purchase.shop_item_id],
+      const activeStudent = await client.query(
+        `select users.id from users join roles on roles.id = users.role_id
+           join accounts on accounts.user_id = users.id
+           where users.id = $1 and users.is_active = true and accounts.is_active = true
+             and roles.is_active = true and roles.role_key = 'student'
+           for update of users`,
+        [purchase.purchased_by_user_id],
+      );
+      if (!activeStudent.rowCount) {
+        throw new ApiFinanceError(
+          "account_not_found",
+          "Active student account was not found.",
+          404,
         );
       }
-
+      await assertApiTransactionCap(client, Number(purchase.price_at_purchase));
+      if (
+        (await ledgerService.getAvailableBalance(
+          client,
+          purchase.purchased_by_user_id,
+        )) < 0
+      ) {
+        throw new ApiFinanceError(
+          "insufficient_funds",
+          "The reserved balance is no longer available.",
+          409,
+        );
+      }
+      ledgerEntryId = await ledgerService.createEntry(client, {
+        amount: -Number(purchase.price_at_purchase),
+        description: purchase.item_name,
+        entryType: "shop_purchase",
+        relatedEntityId: purchase.id,
+        relatedEntityType: "shop_purchase",
+        status: "posted",
+        userId: purchase.purchased_by_user_id,
+      });
+    } else if (purchase.stock_reserved) {
       await client.query(
-        `
+        `update shop_items set quantity = quantity + 1, updated_at = now() where id = $1`,
+        [purchase.shop_item_id],
+      );
+    }
+
+    await client.query(
+      `
           update account_holds
           set status = $2,
               captured_ledger_entry_id = $3,
               updated_at = now()
           where id = $1
         `,
-        [
-          purchase.hold_id,
-          status === "approved" ? "captured" : "released",
-          ledgerEntryId,
-        ],
-      );
-      await client.query(
-        `
+      [
+        purchase.hold_id,
+        status === "approved" ? "captured" : "released",
+        ledgerEntryId,
+      ],
+    );
+    await client.query(
+      `
           update shop_purchases
           set status = $2,
               decided_at = now(),
               decision_note = $3
           where id = $1
         `,
-        [purchase.id, status, note],
-      );
-      await logPurchase(
-        client,
-        apiClient,
-        `shop_purchase.api_${status}`,
-        purchase.id,
-        { ledgerEntryId, note },
-      );
-      await notificationService.notifyRewardDecision(client, {
-        itemName: purchase.item_name,
-        purchaseId: purchase.id,
-        status,
-        studentUserId: purchase.purchased_by_user_id,
-      });
-      const updatedResult = await client.query<PurchaseRow>(purchaseSelect(), [
-        purchase.id,
-        apiClient.id,
-      ]);
-      const updatedPurchase = mapPurchase(
-        requirePurchase(updatedResult.rows[0]),
-      );
-      await client.query("commit");
-
-      return updatedPurchase;
-    } catch (error) {
-      await client.query("rollback").catch(() => undefined);
-      throw error;
-    } finally {
-      client.release();
-    }
+      [purchase.id, status, note],
+    );
+    await logPurchase(
+      client,
+      apiClient,
+      `shop_purchase.api_${status}`,
+      purchase.id,
+      { ledgerEntryId, note },
+    );
+    await notificationService.notifyRewardDecision(client, {
+      itemName: purchase.item_name,
+      purchaseId: purchase.id,
+      status,
+      studentUserId: purchase.purchased_by_user_id,
+    });
+    const updatedResult = await client.query<PurchaseRow>(purchaseSelect(), [
+      purchase.id,
+      apiClient.id,
+    ]);
+    const updatedPurchase = mapPurchase(requirePurchase(updatedResult.rows[0]));
+    return updatedPurchase;
   }
 }
 
@@ -305,7 +327,8 @@ function purchaseSelect() {
     select sp.id, sp.shop_item_id, sp.purchased_by_user_id,
            sp.price_at_purchase, sp.status, sp.decision_note,
            sp.stock_reserved, sp.purchased_at, si.name as item_name,
-           accounts.id as account_id, account_holds.id as hold_id
+           accounts.id as account_id, account_holds.id as hold_id,
+           account_holds.status as hold_status
     from shop_purchases sp
     join shop_items si on si.id = sp.shop_item_id
     join accounts on accounts.user_id = sp.purchased_by_user_id
@@ -355,10 +378,7 @@ function mapPurchase(row: PurchaseRow) {
 
 function parseUuid(value: unknown, field: string) {
   if (typeof value !== "string" || !uuidPattern.test(value)) {
-    throw new ApiFinanceError(
-      "invalid_uuid",
-      `${field} must be a valid UUID.`,
-    );
+    throw new ApiFinanceError("invalid_uuid", `${field} must be a valid UUID.`);
   }
   return value;
 }

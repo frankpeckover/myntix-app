@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { Role } from "@/lib/auth/session";
-import { isAdmin, isStudent } from "@/lib/auth/permissions";
+import { getPrimaryNavigationItems, type NavigationItem } from "@/lib/navigation/dashboard-navigation";
 import {
   AlertTriangleIcon,
   ChevronLeftIcon,
@@ -27,39 +27,7 @@ import { AppBrand } from "@/components/ui/app-brand";
 import { SchoolLogo } from "@/components/ui/school-logo";
 import { UserAvatar } from "@/components/ui/user-avatar";
 
-const defaultNavigationItems = [
-  "Dashboard",
-  "Credit Management",
-  "Reward Requests",
-  "Timetable",
-  "Analytics",
-  "Rewards",
-  "Transaction Log",
-] as const;
-const studentNavigationItems = [
-  "Dashboard",
-  "Rewards",
-  "Transaction History",
-] as const;
-const adminNavigationItems = [
-  "Dashboard",
-  "Credit Management",
-  "Reward Requests",
-  "Users",
-  "Groups",
-  "Timetable",
-  "Analytics",
-  "Rewards",
-  "Transaction Log",
-  "Audit Log",
-  "Error Log",
-  "Settings",
-] as const;
-
-export type NavigationItem =
-  | (typeof adminNavigationItems)[number]
-  | (typeof studentNavigationItems)[number]
-  | "Preferences";
+export type { NavigationItem } from "@/lib/navigation/dashboard-navigation";
 
 type NavigationSection = {
   items: readonly NavigationItem[];
@@ -644,18 +612,4 @@ function getNavigationSections(role: Role): NavigationSection[] {
       title: null,
     },
   ];
-}
-
-function getPrimaryNavigationItems(role: Role): readonly NavigationItem[] {
-  const userRole = { role };
-
-  if (isAdmin(userRole)) {
-    return adminNavigationItems;
-  }
-
-  if (isStudent(userRole)) {
-    return studentNavigationItems;
-  }
-
-  return defaultNavigationItems;
 }

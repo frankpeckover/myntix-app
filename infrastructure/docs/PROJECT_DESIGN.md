@@ -288,6 +288,13 @@ Users may select teal, blue, purple, orange, or a custom accent. Accent choices 
 
 ## Layout rules
 
+- Dashboard sections use the `page` URL parameter so browser Back, Forward,
+  refresh, and shared links preserve the active section without a full-page
+  navigation. Student day-specific history links also include `date`.
+- Resolve navigation against the current role's shared navigation list; unknown
+  or unavailable sections fall back to Dashboard. Server authorisation remains
+  the security boundary. Table filters and unsaved forms are not persisted by
+  section navigation.
 - Use a four-unit desktop grid for the main dashboards unless a deliberately approved six-unit analytics layout is already established.
 - Components may span one to four units; align adjacent cards to shared grid lines and heights where it improves scanning.
 - Mobile collapses to a single column or a deliberate two-column metric grid.
@@ -487,14 +494,36 @@ The external API is a controlled interface to ledger operations, not a second fi
 - The server resolves the student, validates the client scope, enforces tenant isolation, balance rules, caps, and ledger invariants.
 - Prefer a stable organisation-specific API hostname or tenant resolution mechanism; never accept an unrestricted database target from a client.
 - Return structured errors suitable for another application, without exposing SQL, secrets, stack traces, or internal topology.
+- External API writes use bounded UTF-8 JSON bodies (16 KiB) and explicit input
+  types. Authentication accepts only generated-format Bearer keys; cookies do not
+  authenticate API clients. Authenticated responses are private/no-store.
+- The shared write handler owns the transaction: idempotency reservation,
+  domain mutation, and replay response commit together on one tenant connection.
+  Domain write methods receive this connection and never commit independently.
+- Purchase holds are controlled only by purchase decisions, not generic hold
+  capture/release routes. Transaction caps apply to reservations and purchases;
+  crediting a debit reversal requires credit scope as well as debit scope.
 
 ## Authentication and security baseline
 
 - Passwords are hashed with the established password utility and policy.
 - Login and reset requests are rate-limited server-side.
+- Login validates runtime input types and bounds before querying or hashing.
+  Identifiers are trimmed and lowercased; passwords are never trimmed, modified,
+  or HTML-sanitised. SQL remains parameterised and rendered text is escaped.
+- Login limits are tenant-scoped: eight attempts per identifier in five minutes,
+  plus 200 failed attempts per source IP in five minutes. Successful logins do
+  not consume the shared-IP failure allowance. Reset requests allow five per
+  identifier and 30 per source IP in 15 minutes. Counters currently live in
+  process memory; use a shared durable limiter before horizontal scaling.
+- Login and reset-request actions require a matching browser Origin. Public
+  errors do not reveal database setup details. Unknown or disabled accounts
+  still perform a dummy password-hash comparison to reduce timing differences.
 - Session tokens are random, stored as keyed hashes, and sent only in `httpOnly` cookies.
 - Cookies use `sameSite=lax`, `secure` in production, and the root path.
 - Sessions have a seven-day absolute lifetime and an eight-hour idle timeout.
+- Successful sign-in replaces the current browser session and invalidates its
+  previous token transactionally. Malformed session cookies are rejected early.
 - Session expiry must return the user cleanly to login with a warning, not leave components throwing unauthenticated errors.
 - Password changes, admin password resets, and user disabling invalidate old sessions.
 - Password reset tokens are single-use, hashed, expire, and invalidate earlier reset tokens.
@@ -511,6 +540,12 @@ The external API is a controlled interface to ledger operations, not a second fi
 - Security headers include CSP, HSTS over HTTPS, frame denial, MIME sniff prevention, restrictive permissions policy, and a strict referrer policy.
 - Secrets belong only in server environment variables or approved secret storage. Never expose them through `NEXT_PUBLIC_*` variables.
 - Audit important authentication and security events without logging passwords, raw reset tokens, session tokens, API keys, or SSO secrets.
+- Disable Next.js development Server Function argument logging and request logs
+  for reset/SSO URLs. Post-login return paths must remain local to this app.
+- The reverse proxy must overwrite untrusted forwarded host/IP headers and the
+  application port must not be publicly reachable around the trusted proxy.
+  Enable MFA at the SSO provider for staff/admin accounts. These controls do not
+  replace an independent penetration test or make the application unhackable.
 
 ## Organisation configuration
 

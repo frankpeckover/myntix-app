@@ -7,6 +7,12 @@ const immutableAssetCacheHeader = {
 
 const nextConfig: NextConfig = {
   compress: true,
+  logging: {
+    serverFunctions: false,
+    incomingRequests: {
+      ignore: [/\/reset-password(?:\?|$)/, /\/auth\/sso\//, /\/api\/v1\//],
+    },
+  },
   async headers() {
     return [
       {

@@ -1,5 +1,5 @@
 import { createHash } from "crypto";
-import { db } from "@/lib/database/db";
+import type { PoolClient } from "pg";
 
 type ApiIdempotencyRow = {
   request_hash: string;
@@ -30,8 +30,9 @@ export class ApiIdempotencyService {
     clientId: string,
     idempotencyKey: string,
     requestHash: string,
+    client: PoolClient,
   ): Promise<IdempotencyResult> {
-    await db.query(
+    await client.query(
       `
         delete from api_idempotency_keys
         where client_id = $1
@@ -41,7 +42,7 @@ export class ApiIdempotencyService {
       [clientId, idempotencyKey],
     );
 
-    const reservation = await db.query(
+    const reservation = await client.query(
       `
         insert into api_idempotency_keys (
           client_id,
@@ -60,7 +61,9 @@ export class ApiIdempotencyService {
       return { type: "new" } as const;
     }
 
-    const result = await db.query<ApiIdempotencyRow & { completed_at: Date | null }>(
+    const result = await client.query<
+      ApiIdempotencyRow & { completed_at: Date | null }
+    >(
       `
         select request_hash, response_body, status_code, completed_at
         from api_idempotency_keys
@@ -97,8 +100,9 @@ export class ApiIdempotencyService {
     requestHash: string,
     statusCode: number,
     responseBody: unknown,
+    client: PoolClient,
   ) {
-    await db.query(
+    const result = await client.query(
       `
         update api_idempotency_keys
         set response_body = $4::jsonb,
@@ -107,6 +111,7 @@ export class ApiIdempotencyService {
         where client_id = $1
           and idempotency_key = $2
           and request_hash = $3
+          and completed_at is null
       `,
       [
         clientId,
@@ -116,26 +121,20 @@ export class ApiIdempotencyService {
         statusCode,
       ],
     );
-  }
-
-  async abandon(clientId: string, idempotencyKey: string, requestHash: string) {
-    await db.query(
-      `
-        delete from api_idempotency_keys
-        where client_id = $1
-          and idempotency_key = $2
-          and request_hash = $3
-          and completed_at is null
-      `,
-      [clientId, idempotencyKey, requestHash],
-    );
+    if (result.rowCount !== 1) {
+      throw new Error("Could not complete the API request reservation.");
+    }
   }
 }
 
 export function getIdempotencyKey(request: Request) {
   const idempotencyKey = request.headers.get("Idempotency-Key")?.trim() ?? "";
 
-  if (!idempotencyKey || idempotencyKey.length > maxIdempotencyKeyLength) {
+  if (
+    !idempotencyKey ||
+    idempotencyKey.length > maxIdempotencyKeyLength ||
+    !/^[\x21-\x7e]+$/.test(idempotencyKey)
+  ) {
     return "";
   }
 

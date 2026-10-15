@@ -28,23 +28,35 @@ const sessionLengthSeconds =
   sessionLengthDays * hoursPerDay * minutesPerHour * secondsPerMinute;
 const sessionLengthMilliseconds =
   sessionLengthSeconds * millisecondsPerSecond;
+const sessionTokenPattern = /^[A-Za-z0-9_-]{43}$/;
 
 export class SessionService {
   async createSession(userId: string) {
+    const cookieStore = await cookies();
+    const previousToken = cookieStore.get(sessionCookieName)?.value;
     const token = randomBytes(sessionTokenBytes).toString("base64url");
     const expiresAt = new Date(Date.now() + sessionLengthMilliseconds);
 
     await deleteExpiredOrIdleSessions();
 
-    await db.query(
-      `
-        insert into user_sessions (user_id, token_hash, expires_at)
-        values ($1, $2, $3)
-      `,
-      [userId, hashSessionToken(token), expiresAt],
-    );
-
-    const cookieStore = await cookies();
+    const client = await db.connect();
+    try {
+      await client.query("begin");
+      await client.query(
+        `insert into user_sessions (user_id, token_hash, expires_at)
+         values ($1, $2, $3)`,
+        [userId, hashSessionToken(token), expiresAt],
+      );
+      if (previousToken && sessionTokenPattern.test(previousToken)) {
+        await client.query("delete from user_sessions where token_hash = $1", [hashSessionToken(previousToken)]);
+      }
+      await client.query("commit");
+    } catch (error) {
+      await client.query("rollback");
+      throw error;
+    } finally {
+      client.release();
+    }
 
     cookieStore.set(sessionCookieName, token, {
       expires: expiresAt,
@@ -60,7 +72,7 @@ export class SessionService {
     const cookieStore = await cookies();
     const token = cookieStore.get(sessionCookieName)?.value;
 
-    if (!token) {
+    if (!token || !sessionTokenPattern.test(token)) {
       return null;
     }
 

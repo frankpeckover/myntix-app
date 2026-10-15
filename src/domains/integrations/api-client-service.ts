@@ -13,7 +13,6 @@ type ApiClientRow = {
   updated_at?: Date;
 };
 
-const bearerPrefix = "Bearer ";
 const apiKeyHashSecretEnv = "API_KEY_HASH_SECRET";
 const apiKeyBytes = 32;
 const apiKeyPrefixLength = 20;
@@ -38,6 +37,8 @@ export class ApiAuthenticationError extends Error {
     super(message);
   }
 }
+
+export class ApiClientValidationError extends Error {}
 
 export type ApiClientSummary = {
   createdAt: string;
@@ -81,15 +82,26 @@ export class ApiClientService {
   }
 
   async createClient(input: CreateApiClientInput) {
+    if (
+      !input ||
+      typeof input.name !== "string" ||
+      input.name.length > 128 ||
+      !Array.isArray(input.scopes) ||
+      input.scopes.length > allowedApiScopes.length
+    ) {
+      throw new ApiClientValidationError(
+        "Provide an API key name up to 128 characters and a valid scope list.",
+      );
+    }
     const name = input.name.trim();
     const scopes = getValidScopes(input.scopes);
 
     if (!name) {
-      throw new Error("API key name is required.");
+      throw new ApiClientValidationError("API key name is required.");
     }
 
     if (scopes.length === 0) {
-      throw new Error("Select at least one API scope.");
+      throw new ApiClientValidationError("Select at least one API scope.");
     }
 
     const apiKey = generateApiKey();
@@ -134,6 +146,17 @@ export class ApiClientService {
   }
 
   async setClientActive(clientId: string, isActive: boolean) {
+    if (
+      typeof clientId !== "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        clientId,
+      ) ||
+      typeof isActive !== "boolean"
+    ) {
+      throw new ApiClientValidationError(
+        "Provide a valid API client and active status.",
+      );
+    }
     const result = await db.query<Required<ApiClientRow>>(
       `
         update api_clients
@@ -159,7 +182,7 @@ export class ApiClientService {
     const client = result.rows[0];
 
     if (!client) {
-      throw new Error("API key was not found.");
+      throw new ApiClientValidationError("API key was not found.");
     }
 
     return mapApiClientSummary(client);
@@ -243,11 +266,12 @@ export function hashApiKey(apiKey: string) {
 }
 
 function getBearerToken(authorizationHeader: string | null) {
-  if (!authorizationHeader?.startsWith(bearerPrefix)) {
-    return "";
-  }
-
-  return authorizationHeader.slice(bearerPrefix.length).trim();
+  if (!authorizationHeader || authorizationHeader.length > 128) return "";
+  return (
+    /^Bearer\s+(myntix_live_[A-Za-z0-9_-]{43})$/i.exec(
+      authorizationHeader,
+    )?.[1] ?? ""
+  );
 }
 
 function getValidScopes(scopes: ApiScope[]) {

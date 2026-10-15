@@ -10,6 +10,7 @@ import { getActiveMaintenanceMessage } from "@/domains/operations/platform-annou
 import { UserPreferenceService } from "@/domains/users/user-preference-service";
 import type { UserPreferences } from "@/lib/theme/user-preferences";
 import { notFound } from "next/navigation";
+import { getSafeReturnPath } from "@/lib/security/return-path";
 
 const userPreferenceService = new UserPreferenceService();
 
@@ -39,7 +40,7 @@ export default async function Home({searchParams}:{searchParams:Promise<{returnT
   }
   const maintenanceMessage = await getActiveMaintenanceMessage();
   const requestedReturnTo=(await searchParams).returnTo;
-  const returnTo = requestedReturnTo?.startsWith("/") ? requestedReturnTo : null;
+  const returnTo = getSafeReturnPath(requestedReturnTo);
 
   return (
     <AppEntry

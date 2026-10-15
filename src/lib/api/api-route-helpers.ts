@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
-import { db } from "@/lib/database/db";
+import type { PoolClient } from "pg";
+import { db, getCurrentTenantSlug } from "@/lib/database/db";
 import { apiError } from "@/lib/api/api-response";
 import type {
   ApiClient,
@@ -21,6 +22,10 @@ import {
   type RateLimitResult,
 } from "@/lib/security/rate-limit";
 import { getServerEnvNumber } from "@/lib/config/server-env";
+import {
+  ApiRequestError,
+  readApiJsonBody,
+} from "@/lib/api/api-request-validation";
 
 export type ApiJsonBody = Record<string, unknown>;
 
@@ -29,13 +34,12 @@ export type ApiRouteResult<T = unknown> = {
   status: number;
 };
 
-type ApiReadHandler<T> = (
-  apiClient: ApiClient,
-) => Promise<ApiRouteResult<T>>;
+type ApiReadHandler<T> = (apiClient: ApiClient) => Promise<ApiRouteResult<T>>;
 
 type ApiWriteHandler<T> = (
   apiClient: ApiClient,
   body: ApiJsonBody,
+  transaction: PoolClient,
 ) => Promise<ApiRouteResult<T>>;
 
 const apiClientService = new ApiClientService();
@@ -54,10 +58,7 @@ const apiWriteRequestsPerMinute = getServerEnvNumber(
   60,
 );
 
-export function apiSuccessResult<T>(
-  data: T,
-  status = 200,
-): ApiRouteResult<T> {
+export function apiSuccessResult<T>(data: T, status = 200): ApiRouteResult<T> {
   return {
     body: {
       data,
@@ -99,6 +100,7 @@ export async function handleApiRead<T>(
   try {
     const apiClient = await authenticateApiClient(request, requiredScope);
     requestContext.apiClient = apiClient;
+    requestContext.tenantSlug = await getCurrentTenantSlug();
     const clientLimitResponse = await enforceClientApiRateLimit(
       requestContext,
       apiClient,
@@ -113,7 +115,10 @@ export async function handleApiRead<T>(
 
     return finishRequest(request, requestContext, toApiResponse(result));
   } catch (error) {
-    if (error instanceof ApiAuthenticationError || error instanceof ApiFinanceError) {
+    if (
+      error instanceof ApiAuthenticationError ||
+      error instanceof ApiFinanceError
+    ) {
       return finishRequest(
         request,
         requestContext,
@@ -146,6 +151,7 @@ export async function handleApiWrite<T>(
   try {
     const apiClient = await authenticateApiClient(request, requiredScope);
     requestContext.apiClient = apiClient;
+    requestContext.tenantSlug = await getCurrentTenantSlug();
     const clientLimitResponse = await enforceClientApiRateLimit(
       requestContext,
       apiClient,
@@ -156,7 +162,7 @@ export async function handleApiWrite<T>(
       return finishRequest(request, requestContext, clientLimitResponse);
     }
 
-    const bodyText = await request.text();
+    const bodyText = await readApiJsonBody(request);
     const bodyResult = parseJsonBody(bodyText);
 
     if (!bodyResult.ok) {
@@ -183,70 +189,61 @@ export async function handleApiWrite<T>(
     requestContext.idempotencyKey = idempotencyKey;
 
     const requestHash = hashApiRequest(request, bodyText);
-    const idempotencyResult = await apiIdempotencyService.reserve(
-      apiClient.id,
-      idempotencyKey,
-      requestHash,
-    );
-
-    if (idempotencyResult.type === "cached") {
-      return finishRequest(
-        request,
-        requestContext,
-        NextResponse.json(idempotencyResult.responseBody, {
-          status: idempotencyResult.statusCode,
-        }),
-      );
-    }
-
-    if (idempotencyResult.type === "conflict") {
-      return finishRequest(
-        request,
-        requestContext,
-        apiError(
-          "idempotency_conflict",
-          "This Idempotency-Key was already used for a different request.",
-          409,
-        ),
-      );
-    }
-
-    if (idempotencyResult.type === "in_progress") {
-      return finishRequest(
-        request,
-        requestContext,
-        apiError(
-          "request_in_progress",
-          "A request with this Idempotency-Key is still in progress.",
-          409,
-        ),
-      );
-    }
-
-    let result: ApiRouteResult<T>;
-
+    const transaction = await db.connect();
+    let response: NextResponse;
     try {
-      result = await handler(apiClient, bodyResult.body);
-    } catch (error) {
-      await apiIdempotencyService.abandon(
+      await transaction.query("begin");
+      await transaction.query("set local lock_timeout = '5s'");
+      await transaction.query("set local statement_timeout = '15s'");
+      const idempotencyResult = await apiIdempotencyService.reserve(
         apiClient.id,
         idempotencyKey,
         requestHash,
+        transaction,
       );
+
+      if (idempotencyResult.type === "cached") {
+        response = NextResponse.json(idempotencyResult.responseBody, {
+          status: idempotencyResult.statusCode,
+        });
+      } else if (idempotencyResult.type === "conflict") {
+        response = apiError(
+          "idempotency_conflict",
+          "This Idempotency-Key was already used for a different request.",
+          409,
+        );
+      } else if (idempotencyResult.type === "in_progress") {
+        response = apiError(
+          "request_in_progress",
+          "A request with this Idempotency-Key is still in progress.",
+          409,
+        );
+      } else {
+        const result = await handler(apiClient, bodyResult.body, transaction);
+        await apiIdempotencyService.complete(
+          apiClient.id,
+          idempotencyKey,
+          requestHash,
+          result.status,
+          result.body,
+          transaction,
+        );
+        response = toApiResponse(result);
+      }
+      await transaction.query("commit");
+    } catch (error) {
+      await transaction.query("rollback").catch(() => undefined);
       throw error;
+    } finally {
+      transaction.release();
     }
-
-    await apiIdempotencyService.complete(
-      apiClient.id,
-      idempotencyKey,
-      requestHash,
-      result.status,
-      result.body,
-    );
-
-    return finishRequest(request, requestContext, toApiResponse(result));
+    return finishRequest(request, requestContext, response);
   } catch (error) {
-    if (error instanceof ApiAuthenticationError || error instanceof ApiFinanceError) {
+    if (
+      error instanceof ApiAuthenticationError ||
+      error instanceof ApiFinanceError ||
+      error instanceof ApiRequestError
+    ) {
       return finishRequest(
         request,
         requestContext,
@@ -254,6 +251,20 @@ export async function handleApiWrite<T>(
       );
     }
 
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      ["55P03", "40P01", "40001"].includes(String(error.code))
+    ) {
+      const response = apiError(
+        "request_in_progress",
+        "This request conflicts with another operation. Retry with the same Idempotency-Key.",
+        409,
+      );
+      response.headers.set("Retry-After", "1");
+      return finishRequest(request, requestContext, response);
+    }
     console.error("API write request failed", error);
 
     return finishRequest(
@@ -287,7 +298,10 @@ function parseJsonBody(
     if (!body || typeof body !== "object" || Array.isArray(body)) {
       return {
         ok: false,
-        result: apiErrorResult("invalid_json", "Request body must be a JSON object."),
+        result: apiErrorResult(
+          "invalid_json",
+          "Request body must be a JSON object.",
+        ),
       };
     }
 
@@ -301,6 +315,7 @@ function parseJsonBody(
 }
 
 type RequestContext = {
+  tenantSlug: string | null;
   apiClient: ApiClient | null;
   idempotencyKey: string | null;
   rateLimit: RateLimitResult | null;
@@ -310,6 +325,7 @@ type RequestContext = {
 
 function createRequestContext(): RequestContext {
   return {
+    tenantSlug: null,
     apiClient: null,
     idempotencyKey: null,
     rateLimit: null,
@@ -336,7 +352,7 @@ async function enforceClientApiRateLimit(
 ) {
   const result = await consumeRateLimit({
     includeIpAddress: false,
-    key: `external-api:${requestType}:${apiClient.id}`,
+    key: `external-api:${context.tenantSlug}:${requestType}:${apiClient.id}`,
     maxAttempts:
       requestType === "read"
         ? apiReadRequestsPerMinute
@@ -362,7 +378,12 @@ async function finishRequest(
   response: NextResponse,
 ) {
   response.headers.set("X-Request-Id", context.requestId);
+  response.headers.set("Cache-Control", "private, no-store");
+  response.headers.set("Vary", "Authorization");
   applyRateLimitHeaders(response, context.rateLimit);
+
+  // Unauthenticated traffic must not create unbounded audit writes.
+  if (!context.apiClient) return response;
 
   try {
     await db.query(

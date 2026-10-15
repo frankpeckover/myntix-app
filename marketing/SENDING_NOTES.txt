@@ -42,5 +42,9 @@ CLAIMS
 ------
 The copy describes current product capabilities at a high level and does not
 claim security certifications, guaranteed outcomes, customer testimonials,
-pricing, or specific integration availability. Verify any school-specific
+or specific integration availability. It offers free early access, not a
+permanently free service or a fixed-duration trial. Paid plans may follow, with
+pricing explained and advance notice before free access changes. Do not imply
+automatic billing or promise a specific price or free period unless agreed.
+Verify any school-specific
 integration, hosting, privacy, security, or support answer before promising it.

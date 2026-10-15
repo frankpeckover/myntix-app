@@ -6,7 +6,7 @@ import type { ApiScope } from "@/lib/api/api-types";
 import { AuditService } from "@/domains/audit/audit-service";
 import {
   ApiClientService,
-  getAllowedApiScopes,
+  ApiClientValidationError,
 } from "@/domains/integrations/api-client-service";
 
 type CreateApiClientActionInput = {
@@ -28,12 +28,7 @@ export async function createApiClient(
   const currentUser = await requireSchoolSettingsManager();
 
   try {
-    const result = await apiClientService.createClient({
-      name: input.name,
-      scopes: input.scopes.filter((scope) =>
-        getAllowedApiScopes().includes(scope),
-      ),
-    });
+    const result = await apiClientService.createClient(input);
 
     await auditService.log({
       action: "api_client.created",
@@ -93,13 +88,15 @@ export async function setApiClientActive(
 }
 
 function getApiClientErrorMessage(error: unknown) {
-  if (error instanceof Error && error.message) {
-    if (error.message.includes("duplicate key")) {
-      return "An API key with that name already exists.";
-    }
-
-    return error.message;
+  if (error instanceof ApiClientValidationError) return error.message;
+  if (
+    error &&
+    typeof error === "object" &&
+    "code" in error &&
+    error.code === "23505"
+  ) {
+    return "An API key with that name already exists.";
   }
-
+  console.error("Could not save API key settings", error);
   return "Could not save API key settings.";
 }

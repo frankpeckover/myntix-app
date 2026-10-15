@@ -38,6 +38,14 @@ declare global {
 export async function consumeRateLimit(
   input: RateLimitInput,
 ): Promise<RateLimitResult> {
+  return evaluateRateLimit(input, true);
+}
+
+export async function checkRateLimit(input: RateLimitInput): Promise<RateLimitResult> {
+  return evaluateRateLimit(input, false);
+}
+
+async function evaluateRateLimit(input: RateLimitInput, consume: boolean): Promise<RateLimitResult> {
   const buckets = getRateLimitBuckets();
   const now = Date.now();
   pruneRateLimitBuckets(buckets, now);
@@ -48,17 +56,16 @@ export async function consumeRateLimit(
   const existingBucket = buckets.get(bucketKey);
 
   if (!existingBucket || existingBucket.resetAt <= now) {
-    ensureBucketCapacity(buckets);
     const resetAt = now + input.windowMilliseconds;
-    buckets.set(bucketKey, {
-      attempts: 1,
-      resetAt,
-    });
+    if (consume) {
+      ensureBucketCapacity(buckets);
+      buckets.set(bucketKey, { attempts: 1, resetAt });
+    }
 
     return {
       limit: input.maxAttempts,
       ok: true,
-      remaining: Math.max(0, input.maxAttempts - 1),
+      remaining: Math.max(0, input.maxAttempts - (consume ? 1 : 0)),
       resetAt,
     };
   }
@@ -75,7 +82,7 @@ export async function consumeRateLimit(
     };
   }
 
-  existingBucket.attempts += 1;
+  if (consume) existingBucket.attempts += 1;
   return {
     limit: input.maxAttempts,
     ok: true,

@@ -3,28 +3,33 @@ import type { ReactNode } from "react";
 export type MetricTone = "accent" | "brand" | "neutral" | "success";
 
 type MetricCardProps = {
+  description?: string;
   icon?: ReactNode;
   label: string;
   tone?: MetricTone;
   value: string;
+  valueLabel?: string;
   variant?: "centered" | "value-first";
 };
 
 export function MetricCard({
+  description,
   icon,
   label,
   tone = "neutral",
   value,
+  valueLabel,
   variant = "value-first",
 }: MetricCardProps) {
   if (variant === "centered") {
     return (
       <article className="metric-card theme-card flex min-h-24 flex-col p-4">
         <MetricCardHeader icon={icon} label={label} tone={tone} />
-        <div className="flex flex-1 items-center justify-center text-center">
-          <p className="text-3xl font-semibold tracking-normal text-foreground">
+        <div className="flex flex-1 flex-col items-center justify-center text-center">
+          <p aria-label={valueLabel} title={valueLabel} className="text-3xl font-semibold tracking-normal text-foreground">
             {value}
           </p>
+          {description && <p className="mt-1.5 text-xs text-text-muted">{description}</p>}
         </div>
       </article>
     );
@@ -46,9 +51,10 @@ export function MetricCard({
       </div>
       <div className="mt-auto pt-3 sm:pt-5">
         <div className="min-w-0">
-          <p className="break-words text-2xl font-semibold leading-none text-foreground sm:text-[1.75rem]">
+          <p aria-label={valueLabel} title={valueLabel} className="break-words text-2xl font-semibold leading-none text-foreground sm:text-[1.75rem]">
             {value}
           </p>
+          {description && <p className="mt-1.5 text-xs text-text-muted">{description}</p>}
         </div>
       </div>
     </article>

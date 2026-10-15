@@ -1,7 +1,6 @@
 import { db } from "@/lib/database/db";
-import { getDatabaseErrorMessage } from "@/lib/database/database-error-message";
-import { appConfig } from "@/lib/config/app-config";
 import { verifyPassword } from "@/lib/auth/passwords";
+import { validateLoginInput } from "@/lib/auth/login-input";
 import type { Role, SessionUser } from "@/lib/auth/session";
 import { AuditService } from "@/domains/audit/audit-service";
 
@@ -18,6 +17,7 @@ type UserRow = {
 };
 
 const auditService = new AuditService();
+const dummyPasswordHash = `scrypt:v1:${"00".repeat(16)}:${"00".repeat(64)}`;
 
 export type LoginResult =
   | {
@@ -31,12 +31,11 @@ export type LoginResult =
 
 export class AuthService {
   async login(username: string, password: string): Promise<LoginResult> {
-    const normalizedUsername = username.trim().toLowerCase();
-
-    if (!normalizedUsername || !password) {
+    const input = validateLoginInput(username, password);
+    if (!input) {
       return {
         ok: false,
-        message: "Enter your username and password.",
+        message: "Username or password is incorrect.",
       };
     }
 
@@ -60,15 +59,17 @@ export class AuthService {
             and roles.is_active = true
           limit 1
         `,
-        [normalizedUsername],
+        [input.username],
       );
 
       const user = result.rows[0];
 
-      if (!user || !(await verifyPassword(password, user.password_hash))) {
+      // Unknown and disabled accounts still perform the expensive password comparison.
+      const passwordMatches = await verifyPassword(input.password, user?.password_hash ?? dummyPasswordHash);
+      if (!user || !passwordMatches) {
         await logAuthEvent({
           action: "auth.login_failed",
-          details: { username: normalizedUsername },
+          details: { username: input.username },
         });
 
         return {
@@ -106,10 +107,7 @@ export class AuthService {
 
       return {
         ok: false,
-        message: getDatabaseErrorMessage(
-          error,
-          `Could not connect to the ${appConfig.name} database. Check the PLATFORM_POSTGRES settings and organisation lookup row.`,
-        ),
+        message: "Sign-in is temporarily unavailable. Please try again.",
       };
     }
   }

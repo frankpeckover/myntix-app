@@ -1,5 +1,5 @@
 Subject: A simple way to recognise student effort at {{SCHOOL_NAME}}
-Preview: A quick look at Myntix, a school-managed student credits and rewards platform.
+Preview: Free early access to Myntix, a school-managed student credits and rewards platform.
 
 Hi {{NAME}},
 
@@ -8,6 +8,8 @@ I’m reaching out to introduce Myntix, a school-managed credits and rewards pla
 Staff can issue or remove credits for individual students or groups, with a recorded reason. Students can follow their balance and activity, then use credits to request rewards chosen by the school. Administrators manage the people, groups, reward catalogue, and organisation rules.
 
 The idea is to keep recognition quick for staff, give students a clear view of their progress, and let each school decide what its credits and rewards mean.
+
+Myntix is currently free to use through our early-access programme. We’re inviting schools to try it and help shape its development through feedback. Paid plans may be introduced later, with pricing explained and advance notice before any change to your school’s free access.
 
 Would you be open to a short, no-obligation walkthrough? I’d be glad to show you the staff and student experience and hear how it might fit {{SCHOOL_NAME}}.
 

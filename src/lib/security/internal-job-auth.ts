@@ -30,8 +30,8 @@ export function authenticateInternalJob(
 }
 
 function getBearerToken(value: string | null) {
-  const prefix = "Bearer ";
-  return value?.startsWith(prefix) ? value.slice(prefix.length).trim() : "";
+  if (!value || value.length > 512) return "";
+  return /^Bearer\s+(\S+)$/i.exec(value)?.[1] ?? "";
 }
 
 function secretsMatch(left: string, right: string) {

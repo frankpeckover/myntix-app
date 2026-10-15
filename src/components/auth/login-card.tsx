@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import {
   getPublicSchoolInfo,
   listEnabledSsoProviders,
@@ -17,6 +17,8 @@ import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import { SchoolLogo } from "@/components/ui/school-logo";
 import { useDialogFocus } from "@/components/ui/use-dialog-focus";
 import type { SchoolInfo } from "@/domains/organisation/school-service";
+import { maximumLoginIdentifierLength } from "@/lib/auth/login-input";
+import { maximumPasswordLength } from "@/lib/security/password-policy";
 
 type LoginCardProps = {
   initialMessage?: string | null;
@@ -44,6 +46,7 @@ export function LoginCard({
     useState<LoginMessageTone>(initialMessageTone);
   const [schoolInfo, setSchoolInfo] = useState<SchoolInfo | null>(null);
   const [ssoProviders, setSsoProviders] = useState<PublicSsoProvider[]>([]);
+  const submittingRef = useRef(false);
 
   const schoolName = schoolInfo?.name.trim() ?? "";
 
@@ -130,20 +133,27 @@ export function LoginCard({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setIsSubmitting(true);
-
-    const result = await loginUser(username, password);
-
-    if (!result.ok) {
-      setMessage(null);
-      setError(result.message);
-      setIsSubmitting(false);
-      return;
-    }
-
     setError(null);
-    setIsSubmitting(false);
-    onLogin(result.user);
+    try {
+      const result = await loginUser(username, password);
+      if (!result.ok) {
+        setMessage(null);
+        setError(result.message);
+        return;
+      }
+      setPassword("");
+      setIsPasswordVisible(false);
+      onLogin(result.user);
+    } catch {
+      setMessage(null);
+      setError("Sign-in is temporarily unavailable. Please try again.");
+    } finally {
+      submittingRef.current = false;
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -186,11 +196,17 @@ export function LoginCard({
                 <input
                   aria-label="Username"
                   autoComplete="username"
+                  autoCapitalize="none"
+                  autoCorrect="off"
                   className="w-full border-0 bg-transparent py-2.5 pl-10 pr-3 text-sm outline-none transition placeholder:text-text-muted focus:ring-0"
                   disabled={isSubmitting}
                   id="username"
+                  maxLength={maximumLoginIdentifierLength}
+                  name="username"
                   onChange={(event) => setUsername(event.target.value)}
                   placeholder="Username"
+                  required
+                  spellCheck={false}
                   type="text"
                   value={username}
                 />
@@ -204,8 +220,11 @@ export function LoginCard({
                   className="w-full border-0 bg-transparent py-2.5 pl-10 pr-11 text-sm outline-none transition placeholder:text-text-muted focus:ring-0"
                   disabled={isSubmitting}
                   id="password"
+                  maxLength={maximumPasswordLength}
+                  name="password"
                   onChange={(event) => setPassword(event.target.value)}
                   placeholder="Password"
+                  required
                   type={isPasswordVisible ? "text" : "password"}
                   value={password}
                 />
@@ -420,24 +439,30 @@ function ForgotPasswordModal({ onClose }: { onClose: () => void }) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const dialogRef = useDialogFocus({ onEscape: onClose });
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setIsSubmitting(true);
     setMessage(null);
     setError(null);
 
-    const result = await requestPasswordReset(identifier);
-
-    if (!result.ok) {
-      setError(result.message);
+    try {
+      const result = await requestPasswordReset(identifier);
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      setMessage(result.message);
+    } catch {
+      setError("Could not request password reset. Please try again.");
+    } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
-      return;
     }
-
-    setMessage(result.message);
-    setIsSubmitting(false);
   }
 
   return (
@@ -470,11 +495,16 @@ function ForgotPasswordModal({ onClose }: { onClose: () => void }) {
             </label>
             <input
               autoComplete="username"
+              autoCapitalize="none"
+              autoCorrect="off"
               className="mt-2 w-full rounded-md border border-border bg-surface px-3 py-3 text-sm outline-none ring-brand transition focus:ring-2"
               disabled={isSubmitting}
               id="resetIdentifier"
+              maxLength={maximumLoginIdentifierLength}
               onChange={(event) => setIdentifier(event.target.value)}
               placeholder="Username or email"
+              required
+              spellCheck={false}
               value={identifier}
             />
           </div>
