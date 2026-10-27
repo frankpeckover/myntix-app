@@ -44,6 +44,7 @@ import { LoadFailure } from "@/components/ui/load-failure";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { MetricCard } from "@/components/ui/metric-card";
 import { SearchInput } from "@/components/ui/search-input";
+import { minimumSearchCharacters, searchDebounceMilliseconds } from "@/lib/presentation/search";
 import {
   getCreditAnalyticsSummary,
   searchCreditAnalyticsScopes,
@@ -76,7 +77,7 @@ const analyticsWindowOptions: AnalyticsWindowOption[] = [
   { days: 90, label: "Last 90 days" },
   { days: 365, label: "Last 365 days" },
 ];
-const scopeSearchDebounceMs = 250;
+const scopeSearchDebounceMs = searchDebounceMilliseconds;
 
 export function CreditAnalyticsPanel({
   currencyName,
@@ -141,7 +142,7 @@ export function CreditAnalyticsPanel({
   useEffect(() => {
     let isMounted = true;
 
-    if (scopeQuery.trim().length < 2) {
+    if (scopeQuery.trim().length < minimumSearchCharacters) {
       const timeoutId = window.setTimeout(() => {
         if (isMounted) {
           setScopeResults([]);
@@ -634,6 +635,7 @@ function AnalyticsScopePicker({
   return (
     <div className="relative">
       <SearchInput
+        debounceMilliseconds={0}
         aria-label="Search analytics scope"
         onChange={onScopeQueryChange}
         placeholder="Search a student or group"
@@ -657,7 +659,7 @@ function AnalyticsScopePicker({
         </div>
       )}
 
-      {query.trim().length >= 2 && results.length > 0 && (
+      {query.trim().length >= minimumSearchCharacters && results.length > 0 && (
         <div className="motion-pop absolute left-0 right-0 top-12 z-30 overflow-hidden rounded-md border border-border bg-surface shadow-lg">
           {results.map((scope) => (
             <button

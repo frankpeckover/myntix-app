@@ -7,6 +7,7 @@ const immutableAssetCacheHeader = {
 
 const nextConfig: NextConfig = {
   compress: true,
+  devIndicators: false,
   logging: {
     serverFunctions: false,
     incomingRequests: {

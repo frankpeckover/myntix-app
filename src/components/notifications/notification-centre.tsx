@@ -108,7 +108,7 @@ export function NotificationCentre({ onNavigate }: NotificationCentreProps) {
         aria-expanded={isOpen}
         aria-haspopup="dialog"
         aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
-        className="relative inline-flex h-9 w-9 items-center justify-center rounded-md border-0 bg-transparent text-text-muted transition-colors hover:text-brand-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        className="relative inline-flex h-11 w-11 items-center justify-center rounded-md border-0 bg-transparent text-text-muted transition-colors hover:text-brand-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand lg:h-9 lg:w-9"
         onClick={() => setIsOpen((current) => !current)}
         type="button"
       >
@@ -123,7 +123,7 @@ export function NotificationCentre({ onNavigate }: NotificationCentreProps) {
       {isOpen && (
         <section
           aria-label="Notifications"
-          className="motion-pop fixed inset-x-3 top-16 z-[220] max-h-[min(32rem,calc(100dvh-5rem))] overflow-hidden rounded-md border border-border bg-surface shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-11 sm:w-96"
+          className="motion-pop fixed inset-x-3 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-[220] max-h-[min(32rem,calc(100dvh-6rem))] overflow-hidden rounded-md border border-border bg-surface shadow-xl lg:absolute lg:inset-x-auto lg:bottom-auto lg:right-0 lg:top-11 lg:w-96"
           role="dialog"
         >
           <div className="flex items-center justify-between border-b border-border-subtle px-4 py-3">

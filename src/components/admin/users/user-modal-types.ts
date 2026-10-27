@@ -29,11 +29,13 @@ export const emptyUserForm: UserFormState = {
   username: "",
   firstName: "",
   preferredName: "",
+  yearLevel: null,
   lastName: "",
   email: "",
   profileImageUrl: "",
   cardNumber: "",
   role: "student" satisfies Role,
   password: "",
+  confirmPassword: "",
   isActive: true,
 };

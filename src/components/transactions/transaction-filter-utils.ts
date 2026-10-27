@@ -1,4 +1,5 @@
 import type { TransactionFilters } from "@/components/transactions/transaction-log-types";
+import { matchesTextSearch as includesFilter } from "@/lib/presentation/search";
 import type { TransactionLogItem } from "@/domains/ledger/transaction-service";
 
 export function matchesTransactionFilters(
@@ -106,8 +107,4 @@ function parseAmountFilter(value: string) {
   }
 
   return Math.abs(parsedValue);
-}
-
-function includesFilter(value: string, filter: string) {
-  return value.toLowerCase().includes(filter.trim().toLowerCase());
 }

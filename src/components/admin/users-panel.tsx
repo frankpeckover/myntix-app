@@ -29,10 +29,7 @@ import {
   UsersIcon,
   XIcon,
 } from "@/components/ui/icons";
-import {
-  ListPagination,
-  usePagedList,
-} from "@/components/ui/list-pagination";
+import { ListPagination, usePagedList } from "@/components/ui/list-pagination";
 import { TableActionMenu } from "@/components/ui/table-action-menu";
 import { TableToolbar } from "@/components/ui/table-toolbar";
 import { updateSelectedIds } from "@/components/ui/selection-utils";
@@ -40,9 +37,15 @@ import { showToast } from "@/components/ui/toast-viewport";
 import { downloadCsv } from "@/lib/csv/client";
 import { formatDateTime } from "@/lib/presentation/formatters";
 import type { UserListItem } from "@/domains/users/user-service";
-import { sortTableItems, type TableSortDirection } from "@/components/ui/table-sorting";
+import {
+  sortTableItems,
+  type TableSortDirection,
+} from "@/components/ui/table-sorting";
 import type { UserFormState } from "@/components/admin/users/user-modal-types";
-import { archiveBulkActionsForFilter, type ArchiveStatusFilter } from "@/components/ui/archive-status-filter";
+import {
+  archiveBulkActionsForFilter,
+  type ArchiveStatusFilter,
+} from "@/components/ui/archive-status-filter";
 
 type AdminUsersPanelProps = {
   schoolName: string;
@@ -51,8 +54,12 @@ type AdminUsersPanelProps = {
 export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
   const [users, setUsers] = useState<UserListItem[]>([]);
   const [filters, setFilters] = useState<UserFilters>(emptyFilters);
-  const [tableSort, setTableSort] = useState<{ column: string; direction: TableSortDirection } | null>(null);
-  const [userStatusFilter, setUserStatusFilter] = useState<ArchiveStatusFilter>("active");
+  const [tableSort, setTableSort] = useState<{
+    column: string;
+    direction: TableSortDirection;
+  } | null>(null);
+  const [userStatusFilter, setUserStatusFilter] =
+    useState<ArchiveStatusFilter>("active");
   const [duplicatingUserForm, setDuplicatingUserForm] =
     useState<Partial<UserFormState> | null>(null);
   const [editingUser, setEditingUser] = useState<UserListItem | null>(null);
@@ -131,6 +138,7 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
     setEditingUser(null);
     setDuplicatingUserForm({
       firstName: user.firstName,
+      yearLevel: user.yearLevel,
       lastName: user.lastName,
       profileImageUrl: user.profileImageUrl,
       cardNumber: user.cardNumber,
@@ -147,9 +155,12 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
     }
   }
 
-  const handleSetUserActive = useCallback((user: UserListItem, isActive: boolean) => {
-    setPendingUserStatusChange({ isActive, user });
-  }, []);
+  const handleSetUserActive = useCallback(
+    (user: UserListItem, isActive: boolean) => {
+      setPendingUserStatusChange({ isActive, user });
+    },
+    [],
+  );
 
   function handleUserSelectionChange(userId: string, isSelected: boolean) {
     setSelectedUserIds((currentUserIds) =>
@@ -258,17 +269,25 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
     [selectedUserIds],
   );
   const sortedUsers = useMemo(
-    () => sortTableItems(filteredUsers, tableSort, (user, column) => {
-      switch (column) {
-        case "name": return user.displayName;
-        case "username": return user.username;
-        case "email": return user.email;
-        case "role": return user.role;
-        case "activity": return user.lastActivityAt;
-        case "status": return user.isActive ? "Active" : "Archived";
-        default: return "";
-      }
-    }),
+    () =>
+      sortTableItems(filteredUsers, tableSort, (user, column) => {
+        switch (column) {
+          case "name":
+            return user.displayName;
+          case "username":
+            return user.username;
+          case "email":
+            return user.email;
+          case "role":
+            return user.role;
+          case "activity":
+            return user.lastActivityAt;
+          case "status":
+            return user.isActive ? "Active" : "Archived";
+          default:
+            return "";
+        }
+      }),
     [filteredUsers, tableSort],
   );
   const {
@@ -307,7 +326,9 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
               onEdit={setEditingUser}
               onPasswordReset={setResettingPasswordUser}
               onStatusFilterChange={handleUserStatusFilterChange}
-              onSortChange={(column, direction) => setTableSort(direction ? { column, direction } : null)}
+              onSortChange={(column, direction) =>
+                setTableSort(direction ? { column, direction } : null)
+              }
               tableSort={tableSort}
               onUserSelectionChange={handleUserSelectionChange}
               onUserActiveChange={handleSetUserActive}
@@ -352,7 +373,9 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
                       totalCount={sortedUsers.length}
                     />
                     <BulkSelectionControls
-                      actions={archiveBulkActionsForFilter(userStatusFilter).map((action) =>
+                      actions={archiveBulkActionsForFilter(
+                        userStatusFilter,
+                      ).map((action) =>
                         action === "restore"
                           ? {
                               icon: <CheckIcon />,

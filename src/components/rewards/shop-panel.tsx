@@ -1,5 +1,10 @@
 "use client";
 
+import { PageResultCount } from "@/components/ui/page-result-count";
+
+import { MobileTableToolbar } from "@/components/ui/mobile-table-toolbar";
+import { matchesTextSearch as includesFilter } from "@/lib/presentation/search";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
@@ -16,12 +21,13 @@ import type { SessionUser } from "@/lib/auth/session";
 import type { ShopItem } from "@/domains/rewards/shop-service";
 import { ShopImportModal } from "@/components/rewards/shop-import-modal";
 import { ShopItemCard } from "@/components/rewards/shop-item-card";
+import { MobileRewardRow } from "@/components/rewards/mobile/reward-row";
+import { MobileListRow } from "@/components/ui/mobile-list-row";
+import { useDashboardLayout } from "@/components/layout/use-dashboard-layout";
 import { ShopItemDetailsModal } from "@/components/rewards/shop-item-details-modal";
 import { ShopItemModal } from "@/components/rewards/shop-item-modal";
 import {
   BulkSelectionControls,
-  MobileSelectionShell,
-  RowSelectionCheckbox,
 } from "@/components/ui/bulk-selection-controls";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FixedNotification } from "@/components/ui/fixed-notification";
@@ -616,9 +622,9 @@ function ShopManagementList({
       }
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm font-semibold text-text-muted">
+        <PageResultCount>
           Showing {items.length} of {visibleItemCount} rewards.
-        </p>
+        </PageResultCount>
         <BulkSelectionControls
           actions={archiveBulkActionsForFilter(filters.statusFilter).map((action) =>
             action === "restore"
@@ -680,9 +686,104 @@ function ShopManagementList({
     );
   }
 
+  const tableHeader = (
+    <thead>
+      <tr className="border-b border-border-subtle text-text-muted">
+        <DataTableSelectionHeader
+          checked={areAllVisibleItemsSelected}
+          label={
+            areAllVisibleItemsSelected
+              ? "Clear selected rewards"
+              : "Select all rewards"
+          }
+          onChange={onVisibleItemsSelectionChange}
+        />
+        <th scope="col" className="py-2 pr-4 font-semibold">
+          <TableHeaderFilter
+            isActive={Boolean(filters.name)}
+            label="Reward"
+            onClear={() => onSearchChange("name", "")}
+            onSortDirectionChange={(direction) => onSortChange("name", direction)}
+            sortDirection={tableSort?.column === "name" ? tableSort.direction : null}
+          >
+            <TableHeaderFilterInput
+              label="Search items"
+              onChange={(value) => onSearchChange("name", value)}
+              value={filters.name}
+            />
+          </TableHeaderFilter>
+        </th>
+        <th scope="col" className="py-2 pr-4 font-semibold">
+          <TableHeaderFilter
+            isActive={Boolean(filters.description)}
+            label="Description"
+            onClear={() => onSearchChange("description", "")}
+            onSortDirectionChange={(direction) => onSortChange("description", direction)}
+            sortDirection={tableSort?.column === "description" ? tableSort.direction : null}
+          >
+            <TableHeaderFilterInput
+              label="Search descriptions"
+              onChange={(value) => onSearchChange("description", value)}
+              value={filters.description}
+            />
+          </TableHeaderFilter>
+        </th>
+        <th scope="col" className="py-2 pr-4 text-right font-semibold">
+          <TableHeaderFilter
+            isActive={Boolean(filters.priceMin || filters.priceMax)}
+            label="Cost"
+            onClear={() => {
+              onPriceMaxChange("");
+              onPriceMinChange("");
+            }}
+            onSortDirectionChange={(direction) => onSortChange("cost", direction)}
+            sortDirection={tableSort?.column === "cost" ? tableSort.direction : null}
+          >
+            <div className="grid gap-3">
+              <TableHeaderFilterInput
+                label="Minimum"
+                onChange={onPriceMinChange}
+                type="number"
+                value={filters.priceMin}
+              />
+              <TableHeaderFilterInput
+                label="Maximum"
+                onChange={onPriceMaxChange}
+                type="number"
+                value={filters.priceMax}
+              />
+            </div>
+          </TableHeaderFilter>
+        </th>
+        <th scope="col" className="py-2 pr-4 text-right font-semibold">
+          <TableHeaderFilter label="Quantity" onSortDirectionChange={(direction) => onSortChange("quantity", direction)} sortDirection={tableSort?.column === "quantity" ? tableSort.direction : null} />
+        </th>
+        <th scope="col" className="py-2 pr-4 font-semibold">
+          <TableHeaderFilter
+            isActive={filters.statusFilter !== "active"}
+            label="Status"
+            onClear={() => onStatusFilterChange("active")}
+            onSortDirectionChange={(direction) => onSortChange("status", direction)}
+            sortDirection={tableSort?.column === "status" ? tableSort.direction : null}
+          >
+            <TableHeaderFilterSelect
+              label="Status"
+              onChange={(value) => onStatusFilterChange(value as ArchiveStatusFilter)}
+              options={archiveStatusFilterOptions}
+              value={filters.statusFilter}
+            />
+          </TableHeaderFilter>
+        </th>
+        <th scope="col" className="py-2 text-right font-semibold">
+          <span className="sr-only">Actions</span>
+        </th>
+      </tr>
+    </thead>
+  );
+
   return (
     <>
-      {tableLayout !== "desktop" && <div className="mb-3 md:hidden">{tableToolbar}</div>}
+      <MobileTableToolbar label="Rewards" toolbar={tableToolbar} header={tableHeader} />
       {tableLayout !== "mobile" && (
         <DataTable ariaLabel="Rewards" responsive="desktop" toolbar={tableToolbar}>
           <colgroup>
@@ -694,98 +795,7 @@ function ShopManagementList({
             <col className="w-24" />
             <col className="table-action-column" />
           </colgroup>
-          <thead>
-            <tr className="border-b border-border-subtle text-text-muted">
-              <DataTableSelectionHeader
-                checked={areAllVisibleItemsSelected}
-                label={
-                  areAllVisibleItemsSelected
-                    ? "Clear selected rewards"
-                    : "Select all rewards"
-                }
-                onChange={onVisibleItemsSelectionChange}
-              />
-              <th scope="col" className="py-2 pr-4 font-semibold">
-                <TableHeaderFilter
-                  isActive={Boolean(filters.name)}
-                  label="Reward"
-                  onClear={() => onSearchChange("name", "")}
-                  onSortDirectionChange={(direction) => onSortChange("name", direction)}
-                  sortDirection={tableSort?.column === "name" ? tableSort.direction : null}
-                >
-                  <TableHeaderFilterInput
-                    label="Search items"
-                    onChange={(value) => onSearchChange("name", value)}
-                    value={filters.name}
-                  />
-                </TableHeaderFilter>
-              </th>
-              <th scope="col" className="py-2 pr-4 font-semibold">
-                <TableHeaderFilter
-                  isActive={Boolean(filters.description)}
-                  label="Description"
-                  onClear={() => onSearchChange("description", "")}
-                  onSortDirectionChange={(direction) => onSortChange("description", direction)}
-                  sortDirection={tableSort?.column === "description" ? tableSort.direction : null}
-                >
-                  <TableHeaderFilterInput
-                    label="Search descriptions"
-                    onChange={(value) => onSearchChange("description", value)}
-                    value={filters.description}
-                  />
-                </TableHeaderFilter>
-              </th>
-              <th scope="col" className="py-2 pr-4 text-right font-semibold">
-                <TableHeaderFilter
-                  isActive={Boolean(filters.priceMin || filters.priceMax)}
-                  label="Cost"
-                  onClear={() => {
-                    onPriceMaxChange("");
-                    onPriceMinChange("");
-                  }}
-                  onSortDirectionChange={(direction) => onSortChange("cost", direction)}
-                  sortDirection={tableSort?.column === "cost" ? tableSort.direction : null}
-                >
-                  <div className="grid gap-3">
-                    <TableHeaderFilterInput
-                      label="Minimum"
-                      onChange={onPriceMinChange}
-                      type="number"
-                      value={filters.priceMin}
-                    />
-                    <TableHeaderFilterInput
-                      label="Maximum"
-                      onChange={onPriceMaxChange}
-                      type="number"
-                      value={filters.priceMax}
-                    />
-                  </div>
-                </TableHeaderFilter>
-              </th>
-              <th scope="col" className="py-2 pr-4 text-right font-semibold">
-                <TableHeaderFilter label="Quantity" onSortDirectionChange={(direction) => onSortChange("quantity", direction)} sortDirection={tableSort?.column === "quantity" ? tableSort.direction : null} />
-              </th>
-              <th scope="col" className="py-2 pr-4 font-semibold">
-                <TableHeaderFilter
-                  isActive={filters.statusFilter !== "active"}
-                  label="Status"
-                  onClear={() => onStatusFilterChange("active")}
-                  onSortDirectionChange={(direction) => onSortChange("status", direction)}
-                  sortDirection={tableSort?.column === "status" ? tableSort.direction : null}
-                >
-                  <TableHeaderFilterSelect
-                    label="Status"
-                    onChange={(value) => onStatusFilterChange(value as ArchiveStatusFilter)}
-                    options={archiveStatusFilterOptions}
-                    value={filters.statusFilter}
-                  />
-                </TableHeaderFilter>
-              </th>
-              <th scope="col" className="py-2 text-right font-semibold">
-                <span className="sr-only">Actions</span>
-              </th>
-            </tr>
-          </thead>
+          {tableHeader}
           <tbody>
             {items.map((item) => (
               <tr className="border-b border-border-subtle" key={item.id}>
@@ -893,43 +903,18 @@ function ShopManagementCard({
   selected: boolean;
 }) {
   return (
-    <article className="min-w-0 max-w-full overflow-hidden rounded-md bg-surface p-2.5 sm:p-3">
-      <MobileSelectionShell
-        checkbox={
-          <RowSelectionCheckbox
-            checked={selected}
-            label={`Select ${item.name}`}
-            onChange={(isSelected) => onSelectionChange(item.id, isSelected)}
-          />
-        }
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 flex-1 items-center gap-3">
-            <ShopTableImage item={item} />
-            <div className="min-w-0">
-              <h3 className="truncate text-sm font-semibold">{item.name}</h3>
-              <p className="mt-1 truncate text-sm text-text-muted">
-                {item.description || "No description"}
-              </p>
-            </div>
-          </div>
-          <ShopManagementActions
-            item={item}
-            onDuplicate={onDuplicate}
-            onEdit={onEdit}
-            onStatusChange={onStatusChange}
-            onView={onView}
-          />
-        </div>
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-text-muted sm:mt-3 sm:gap-3">
-          <span>
-            {formatAmount(item.price)} {currencyName}
-          </span>
-          <span>{getItemAvailabilityLabel(item)}</span>
-          <ShopItemStatusBadge item={item} />
-        </div>
-      </MobileSelectionShell>
-    </article>
+    <MobileRewardRow
+      currencyName={currencyName} item={item} onView={onView} selected={selected}
+      onSelectionChange={(checked) => onSelectionChange(item.id, checked)}
+      managementActions={<TableActionMenu touchTarget label={`Open actions for ${item.name}`} items={[
+        { icon: <EyeIcon />, label: "View", onSelect: () => onView(item) },
+        { icon: <PencilIcon />, label: "Edit", onSelect: () => onEdit(item) },
+        { icon: <CopyIcon />, label: "Duplicate", onSelect: () => onDuplicate(item) },
+        { icon: item.isActive ? <TrashIcon /> : <CheckIcon />,
+          label: item.isActive ? "Archive" : "Restore", onSelect: () => onStatusChange(item),
+          tone: item.isActive ? "danger" : "success" },
+      ]} />}
+    />
   );
 }
 
@@ -956,6 +941,22 @@ function StudentShopGrid({
   requestedItemIds: string[];
   visibleItemCount: number;
 }) {
+  const layout = useDashboardLayout();
+  if (layout === null || (layout === "mobile" && isLoading)) {
+    return <LoadingSkeleton className="px-0" lines={4} />;
+  }
+  if (layout === "mobile") {
+    return (
+      <div className="mt-3 space-y-2" data-rewards-layout="mobile">
+        {pageItems.map((item) => (
+          <MobileRewardRow key={item.id} item={item} currencyName={currencyName}
+            onView={onView} onPurchase={onPurchase} requested={requestedItemIds.includes(item.id)} />
+        ))}
+        {visibleItemCount === 0 && <ShopEmptyState isManagementView={false} totalItemCount={items.length} />}
+      </div>
+    );
+  }
+
   return (
     <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {isLoading && (
@@ -996,6 +997,20 @@ function StudentShopWallet({
   balance: number | null;
   currencyName: string;
 }) {
+  const layout = useDashboardLayout();
+  if (layout === "mobile") {
+    return (
+      <MobileListRow leading={<WalletIcon className="h-5 w-5 text-brand" />}
+        value={<span className="font-number text-lg font-semibold text-text-control">
+          {balance === null ? <span role="status">...</span> : formatAmount(balance)}
+          <span className="ml-1 text-xs font-normal text-text-muted">{currencyName}</span>
+        </span>}>
+        <p className="text-sm font-semibold text-text-control">My credits</p>
+      </MobileListRow>
+    );
+  }
+  if (layout === null) return <LoadingSkeleton lines={1} />;
+
   const walletLabel =
     balance === null
       ? "Loading wallet..."
@@ -1135,9 +1150,6 @@ function matchesShopFilters(item: ShopItem, filters: ShopFiltersState) {
   );
 }
 
-function includesFilter(value: string, filter: string) {
-  return value.toLowerCase().includes(filter.trim().toLowerCase());
-}
 
 function matchesPriceFilter(price: number, minimum: string, maximum: string) {
   const minimumPrice = parsePriceFilter(minimum);
@@ -1198,10 +1210,4 @@ function downloadShopItems(items: ShopItem[]) {
 
 function formatItemQuantity(item: ShopItem) {
   return item.isQuantityUnlimited ? "Unlimited" : String(item.quantity);
-}
-
-function getItemAvailabilityLabel(item: ShopItem) {
-  return item.isQuantityUnlimited
-    ? "Unlimited"
-    : `${formatItemQuantity(item)} available`;
 }

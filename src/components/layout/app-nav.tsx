@@ -26,6 +26,7 @@ import {
 import { AppBrand } from "@/components/ui/app-brand";
 import { SchoolLogo } from "@/components/ui/school-logo";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { useUserPreferences } from "@/components/preferences/user-preferences-provider";
 
 export type { NavigationItem } from "@/lib/navigation/dashboard-navigation";
 
@@ -161,14 +162,26 @@ export function HeaderNavMenu({
   );
 }
 
-export function DesktopSideNav({
+export function DesktopSideNav(props: HeaderNavMenuProps) {
+  const { preferences } = useUserPreferences();
+  return (
+    <DesktopSideNavContent
+      key={preferences.navigationDefault}
+      {...props}
+      initiallyExpanded={preferences.navigationDefault === "expanded"}
+    />
+  );
+}
+
+function DesktopSideNavContent({
   activeItem,
   onItemChange,
   role,
   schoolLogoUrl,
   schoolName,
-}: HeaderNavMenuProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  initiallyExpanded,
+}: HeaderNavMenuProps & { initiallyExpanded: boolean }) {
+  const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
   const navigationSections = getNavigationSections(role);
 
   function handleItemChange(item: NavigationItem) {
@@ -356,11 +369,11 @@ export function DesktopAccountMenu({
   }
 
   return (
-    <div className="relative hidden lg:block" ref={menuRef}>
+    <div className="relative" ref={menuRef}>
       <button
         aria-expanded={isAccountMenuOpen}
         aria-label="Open account menu"
-        className={`flex h-10 items-center gap-2 rounded-md px-2 text-xs font-light transition ${
+        className={`flex h-11 w-11 items-center justify-center rounded-md text-xs font-light transition lg:h-10 lg:w-auto lg:gap-2 lg:px-2 ${
           isAccountMenuOpen
             ? "bg-brand text-white shadow-sm"
             : "text-text-control hover:bg-brand-soft hover:text-brand-ink"
@@ -430,7 +443,7 @@ function NavMenuPanel({
 }) {
   return (
     <div
-      className={`motion-pop fixed inset-x-3 top-16 z-[110] max-h-[calc(100dvh-5rem)] overflow-y-auto border border-border bg-surface p-2 shadow-lg lg:absolute lg:inset-x-auto lg:top-auto lg:w-64 ${
+      className={`motion-pop fixed inset-x-3 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-[110] max-h-[calc(100dvh-6rem)] overflow-y-auto rounded-lg border border-border bg-surface p-2 shadow-lg lg:absolute lg:inset-x-auto lg:bottom-auto lg:top-auto lg:w-64 ${
         align === "left" ? "lg:left-0" : "lg:right-0"
       } ${placement === "up" ? "lg:bottom-12" : "lg:top-12"}`}
     >

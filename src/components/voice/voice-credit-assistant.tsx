@@ -405,7 +405,7 @@ export function VoiceCreditAssistant({
           }
           aria-label={isListening ? "Stop listening" : "Start voice credit command"}
           aria-pressed={isListening}
-          className={`inline-flex h-9 w-9 items-center justify-center rounded-md border-0 bg-transparent text-text-muted transition-colors hover:text-brand-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50 ${
+          className={`inline-flex h-11 w-11 items-center justify-center rounded-md border-0 bg-transparent text-text-muted transition-colors hover:text-brand-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50 lg:h-9 lg:w-9 ${
             isListening
               ? "animate-pulse text-danger"
               : ""

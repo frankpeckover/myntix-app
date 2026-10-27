@@ -6,6 +6,8 @@ import type { CurrentClass } from "@/domains/timetable/timetable-service";
 import { ClockIcon, CoinStackIcon, ShoppingCartIcon, UsersIcon } from "@/components/ui/icons";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { useCurrentClassRefresh } from "@/components/teacher/use-current-class-refresh";
+import { useDashboardLayout } from "@/components/layout/use-dashboard-layout";
+import { MobileTeacherHome } from "@/components/teacher/mobile/home-layout";
 
 type TeacherHomePanelProps = {
   onNavigateToCredits: () => void;
@@ -20,6 +22,7 @@ export function TeacherHomePanel({
   onNavigateToTimetable,
   onOpenCurrentClass,
 }: TeacherHomePanelProps) {
+  const layout = useDashboardLayout();
   const [currentClass, setCurrentClass] = useState<CurrentClass | null>(null);
   const [pendingRequests, setPendingRequests] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,9 +63,25 @@ export function TeacherHomePanel({
     return () => { isMounted = false; };
   }, []);
 
+  if (layout === "mobile" && !isLoading) {
+    return (
+      <MobileTeacherHome
+        currentClass={currentClass}
+        classTimeLabel={currentClass
+          ? `${formatClassTime(currentClass.startTime)}–${formatClassTime(currentClass.endTime)}`
+          : ""}
+        pendingRequests={pendingRequests}
+        onNavigateToCredits={onNavigateToCredits}
+        onNavigateToRequests={onNavigateToRequests}
+        onNavigateToTimetable={onNavigateToTimetable}
+        onOpenCurrentClass={onOpenCurrentClass}
+      />
+    );
+  }
+
   return (
     <section className="motion-panel mt-2 space-y-5">
-      {isLoading ? (
+      {isLoading || layout === null ? (
         <LoadingSkeleton lines={3} variant="cards" />
       ) : (
         <>

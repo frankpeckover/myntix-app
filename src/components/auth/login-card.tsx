@@ -10,7 +10,6 @@ import {
 import { type SessionUser } from "@/lib/auth/session";
 import type { PublicSsoProvider } from "@/lib/auth/sso-types";
 import { AppBrand } from "@/components/ui/app-brand";
-import { AppFooter } from "@/components/ui/app-footer";
 import { GlobalMaintenanceBanner } from "@/components/ui/global-maintenance-banner";
 import { EyeIcon } from "@/components/ui/icons";
 import { ModalCloseButton } from "@/components/ui/modal-close-button";
@@ -278,13 +277,6 @@ export function LoginCard({
             </div>
           </form>
         </section>
-      </div>
-
-      <div className="mx-auto w-full max-w-6xl px-4 pb-5 sm:px-6 lg:px-8">
-        <AppFooter
-          contactEmail={schoolInfo?.contactEmail ?? ""}
-          schoolName={schoolName}
-        />
       </div>
 
       {isForgotPasswordOpen && (

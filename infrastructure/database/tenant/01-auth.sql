@@ -44,6 +44,7 @@ create table if not exists users (
   username text not null unique,
   first_name text not null,
   preferred_name text not null default '',
+  year_level smallint constraint users_year_level_check check (year_level between 0 and 12),
   last_name text not null,
   email text not null default '',
   profile_image_url text not null default '',
@@ -56,6 +57,10 @@ create table if not exists users (
 
 alter table users
   add column if not exists preferred_name text not null default '';
+
+alter table users
+  add column if not exists year_level smallint
+    constraint users_year_level_check check (year_level between 0 and 12);
 
 alter table users
   alter column email set default '';

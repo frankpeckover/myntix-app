@@ -4,7 +4,7 @@ import type { ActionResult } from "@/lib/actions/action-results";
 import { appConfig } from "@/lib/config/app-config";
 import { db } from "@/lib/database/db";
 import { hashPassword } from "@/lib/auth/passwords";
-import { validateNewPassword } from "@/lib/security/password-policy";
+import { validateConfirmedPassword } from "@/lib/security/password-policy";
 import { AuditService } from "@/domains/audit/audit-service";
 import { EmailService } from "@/domains/integrations/email-service";
 import { buildPasswordResetEmail } from "@/domains/integrations/email-templates/password-reset-email";
@@ -23,6 +23,7 @@ type PasswordResetTokenRow = {
 
 export type CompletePasswordResetInput = {
   newPassword: string;
+  confirmPassword: string;
   token: string;
 };
 
@@ -153,7 +154,7 @@ export class PasswordResetService {
   async completePasswordReset(
     input: CompletePasswordResetInput,
   ): Promise<ActionResult> {
-    const token = input.token.trim();
+    const token = typeof input.token === "string" ? input.token.trim() : "";
     const newPassword = input.newPassword;
 
     if (!token || !newPassword) {
@@ -163,7 +164,10 @@ export class PasswordResetService {
       };
     }
 
-    const passwordPolicy = validateNewPassword(newPassword);
+    const passwordPolicy = validateConfirmedPassword(
+      newPassword,
+      input.confirmPassword,
+    );
 
     if (!passwordPolicy.ok) {
       return passwordPolicy;

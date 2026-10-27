@@ -16,6 +16,7 @@ type CreditActionControlProps = {
   removeAriaLabel?: string;
   removeLabel?: string;
   solid?: boolean;
+  touchTarget?: boolean;
 };
 
 export function CreditActionControl({
@@ -31,6 +32,7 @@ export function CreditActionControl({
   removeAriaLabel,
   removeLabel = "Remove",
   solid = false,
+  touchTarget = false,
 }: CreditActionControlProps) {
   if (onAdjust) {
     return (
@@ -45,24 +47,27 @@ export function CreditActionControl({
           ariaLabel={removeAriaLabel ?? removeLabel}
           onClick={onRemove}
           tone="negative"
+          touchTarget={touchTarget}
         >
-          <MinusIcon className="h-3.5 w-3.5" />
+          <MinusIcon className={touchTarget ? "h-5 w-5" : "h-3.5 w-3.5"} />
         </SegmentedQuickButton>
         <button
           aria-label={adjustAriaLabel}
-          className="group relative inline-flex h-10 items-center justify-center gap-2 border-x border-button-border bg-panel-soft px-3 text-xs font-semibold text-text-control transition-all duration-150 hover:z-10 hover:bg-surface-hover hover:text-foreground hover:shadow-[inset_0_0_0_2px_var(--border-strong)] focus-visible:z-10 focus-visible:bg-surface-hover focus-visible:text-foreground focus-visible:outline-none focus-visible:shadow-[inset_0_0_0_2px_var(--border-strong)] active:scale-[0.97]"
+          className={`group relative inline-flex ${touchTarget ? "min-h-11" : "h-10"} items-center justify-center gap-2 border-x border-button-border bg-panel-soft px-3 text-xs font-semibold text-text-control transition-all duration-150 hover:z-10 hover:bg-surface-hover hover:text-foreground hover:shadow-[inset_0_0_0_2px_var(--border-strong)] focus-visible:z-10 focus-visible:bg-surface-hover focus-visible:text-foreground focus-visible:outline-none focus-visible:shadow-[inset_0_0_0_2px_var(--border-strong)] active:scale-[0.97]`}
           onClick={onAdjust}
+          title={adjustAriaLabel}
           type="button"
         >
-          <PencilIcon className="h-3.5 w-3.5 transition-transform duration-150 group-hover:scale-110 group-focus-visible:scale-110" />
-          Adjust
+          <PencilIcon className={`${touchTarget ? "h-5 w-5" : "h-3.5 w-3.5"} transition-transform duration-150 group-hover:scale-110 group-focus-visible:scale-110`} />
+          {!touchTarget && "Adjust"}
         </button>
         <SegmentedQuickButton
           ariaLabel={addAriaLabel ?? addLabel}
           onClick={onAdd}
           tone="positive"
+          touchTarget={touchTarget}
         >
-          <PlusIcon className="h-3.5 w-3.5" />
+          <PlusIcon className={touchTarget ? "h-5 w-5" : "h-3.5 w-3.5"} />
         </SegmentedQuickButton>
       </div>
     );
@@ -100,11 +105,13 @@ function SegmentedQuickButton({
   children,
   onClick,
   tone,
+  touchTarget = false,
 }: {
   ariaLabel: string;
   children: ReactNode;
   onClick?: () => void;
   tone: "negative" | "positive";
+  touchTarget?: boolean;
 }) {
   const badgeClassName =
     tone === "positive"
@@ -114,7 +121,7 @@ function SegmentedQuickButton({
   return (
     <button
       aria-label={ariaLabel}
-      className={`group relative inline-flex h-10 items-center justify-center transition-all duration-150 hover:z-10 focus-visible:z-10 focus-visible:outline-none active:scale-[0.93] disabled:cursor-not-allowed disabled:opacity-50 ${badgeClassName}`}
+      className={`group relative inline-flex ${touchTarget ? "min-h-11" : "h-10"} items-center justify-center transition-all duration-150 hover:z-10 focus-visible:z-10 focus-visible:outline-none active:scale-[0.93] disabled:cursor-not-allowed disabled:opacity-50 ${badgeClassName}`}
       disabled={!onClick}
       onClick={onClick}
       title={ariaLabel}

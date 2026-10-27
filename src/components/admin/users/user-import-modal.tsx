@@ -4,6 +4,7 @@ import { useState, type ChangeEvent } from "react";
 import { importUsers, previewImportUsers } from "@/lib/actions";
 import { downloadCsv } from "@/lib/csv/client";
 import { parseCsvObjects } from "@/lib/csv/server";
+import { parseOptionalYearLevel } from "@/domains/users/year-level";
 import { CsvColumnGuide } from "@/components/ui/csv-column-guide";
 import { CsvFileInput } from "@/components/ui/csv-file-input";
 import { CsvTemplateButton } from "@/components/ui/csv-template-button";
@@ -34,7 +35,7 @@ type ParseResult =
     };
 
 const csvHeaders =
-  "username,first_name,preferred_name,last_name,email,role,card_number";
+  "username,first_name,preferred_name,last_name,email,role,card_number,year_level";
 const csvHeaderColumns = csvHeaders.split(",");
 const csvColumns = [
   { name: "username" },
@@ -44,6 +45,7 @@ const csvColumns = [
   { name: "email" },
   { name: "role" },
   { name: "card_number", optional: true },
+  { name: "year_level", optional: true },
 ];
 const userTemplateRows = [
   [
@@ -54,6 +56,7 @@ const userTemplateRows = [
     "avery.nguyen@example.edu",
     "student",
     "100001",
+    "4",
   ],
   [
     "teacher.demo",
@@ -62,6 +65,7 @@ const userTemplateRows = [
     "Taylor",
     "jordan.taylor@example.edu",
     "teacher",
+    "",
     "",
   ],
 ];
@@ -176,54 +180,45 @@ export function UserImportModal({
       onClose={onClose}
       title="Import Users"
     >
-        <CsvColumnGuide
-          columns={csvColumns}
-          note="Role must be admin, teacher, or student. Email is required for every user. Preferred name and card number are optional; all headers should stay in the file."
+      <CsvColumnGuide
+        columns={csvColumns}
+        note="Role must be admin, teacher, or student. Email is required. Preferred name, card number and year level are optional. Year level is 0 (Prep) to 12; leave blank if unknown."
+      />
+
+      <CsvFileInput
+        fileName={fileName}
+        id="csvFile"
+        onChange={handleFileChange}
+      />
+      <div className="mt-3">
+        <CsvTemplateButton
+          filename="user-import-template.csv"
+          headers={csvHeaderColumns}
+          rows={userTemplateRows}
         />
+      </div>
 
-        <CsvFileInput
-          fileName={fileName}
-          id="csvFile"
-          onChange={handleFileChange}
-        />
-        <div className="mt-3">
-          <CsvTemplateButton
-            filename="user-import-template.csv"
-            headers={csvHeaderColumns}
-            rows={userTemplateRows}
-          />
-        </div>
+      {message && (
+        <p className="mt-4 rounded-md border border-success-border bg-success-soft px-3 py-2 text-sm font-semibold text-success">
+          {message}
+        </p>
+      )}
+      {error && (
+        <p className="mt-4 rounded-md border border-danger-border bg-danger-soft px-3 py-2 text-sm font-semibold text-danger-strong">
+          {error}
+        </p>
+      )}
 
-        {message && (
-          <p className="mt-4 rounded-md border border-success-border bg-success-soft px-3 py-2 text-sm font-semibold text-success">
-            {message}
-          </p>
-        )}
-        {error && (
-          <p className="mt-4 rounded-md border border-danger-border bg-danger-soft px-3 py-2 text-sm font-semibold text-danger-strong">
-            {error}
-          </p>
-        )}
+      {preview && <ImportPreview preview={preview} />}
 
-        {preview && <ImportPreview preview={preview} />}
+      {errors.length > 0 && <ImportErrors errors={errors} />}
 
-        {errors.length > 0 && (
-          <ImportErrors errors={errors} />
-        )}
-
-        {createdUsers.length > 0 && (
-          <GeneratedPasswords users={createdUsers} />
-        )}
-
+      {createdUsers.length > 0 && <GeneratedPasswords users={createdUsers} />}
     </ImportModalLayout>
   );
 }
 
-function ImportPreview({
-  preview,
-}: {
-  preview: ImportUsersPreviewResult;
-}) {
+function ImportPreview({ preview }: { preview: ImportUsersPreviewResult }) {
   return (
     <section className="theme-subpanel mt-4 p-3">
       <p className="text-sm font-semibold text-text-control">Import preview</p>
@@ -294,11 +289,19 @@ function GeneratedPasswords({ users }: { users: ImportedUserCredential[] }) {
           ))}
         </div>
 
-        <DataTable ariaLabel="User import preview" layout="auto" responsive="desktop">
+        <DataTable
+          ariaLabel="User import preview"
+          layout="auto"
+          responsive="desktop"
+        >
           <thead className="text-text-muted">
             <tr>
-              <th scope="col" className="py-2 pr-4 font-semibold">Username</th>
-              <th scope="col" className="py-2 font-semibold">Password</th>
+              <th scope="col" className="py-2 pr-4 font-semibold">
+                Username
+              </th>
+              <th scope="col" className="py-2 font-semibold">
+                Password
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -325,11 +328,7 @@ function downloadPasswordCsv(users: ImportedUserCredential[]) {
   );
 }
 
-function GeneratedPasswordCard({
-  user,
-}: {
-  user: ImportedUserCredential;
-}) {
+function GeneratedPasswordCard({ user }: { user: ImportedUserCredential }) {
   return (
     <article className="rounded-md border border-border-subtle bg-surface p-3">
       <p className="truncate text-sm font-semibold">{user.username}</p>
@@ -366,7 +365,11 @@ function parseUsersCsv(text: string): ParseResult {
       };
     }
 
+    const yearLevel = parseOptionalYearLevel(values.yearlevel?.trim());
+    if (!yearLevel.ok)
+      return { ok: false, message: `Row ${rowNumber}: ${yearLevel.message}` };
     const user = {
+      yearLevel: role === "student" ? yearLevel.value : null,
       cardNumber: values.cardnumber?.trim() ?? "",
       email: values.email?.trim() ?? "",
       firstName: values.firstname?.trim() ?? "",
@@ -376,11 +379,7 @@ function parseUsersCsv(text: string): ParseResult {
       username: values.username?.trim() ?? "",
     };
 
-    if (
-      !user.username ||
-      !user.firstName ||
-      !user.lastName
-    ) {
+    if (!user.username || !user.firstName || !user.lastName) {
       return {
         ok: false,
         message: `Row ${rowNumber} is missing a required value.`,

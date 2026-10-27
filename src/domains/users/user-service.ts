@@ -8,13 +8,16 @@ import {
   hashPassword,
   verifyPassword,
 } from "@/lib/auth/passwords";
-import { validateNewPassword } from "@/lib/security/password-policy";
+import { validateConfirmedPassword } from "@/lib/security/password-policy";
 import type { ActionResult } from "@/lib/actions/action-results";
 import type { Role, SessionUser } from "@/lib/auth/session";
 import { AuditService } from "@/domains/audit/audit-service";
 import { LedgerService } from "@/domains/ledger/ledger-service";
+import { parseOptionalYearLevel } from "@/domains/users/year-level";
+import { escapeLikeSearch, isSearchReady } from "@/lib/presentation/search";
 
 export type UserListItem = {
+  yearLevel: number | null;
   id: string;
   username: string;
   firstName: string;
@@ -30,6 +33,7 @@ export type UserListItem = {
 };
 
 export type CreateUserInput = {
+  yearLevel?: number | null;
   username: string;
   firstName: string;
   preferredName: string;
@@ -39,11 +43,12 @@ export type CreateUserInput = {
   cardNumber: string;
   role: Role;
   password: string;
+  confirmPassword: string;
 };
 
 export type ImportUserInput = Omit<
   CreateUserInput,
-  "password" | "profileImageUrl"
+  "password" | "confirmPassword" | "profileImageUrl"
 >;
 
 export type ImportUsersInput = {
@@ -77,6 +82,7 @@ export type ImportUserError = {
 };
 
 export type UpdateUserInput = {
+  yearLevel?: number | null;
   id: string;
   username: string;
   firstName: string;
@@ -92,11 +98,13 @@ export type UpdateUserInput = {
 export type ResetUserPasswordInput = {
   id: string;
   password: string;
+  confirmPassword: string;
 };
 
 export type ChangeOwnPasswordInput = {
   currentPassword: string;
   newPassword: string;
+  confirmPassword: string;
 };
 
 export type CreateUserResult =
@@ -129,6 +137,7 @@ export type StudentListItem = {
 };
 
 type UserListRow = {
+  year_level: number | null;
   id: string;
   username: string;
   first_name: string;
@@ -152,6 +161,7 @@ type StudentListRow = {
 };
 
 type ImportableUser = {
+  yearLevel: number | null;
   cardNumber: string;
   email: string;
   firstName: string;
@@ -217,6 +227,7 @@ export class UserService {
         users.username,
         users.first_name,
         users.preferred_name,
+        users.year_level,
         users.last_name,
         users.email,
         users.profile_image_url,
@@ -243,8 +254,10 @@ export class UserService {
     searchTerm: string,
     limit = defaultStudentSearchLimit,
   ): Promise<StudentListItem[]> {
-    const normalizedSearchTerm = `%${searchTerm.trim().toLowerCase()}%`;
-    const result = await db.query<StudentListRow>(`
+    if (searchTerm.trim() && !isSearchReady(searchTerm)) return [];
+    const normalizedSearchTerm = `%${escapeLikeSearch(searchTerm.trim().toLowerCase())}%`;
+    const result = await db.query<StudentListRow>(
+      `
       select
         users.id,
         users.first_name,
@@ -267,7 +280,9 @@ export class UserService {
         )
       order by last_name, first_name
       limit $2
-    `, [normalizedSearchTerm, limit]);
+    `,
+      [normalizedSearchTerm, limit],
+    );
 
     return result.rows.map((student) => ({
       id: student.id,
@@ -296,6 +311,8 @@ export class UserService {
     const profileImageUrl = input.profileImageUrl.trim();
     const cardNumber = input.cardNumber.trim();
     const password = input.password;
+    const yearLevel = parseOptionalYearLevel(input.yearLevel);
+    if (!yearLevel.ok) return yearLevel;
 
     if (!username || !firstName || !lastName || !email || !password) {
       return {
@@ -304,7 +321,10 @@ export class UserService {
       };
     }
 
-    const passwordPolicy = validateNewPassword(password);
+    const passwordPolicy = validateConfirmedPassword(
+      password,
+      input.confirmPassword,
+    );
 
     if (!passwordPolicy.ok) {
       return passwordPolicy;
@@ -328,7 +348,7 @@ export class UserService {
             email,
             profile_image_url,
             card_number,
-            password_hash
+            password_hash, year_level
           )
           values (
             (select id from roles where role_key = $1 and is_active = true),
@@ -339,7 +359,7 @@ export class UserService {
             $6,
             $7,
             $8,
-            $9
+            $9, $10
           )
           returning
             id,
@@ -352,7 +372,7 @@ export class UserService {
             email,
             (select role_key from roles where roles.id = users.role_id) as role,
             is_active,
-            null::timestamptz as last_activity_at
+            null::timestamptz as last_activity_at, year_level
         `,
         [
           input.role,
@@ -364,6 +384,7 @@ export class UserService {
           profileImageUrl,
           cardNumber,
           passwordHash,
+          input.role === "student" ? yearLevel.value : null,
         ],
       );
 
@@ -527,7 +548,7 @@ export class UserService {
             email,
             profile_image_url,
             card_number,
-            password_hash
+            password_hash, year_level
           )
           select
             roles.id,
@@ -538,7 +559,7 @@ export class UserService {
             imported.email,
             '',
             imported.card_number,
-            imported.password_hash
+            imported.password_hash, imported.year_level
           from jsonb_to_recordset($1::jsonb) as imported(
             card_number text,
             email text,
@@ -547,7 +568,7 @@ export class UserService {
             last_name text,
             password_hash text,
             role text,
-            username text
+            username text, year_level smallint
           )
           join roles on roles.role_key = imported.role
             and roles.is_active = true
@@ -573,6 +594,7 @@ export class UserService {
               password_hash: user.passwordHash,
               role: user.role,
               username: user.username,
+              year_level: user.yearLevel,
             })),
           ),
         ],
@@ -607,7 +629,8 @@ export class UserService {
         usersToCreate.map((user) => [user.username, user.temporaryPassword]),
       );
       const createdUsers = insertedUsers.rows.map((user) => ({
-        temporaryPassword: temporaryPasswordsByUsername.get(user.username) ?? "",
+        temporaryPassword:
+          temporaryPasswordsByUsername.get(user.username) ?? "",
         username: user.username,
       }));
 
@@ -701,6 +724,8 @@ export class UserService {
     input: UpdateUserInput,
     currentUser?: SessionUser,
   ): Promise<UserActionResult> {
+    const yearLevel = parseOptionalYearLevel(input.yearLevel);
+    if (!yearLevel.ok) return yearLevel;
     const username = input.username.trim().toLowerCase();
     const firstName = capitaliseName(input.firstName);
     const preferredName = capitaliseName(input.preferredName);
@@ -733,6 +758,7 @@ export class UserService {
               card_number = $7,
               role_id = (select id from roles where role_key = $8 and is_active = true),
               is_active = $9,
+              year_level = $11,
               updated_at = now()
           where id = $10
           returning
@@ -745,7 +771,7 @@ export class UserService {
             card_number,
             email,
             (select role_key from roles where roles.id = users.role_id) as role,
-            is_active,
+            is_active, year_level,
             (
               select max(ledger_entries.created_at)
               from accounts
@@ -764,6 +790,7 @@ export class UserService {
           input.role,
           input.isActive,
           input.id,
+          input.role === "student" ? yearLevel.value : null,
         ],
       );
 
@@ -784,7 +811,10 @@ export class UserService {
       let removedGroupMembershipCount = 0;
 
       if (!user.is_active || user.role !== "student") {
-        removedGroupMembershipCount = await removeUserFromGroups(client, user.id);
+        removedGroupMembershipCount = await removeUserFromGroups(
+          client,
+          user.id,
+        );
       }
 
       if (!user.is_active) {
@@ -835,7 +865,10 @@ export class UserService {
       };
     }
 
-    const passwordPolicy = validateNewPassword(input.password);
+    const passwordPolicy = validateConfirmedPassword(
+      input.password,
+      input.confirmPassword,
+    );
 
     if (!passwordPolicy.ok) {
       return passwordPolicy;
@@ -900,7 +933,10 @@ export class UserService {
       };
     }
 
-    const passwordPolicy = validateNewPassword(input.newPassword);
+    const passwordPolicy = validateConfirmedPassword(
+      input.newPassword,
+      input.confirmPassword,
+    );
 
     if (!passwordPolicy.ok) {
       return passwordPolicy;
@@ -1039,6 +1075,7 @@ export class UserService {
       username: user.username,
       firstName: user.first_name,
       preferredName: user.preferred_name,
+      yearLevel: user.year_level ?? null,
       lastName: user.last_name,
       displayName: formatDisplayName(
         user.first_name,
@@ -1116,13 +1153,13 @@ async function prepareImportUsers(
       const lastName = capitaliseName(user.lastName);
       const temporaryPassword = generateTemporaryPassword();
       const username = user.username.trim().toLowerCase();
+      const yearLevel = parseOptionalYearLevel(user.yearLevel);
+      if (!yearLevel.ok) {
+        errors.push({ message: yearLevel.message, rowNumber, username });
+        return null;
+      }
 
-      if (
-        !username ||
-        !firstName ||
-        !lastName ||
-        !email
-      ) {
+      if (!username || !firstName || !lastName || !email) {
         errors.push({
           message: "Missing a required value.",
           rowNumber,
@@ -1158,6 +1195,7 @@ async function prepareImportUsers(
         role: user.role,
         rowNumber,
         temporaryPassword,
+        yearLevel: user.role === "student" ? yearLevel.value : null,
         username,
       };
     }),
@@ -1177,9 +1215,9 @@ function normaliseImportRows(users: ImportUserInput[]) {
     const lastName = capitaliseName(user.lastName);
     const username = user.username.trim().toLowerCase();
     const isDuplicate =
-      seenUsernames.has(username) ||
-      (Boolean(email) && seenEmails.has(email));
+      seenUsernames.has(username) || (Boolean(email) && seenEmails.has(email));
     const isValid =
+      parseOptionalYearLevel(user.yearLevel).ok &&
       Boolean(username) &&
       Boolean(firstName) &&
       Boolean(lastName) &&

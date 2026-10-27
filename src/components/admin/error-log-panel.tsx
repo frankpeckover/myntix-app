@@ -1,5 +1,10 @@
 "use client";
 
+import { PageResultCount } from "@/components/ui/page-result-count";
+
+import { MobileTableToolbar } from "@/components/ui/mobile-table-toolbar";
+import { matchesTextSearch as includesFilter } from "@/lib/presentation/search";
+
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { listErrorLog } from "@/lib/actions";
@@ -114,9 +119,9 @@ export function AdminErrorLogPanel() {
               onFiltersChange={setFilters}
               toolbar={
                 <TableToolbar>
-                  <p className="text-sm font-semibold text-text-muted">
+                  <PageResultCount>
                     Showing {visibleEntries.length} of {filteredEntries.length} errors.
-                  </p>
+                  </PageResultCount>
                 </TableToolbar>
               }
             />
@@ -176,9 +181,46 @@ function ErrorLogList({
     onFiltersChange({ ...filters, [field]: value });
   }
 
+  const tableHeader = (
+    <thead>
+      <tr className="border-b border-border-subtle text-text-muted">
+        <th scope="col" className="py-2 pr-4 font-semibold">Time</th>
+        <th scope="col" className="py-2 pr-4 font-semibold">
+          <TableHeaderFilter
+            isActive={Boolean(filters.source)}
+            label="Source"
+            onClear={() => updateFilter("source", "")}
+          >
+            <TableHeaderFilterInput
+              label="Source"
+              onChange={(value) => updateFilter("source", value)}
+              value={filters.source}
+            />
+          </TableHeaderFilter>
+        </th>
+        <th scope="col" className="py-2 pr-4 font-semibold">
+          <TableHeaderFilter
+            isActive={Boolean(filters.message)}
+            label="Message"
+            onClear={() => updateFilter("message", "")}
+          >
+            <TableHeaderFilterInput
+              label="Message"
+              onChange={(value) => updateFilter("message", value)}
+              value={filters.message}
+            />
+          </TableHeaderFilter>
+        </th>
+        <th scope="col" className="py-2 text-right font-semibold">
+          <span className="sr-only">Actions</span>
+        </th>
+      </tr>
+    </thead>
+  );
+
   return (
     <>
-      {toolbar && <div className="mb-3 md:hidden">{toolbar}</div>}
+      <MobileTableToolbar label="Error log" toolbar={toolbar} header={tableHeader} />
       <div className="grid w-full min-w-0 gap-2 md:hidden">
         {entries.map((entry) => (
           <ErrorLogMobileRow
@@ -197,40 +239,7 @@ function ErrorLogList({
             <col className="w-[48%]" />
             <col className="w-12" />
           </colgroup>
-          <thead>
-            <tr className="border-b border-border-subtle text-text-muted">
-              <th scope="col" className="py-2 pr-4 font-semibold">Time</th>
-              <th scope="col" className="py-2 pr-4 font-semibold">
-                <TableHeaderFilter
-                  isActive={Boolean(filters.source)}
-                  label="Source"
-                  onClear={() => updateFilter("source", "")}
-                >
-                  <TableHeaderFilterInput
-                    label="Source"
-                    onChange={(value) => updateFilter("source", value)}
-                    value={filters.source}
-                  />
-                </TableHeaderFilter>
-              </th>
-              <th scope="col" className="py-2 pr-4 font-semibold">
-                <TableHeaderFilter
-                  isActive={Boolean(filters.message)}
-                  label="Message"
-                  onClear={() => updateFilter("message", "")}
-                >
-                  <TableHeaderFilterInput
-                    label="Message"
-                    onChange={(value) => updateFilter("message", value)}
-                    value={filters.message}
-                  />
-                </TableHeaderFilter>
-              </th>
-              <th scope="col" className="py-2 text-right font-semibold">
-                <span className="sr-only">Actions</span>
-              </th>
-            </tr>
-          </thead>
+          {tableHeader}
           <tbody>
             {entries.map((entry) => (
               <tr className="border-b border-border-subtle" key={entry.id}>
@@ -345,8 +354,4 @@ function matchesErrorFilters(entry: ErrorLogItem, filters: ErrorFilters) {
     includesFilter(entry.source, filters.source) &&
     includesFilter(entry.message, filters.message)
   );
-}
-
-function includesFilter(value: string, filter: string) {
-  return value.toLowerCase().includes(filter.trim().toLowerCase());
 }

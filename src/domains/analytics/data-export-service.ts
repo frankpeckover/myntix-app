@@ -50,6 +50,7 @@ const exportTables: ExportTable[] = [
         role_id,
         username,
         first_name,
+        year_level,
         last_name,
         email,
         profile_image_url,

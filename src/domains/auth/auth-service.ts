@@ -10,6 +10,7 @@ type UserRow = {
   username: string;
   first_name: string;
   preferred_name: string;
+  year_level: number | null;
   last_name: string;
   profile_image_url: string;
   role: Role;
@@ -48,6 +49,7 @@ export class AuthService {
             users.username,
             users.first_name,
             users.preferred_name,
+            users.year_level,
             users.last_name,
             users.profile_image_url,
             roles.role_key as role,
@@ -65,7 +67,10 @@ export class AuthService {
       const user = result.rows[0];
 
       // Unknown and disabled accounts still perform the expensive password comparison.
-      const passwordMatches = await verifyPassword(input.password, user?.password_hash ?? dummyPasswordHash);
+      const passwordMatches = await verifyPassword(
+        input.password,
+        user?.password_hash ?? dummyPasswordHash,
+      );
       if (!user || !passwordMatches) {
         await logAuthEvent({
           action: "auth.login_failed",
@@ -100,6 +105,7 @@ export class AuthService {
           ),
           profileImageUrl: user.profile_image_url,
           role: user.role,
+          yearLevel: user.year_level,
         },
       };
     } catch (error) {
@@ -132,6 +138,10 @@ async function logAuthEvent(input: {
   }
 }
 
-function formatDisplayName(firstName: string, lastName: string, preferredName = "") {
+function formatDisplayName(
+  firstName: string,
+  lastName: string,
+  preferredName = "",
+) {
   return `${preferredName || firstName} ${lastName}`.trim();
 }

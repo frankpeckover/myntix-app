@@ -6,12 +6,14 @@ import {
 
 type IconButtonProps = {
   ariaExpanded?: boolean;
+  ariaControls?: string;
   children: ReactNode;
   disabled?: boolean;
   label: string;
   onClick: () => void;
   text?: string;
   tone?: ActionTone;
+  size?: "default" | "touch";
 };
 
 const toneClassNames: Record<ActionTone, string> = {
@@ -26,21 +28,24 @@ const toneClassNames: Record<ActionTone, string> = {
 
 export function IconButton({
   ariaExpanded,
+  ariaControls,
   children,
   disabled = false,
   label,
   onClick,
   text,
   tone = "default",
+  size = "default",
 }: IconButtonProps) {
   const resolvedTone = resolveActionTone(label, tone);
 
   return (
     <button
       aria-expanded={ariaExpanded}
+      aria-controls={ariaControls}
       aria-label={label}
-      className={`ui-icon-button inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md border text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${
-        text ? "w-10 sm:w-auto sm:px-3.5" : "w-10"
+      className={`ui-icon-button inline-flex ${size === "touch" ? "h-11" : "h-10"} shrink-0 items-center justify-center gap-2 rounded-md border text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${
+        text ? `${size === "touch" ? "w-11" : "w-10"} sm:w-auto sm:px-3.5` : size === "touch" ? "w-11" : "w-10"
       } ${toneClassNames[resolvedTone]}`}
       disabled={disabled}
       onClick={onClick}

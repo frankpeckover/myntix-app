@@ -1,4 +1,5 @@
 "use client";
+import { matchesTextSearch as includesFilter } from "@/lib/presentation/search";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
@@ -15,7 +16,9 @@ import { LoadFailure } from "@/components/ui/load-failure";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { ListCount } from "@/components/ui/list-count";
 import { CheckIcon, ShoppingCartIcon, XIcon } from "@/components/ui/icons";
-import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
+import { ShopRequestActions, ShopRequestStatusBadge, type ShopRequestTableFilters } from "@/components/rewards/shared/request-presentation";
+import { MobileShopRequests } from "@/components/rewards/mobile/shop-requests";
+import { useDashboardLayout } from "@/components/layout/use-dashboard-layout";
 import {
   TableHeaderFilter,
   TableHeaderFilterInput,
@@ -33,13 +36,6 @@ import { BulkSelectionControls } from "@/components/ui/bulk-selection-controls";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { sortTableItems, type TableSortDirection } from "@/components/ui/table-sorting";
 import { updateSelectedIds } from "@/components/ui/selection-utils";
-
-type ShopRequestTableFilters = {
-  decisionNote: string;
-  item: string;
-  status: "" | ShopPurchaseRequest["status"];
-  student: string;
-};
 
 const emptyShopRequestTableFilters: ShopRequestTableFilters = {
   decisionNote: "",
@@ -63,6 +59,7 @@ export function ShopRequestsPanel({
   onRequestActioned,
   showViewToggle = true,
 }: ShopRequestsPanelProps) {
+  const layout = useDashboardLayout();
   const [requests, setRequests] = useState<ShopPurchaseRequest[]>([]);
   const [activeView, setActiveView] = useState<"pending" | "recent">("pending");
   const [denyingRequestIds, setDenyingRequestIds] = useState<string[]>([]);
@@ -369,6 +366,34 @@ export function ShopRequestsPanel({
   return (
     <section className={`min-w-0 ${className}`}>
       <FixedNotification error={error} message={message} />
+      {layout === "mobile" ? (
+        <MobileShopRequests
+          activeView={activeView}
+          allSelected={areAllVisibleRequestsSelected}
+          currencyName={currencyName}
+          error={error}
+          filters={filters}
+          isLoading={isLoading}
+          onApprove={handleApprove}
+          onApproveSelected={() => setIsConfirmingBulkApproval(true)}
+          onClearFilters={() => setFilters(emptyShopRequestTableFilters)}
+          onDeny={(id) => setDenyingRequestIds([id])}
+          onDenySelected={() => setDenyingRequestIds(selectedRequestIds)}
+          onFiltersChange={setFilters}
+          onRequestSelectionChange={handleRequestSelectionChange}
+          onRetry={refreshRequests}
+          onSortChange={setTableSort}
+          onViewChange={changeView}
+          onVisibleSelectionChange={handleVisibleSelectionChange}
+          requests={displayedRequests}
+          selectedRequestIds={selectedRequestIds}
+          showViewToggle={showViewToggle}
+          tableSort={tableSort}
+          totalCount={filteredRequests.length}
+        />
+      ) : layout === null ? (
+        <LoadingSkeleton className="px-0" lines={4} />
+      ) : (
       <div className="relative z-10 min-w-0 overflow-x-clip">
         {visibleRequests.length === 0 && tableToolbar}
         {isLoading && (
@@ -389,7 +414,7 @@ export function ShopRequestsPanel({
           </p>
         )}
         {!isLoading && visibleRequests.length > 0 && (
-          <ShopRequestList
+          <CompactShopRequestList
             currencyName={currencyName}
             filters={filters}
             onApprove={handleApprove}
@@ -408,6 +433,7 @@ export function ShopRequestsPanel({
           />
         )}
       </div>
+      )}
 
       {denyingRequestIds.length > 0 && (
         <TextReasonModal
@@ -431,60 +457,6 @@ export function ShopRequestsPanel({
         />
       )}
     </section>
-  );
-}
-
-function ShopRequestList({
-  currencyName,
-  filters,
-  onApprove,
-  onClearFilters,
-  onDeny,
-  onFiltersChange,
-  onRequestSelectionChange,
-  onSortChange,
-  onVisibleSelectionChange,
-  requests,
-  selectedRequestIds,
-  tableSort,
-  showDecisionNote,
-  toolbar,
-  visibleRequestsSelected,
-}: {
-  currencyName: string;
-  filters: ShopRequestTableFilters;
-  onApprove: (purchaseId: string) => void;
-  onClearFilters: () => void;
-  onDeny: (purchaseId: string) => void;
-  onFiltersChange: (filters: ShopRequestTableFilters) => void;
-  onRequestSelectionChange: (requestId: string, isSelected: boolean) => void;
-  onSortChange: (column: string, direction: TableSortDirection | null) => void;
-  onVisibleSelectionChange: (isSelected: boolean) => void;
-  requests: ShopPurchaseRequest[];
-  selectedRequestIds: string[];
-  tableSort: { column: string; direction: TableSortDirection } | null;
-  showDecisionNote: boolean;
-  toolbar: ReactNode;
-  visibleRequestsSelected: boolean;
-}) {
-  return (
-    <CompactShopRequestList
-      currencyName={currencyName}
-      filters={filters}
-      onApprove={onApprove}
-      onClearFilters={onClearFilters}
-      onDeny={onDeny}
-      onFiltersChange={onFiltersChange}
-      onRequestSelectionChange={onRequestSelectionChange}
-      onSortChange={onSortChange}
-      onVisibleSelectionChange={onVisibleSelectionChange}
-      requests={requests}
-      selectedRequestIds={selectedRequestIds}
-      tableSort={tableSort}
-      showDecisionNote={showDecisionNote}
-      toolbar={toolbar}
-      visibleRequestsSelected={visibleRequestsSelected}
-    />
   );
 }
 
@@ -728,56 +700,6 @@ function CompactShopRequestList({
   );
 }
 
-function ShopRequestActions({
-  onApprove,
-  onDeny,
-  request,
-}: {
-  onApprove: (purchaseId: string) => void;
-  onDeny: (purchaseId: string) => void;
-  request: ShopPurchaseRequest;
-}) {
-  if (request.status !== "pending") {
-    return <span className="block text-center text-xs text-text-muted">Complete</span>;
-  }
-
-  return (
-    <div className="flex items-center justify-end gap-1.5">
-      <button
-        aria-label={`Deny ${request.itemName} for ${request.studentName}`}
-        className="group inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-negative-border bg-negative-fill text-negative-ink shadow-sm transition-all duration-150 hover:-translate-y-px hover:border-negative-ink hover:bg-negative-border hover:shadow-md focus-visible:-translate-y-px focus-visible:border-negative-ink focus-visible:bg-negative-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-negative-ink focus-visible:ring-offset-1 active:translate-y-0 active:scale-[0.97]"
-        onClick={() => onDeny(request.id)}
-        title="Deny request"
-        type="button"
-      >
-        <XIcon className="h-4 w-4 shrink-0 transition-transform duration-150 group-hover:scale-110 group-focus-visible:scale-110" />
-      </button>
-      <button
-        aria-label={`Approve ${request.itemName} for ${request.studentName}`}
-        className="group inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-positive-border bg-positive-fill text-positive-ink shadow-sm transition-all duration-150 hover:-translate-y-px hover:border-positive-ink hover:bg-positive-border hover:shadow-md focus-visible:-translate-y-px focus-visible:border-positive-ink focus-visible:bg-positive-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-positive-ink focus-visible:ring-offset-1 active:translate-y-0 active:scale-[0.97]"
-        onClick={() => onApprove(request.id)}
-        title="Approve request"
-        type="button"
-      >
-        <CheckIcon className="h-4 w-4 shrink-0 transition-transform duration-150 group-hover:scale-110 group-focus-visible:scale-110" />
-      </button>
-    </div>
-  );
-}
-
-function ShopRequestStatusBadge({
-  request,
-}: {
-  request: ShopPurchaseRequest;
-}) {
-  return (
-    <StatusBadge
-      label={getShopRequestStatusLabel(request)}
-      tone={getShopRequestStatusTone(request)}
-    />
-  );
-}
-
 function matchesShopRequestTableFilters(
   request: ShopPurchaseRequest,
   filters: ShopRequestTableFilters,
@@ -791,36 +713,4 @@ function matchesShopRequestTableFilters(
     includesFilter(request.decisionNote, filters.decisionNote) &&
     (!filters.status || request.status === filters.status)
   );
-}
-
-function includesFilter(value: string, filter: string) {
-  return value.toLowerCase().includes(filter.trim().toLowerCase());
-}
-
-function getShopRequestStatusLabel(request: ShopPurchaseRequest) {
-  if (request.isVoided) {
-    return "Archived";
-  }
-
-  if (request.status === "pending") {
-    return "Pending";
-  }
-
-  if (request.status === "approved") {
-    return "Approved";
-  }
-
-  return "Denied";
-}
-
-function getShopRequestStatusTone(request: ShopPurchaseRequest): StatusTone {
-  if (request.isVoided || request.status === "denied") {
-    return "danger";
-  }
-
-  if (request.status === "pending") {
-    return "warning";
-  }
-
-  return "success";
 }

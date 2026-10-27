@@ -71,7 +71,115 @@ Organisation name, logo, currency name, balance cap, quick amounts, quick reason
 
 ### Progressive complexity
 
+Student year level is optional (`users.year_level`, 0 for Prep through 12).
+Students below Year 7 use a simplified dashboard with their existing wallet,
+savings goal, short activity feed and cart. Year 7 and above, and unknown year
+levels, keep the standard dashboard. This is presentation only: rewards,
+preferences and full transaction history remain available to every student.
+Staff/admin dashboard layouts and authorisation are unchanged. Admin user
+forms and CSV import can set or clear year level; SSO JIT leaves it unknown
+and existing directory sync does not overwrite manually assigned year levels.
+
 Build the smallest complete workflow first. Add abstractions only when they reduce clear duplication, enforce an invariant, or match an established domain boundary.
+
+### Mobile presentation
+
+Mobile dashboards use a separate presentation below the shell's 1024px sidebar
+breakpoint. Use `components/layout/use-dashboard-layout.ts` for dashboard
+selection; retain the smaller table-specific breakpoint for table/card layouts.
+Only mount the active dashboard presentation. Keep fetching, permissions and
+mutation handlers in the existing shared containers, never in a second mobile
+implementation of the business logic.
+
+Student mobile home prioritises the existing personalised wallet, rewards and
+three recent transactions. Savings goal and cart expand on demand, mounting on
+first use and retaining their state when collapsed. Teacher mobile home puts
+the current class and issuing credits first, with compact request and timetable
+links. Desktop layouts and all existing secondary pages remain available and
+unchanged. Further mobile page migrations should follow these feature-local
+`mobile/` presentation folders rather than adding broad global CSS overrides.
+
+Reward requests and credit management also use feature-local mobile layouts
+below 1024px. Keep mobile cards to the person/group name, reward where relevant,
+amount and essential actions. Credit cards omit avatars, usernames and weekly
+totals (a username is shown only to distinguish duplicate student names);
+reward request dates, usernames and decision notes are under Details.
+Filters/sorting are collapsible, and selection/bulk decisions remain available.
+Both presentations call the same existing transaction and approval handlers.
+Use the shared credit and reward decision controls, with larger touch targets
+on mobile, rather than copying mutation logic into cards.
+
+Mobile repeated utility actions use familiar icon controls with accessible
+names and hover titles, including request details, approve/deny, selection,
+and credit adjustment. Touch targets remain at least 44px. Retain short labels
+for navigation and forms, and exact numbers for balances/prices; use visuals
+for meaningful proportions or progress, not arbitrary graphs of exact costs.
+
+Use `components/ui/mobile-list-row.tsx` for compact list entries, following the
+mobile transaction log: primary name, one optional secondary line, exact value
+and icon actions. Mobile rewards omit large images, descriptions and routine
+stock/status badges; their existing detail dialog retains that information.
+Student rewards keep direct cart access; staff keep view/edit/duplicate/archive
+and restore in a compact action menu. Desktop reward cards/tables are unchanged.
+
+Mobile selectable lists use `mobile-selection-surface.tsx`: tap non-interactive
+row content to toggle selection, with tint and an accent strip when selected.
+Do not display per-row checkboxes on mobile. Retain an accessible visually
+hidden native checkbox for keyboard/screen-reader use, and visible Select All
+in the list header. Buttons, links, menus and form controls must not toggle
+their containing row. Group navigation remains available through its actions.
+
+Admin users, groups and timetable list entries have feature-local `mobile/`
+rows and `shared/row-actions.tsx` action definitions. Desktop keeps its existing
+table/action grid; mobile uses the common compact list row and touch-sized
+action menu. Mobile user rows show name/role (username only for duplicate
+names), groups show name/member count, and timetable rows show class, teacher
+and short day/time. Archived state remains visible. Fetching, filters,
+pagination, selection and mutations remain in their existing containers.
+
+## Shared interface conventions
+
+Keep the page title as the main heading; the desktop greeting is secondary and
+page headings do not need a repeated navigation icon. Panels use restrained,
+consistent shadows; keep stronger visual emphasis for the personalised wallet
+and overlays rather than elevating every container on hover.
+
+Mobile navigation has short labels. Students keep Home, Rewards and History;
+staff/admin keep Home and Credits with the remaining permitted pages under
+More. Notifications, voice (staff only) and account controls remain in the
+bottom bar, with utilities on the left and page navigation on the right.
+The mobile order is profile, notifications, voice (staff only), then More,
+Credits and Home for staff; students have profile, notifications, History,
+Rewards and Home. Keep DOM/focus order aligned with the visible order.
+More supports keyboard navigation, Escape and outside dismissal.
+Opening a different page starts at the top rather than retaining the previous
+page's scroll offset. Native browser Back/Forward behaviour remains unchanged.
+
+Shared search fields provide a clear button and Escape-to-clear, retain focus
+when cleared, and keep the same debounce/minimum-character rules. Mobile
+Select All has a label-sized touch target and announces the selected count.
+Filter popups focus their first usable field; mobile multi-filter panels stay
+open while choosing fields or sorting, with explicit close and Escape support.
+Group status refreshes retain mounted controls instead of discarding an open
+filter panel.
+
+Shared information tooltips open on hover, focus or tap, fit within the viewport
+and sit above overlays. Escape dismisses focused help before its containing
+dialog. Mobile close/retry controls retain 44px targets; secondary student
+sections use the same right-aligned disclosure chevron. The development badge
+is hidden so it cannot cover the mobile account button; Next.js still reports
+compile and runtime errors.
+
+Bulk credit issuing uses the label Issue to all and includes all matching
+students across pages, not just the rendered page. The accessible label and
+confirmation retain the exact target count. Existing
+confirmation, limits and server authorisation remain authoritative.
+
+Pagination uses a page-number input committed on Enter or blur, bounded to
+the available pages, rather than one option per page. Page-size controls stay
+available when a non-empty list fits on one page. Heatmaps use one tab stop;
+arrows explore dates, Home/End reach the first/last date, Escape dismisses
+details, and existing Enter/click date selection is retained.
 
 ## Users and permissions
 
@@ -507,6 +615,11 @@ The external API is a controlled interface to ledger operations, not a second fi
 ## Authentication and security baseline
 
 - Passwords are hashed with the established password utility and policy.
+- Every manually entered new password requires a second, exactly matching
+  confirmation field: profile changes, emailed resets, admin resets and user
+  creation. Reuse the shared password fields and validate on both client and
+  server before hashing or database writes. Never trim either entry. Generated
+  import/SSO passwords remain automatic and do not require manual confirmation.
 - Login and reset requests are rate-limited server-side.
 - Login validates runtime input types and bounds before querying or hashing.
   Identifiers are trimmed and lowercased; passwords are never trimmed, modified,
@@ -565,6 +678,10 @@ voice shortcut choices live in `user_preferences`; personal transaction presets
 and notification modes have their own domain tables. They include:
 
 - Light/dark mode, accent preset/custom colour, and table density.
+- Desktop navigation default (expanded or collapsed), restored from the account
+  on refresh/sign-in. The sidebar toggle changes the current session only;
+  choosing a new default in Appearance applies immediately. Mobile navigation
+  is unaffected, and existing accounts default to expanded.
 - Student wallet finish, wallet pattern, and dashboard background.
 - Staff voice-command shortcut (F2, F8, Ctrl+Shift+Space, or microphone-only).
 - Staff personal quick amounts/reasons and one-click add/take defaults.
@@ -605,6 +722,14 @@ The global maintenance banner is developer-managed through the platform database
 - Use database transactions for multi-record writes and set-based operations for imports/bulk actions.
 - Charts should aggregate by the selected time bucket. Year views should not render one point per raw transaction.
 - Avoid expensive rerenders while typing filters.
+- Text searches and column filters share a two-character minimum (after
+  trimming) and a 250 ms debounce. Keep keystrokes local to the input until
+  ready; retain the last applied results for a one-character draft and show a
+  short hint. Clearing restores the unfiltered/bounded default immediately.
+  Number, date and finite dropdown filters remain immediate. Do not stack
+  debounce delays on controls whose parent already debounces remote searches.
+  Server-side student/analytics lookups also enforce the minimum, cap results,
+  and escape SQL LIKE wildcards so user input is treated literally.
 - Uploaded media should have size/type validation and appropriate delivery/cache behaviour.
 
 ## Error handling and observability

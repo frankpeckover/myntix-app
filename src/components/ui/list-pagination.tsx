@@ -54,7 +54,7 @@ export function ListPagination({
   totalCount: number;
   totalPages: number;
 }) {
-  if (totalPages <= 1) {
+  if (totalCount === 0) {
     return null;
   }
 
@@ -62,16 +62,17 @@ export function ListPagination({
   const rangeEnd = Math.min(page * pageSize, totalCount);
 
   return (
-    <div className="mt-3 flex flex-col gap-2 border-t border-border-subtle pt-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-      <p className="text-xs font-medium text-text-muted">
-        Showing <span className="tabular-nums text-text-control">{rangeStart}-{rangeEnd}</span> of {totalCount}
+    <div className="mt-3 flex items-center justify-between gap-1 border-t border-border-subtle pt-1 text-sm md:gap-2 md:pt-3">
+      <p className="shrink-0 whitespace-nowrap text-xs font-medium text-text-muted">
+        <span className="hidden md:inline">Showing <span className="tabular-nums text-text-control">{rangeStart}-{rangeEnd}</span> of {totalCount}</span>
+        <span className="tabular-nums md:hidden" aria-label={`${totalCount} items`}>{totalCount.toLocaleString("en-AU")}</span>
       </p>
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex min-w-0 items-center gap-1 md:flex-wrap md:gap-3">
         <label className="flex items-center gap-2 text-xs text-text-muted">
-          Rows
+          <span className="hidden md:inline">Rows</span>
           <select
             aria-label="Rows per page"
-            className="h-8 rounded-md border border-button-border bg-surface px-2.5 text-xs font-medium text-text-control outline-none transition hover:border-border-strong focus-visible:ring-2 focus-visible:ring-brand"
+            className="pagination-select"
             onChange={(event) => onPageSizeChange(Number(event.target.value))}
             value={pageSize}
           >
@@ -82,34 +83,21 @@ export function ListPagination({
             ))}
           </select>
         </label>
-        <div className="inline-flex items-center gap-1">
+        <div className="inline-flex shrink-0 items-center md:gap-1">
           <button
             aria-label="Previous page"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-control transition hover:bg-panel-soft disabled:cursor-not-allowed disabled:text-text-subtle"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-md text-text-control transition hover:bg-panel-soft disabled:cursor-not-allowed disabled:text-text-subtle md:h-8 md:w-8"
             disabled={page <= 1}
             onClick={() => onPageChange(page - 1)}
             type="button"
           >
             <ChevronLeftIcon className="h-4 w-4" />
           </button>
-          <select
-            aria-label="Go to page"
-            className="h-8 min-w-8 appearance-none rounded-md bg-transparent px-1 text-center text-xs font-semibold tabular-nums text-text-control outline-none transition hover:bg-panel-soft focus-visible:ring-2 focus-visible:ring-brand"
-            onChange={(event) => onPageChange(Number(event.target.value))}
-            value={page}
-          >
-            {Array.from({ length: totalPages }, (_, index) => index + 1).map(
-              (pageNumber) => (
-                <option key={pageNumber} value={pageNumber}>
-                  {pageNumber}
-                </option>
-              ),
-            )}
-          </select>
-          <span className="text-xs text-text-subtle">of {totalPages}</span>
+          <PageNumberInput key={`${page}:${totalPages}`} page={page} totalPages={totalPages} onPageChange={onPageChange} />
+          <span className="whitespace-nowrap text-xs text-text-subtle"><span className="md:hidden">/ </span><span className="hidden md:inline">of </span>{totalPages}</span>
           <button
             aria-label="Next page"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-control transition hover:bg-panel-soft disabled:cursor-not-allowed disabled:text-text-subtle"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-md text-text-control transition hover:bg-panel-soft disabled:cursor-not-allowed disabled:text-text-subtle md:h-8 md:w-8"
             disabled={page >= totalPages}
             onClick={() => onPageChange(page + 1)}
             type="button"
@@ -120,6 +108,41 @@ export function ListPagination({
       </div>
     </div>
   );
+}
+
+function PageNumberInput({ page, totalPages, onPageChange }: {
+  page: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  const [draft, setDraft] = useState(String(page));
+
+  function commit() {
+    const requested = Number(draft);
+    const nextPage = draft && Number.isSafeInteger(requested)
+      ? Math.min(totalPages, Math.max(1, requested)) : page;
+    setDraft(String(nextPage));
+    if (nextPage !== page) onPageChange(nextPage);
+  }
+
+  return <input aria-label="Go to page" title={`Page 1 to ${totalPages}. Press Enter to go.`}
+    className="pagination-page-input" type="text" inputMode="numeric" pattern="[0-9]*"
+    maxLength={Math.max(2, String(totalPages).length)} value={draft}
+    style={{ width: `calc(${Math.max(2, String(totalPages).length)}ch + 0.75rem)` }}
+    onChange={(event) => {
+      if (/^\d*$/.test(event.target.value)) setDraft(event.target.value);
+    }}
+    onFocus={(event) => event.currentTarget.select()}
+    onBlur={commit}
+    onKeyDown={(event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        event.currentTarget.blur();
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        setDraft(String(page));
+      }
+    }} />;
 }
 
 export function useResponsiveListPageSize() {

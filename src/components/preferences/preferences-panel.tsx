@@ -131,6 +131,29 @@ function AppearancePreferences() {
       </div>
 
       <fieldset className="min-w-0 rounded-md border border-border-subtle px-3 py-3">
+        <legend className="sr-only">Navigation default</legend>
+        <p className="text-sm font-medium text-text-control">Navigation default</p>
+        <p className="mt-0.5 text-xs text-text-muted">Desktop menu when you open or refresh Myntix.</p>
+        <div className="mt-3 grid grid-cols-2 gap-1 rounded-md bg-panel-soft p-1">
+          {([
+            { label: "Expanded", value: "expanded" },
+            { label: "Collapsed", value: "collapsed" },
+          ] as const).map((option) => (
+            <button key={option.value} type="button"
+              aria-pressed={preferences.navigationDefault === option.value}
+              className={`min-w-0 rounded-sm px-3 py-2 text-xs font-semibold transition sm:text-sm ${
+                preferences.navigationDefault === option.value
+                  ? "bg-brand text-white"
+                  : "text-text-control hover:bg-surface-hover"
+              }`}
+              onClick={() => updatePreferences({ navigationDefault: option.value })}>
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+
+      <fieldset className="min-w-0 rounded-md border border-border-subtle px-3 py-3">
         <legend className="sr-only">Text size</legend>
         <p className="text-sm font-medium text-text-control">Text size</p>
         <p className="mt-0.5 text-xs text-text-muted">Adjust text throughout the app.</p>

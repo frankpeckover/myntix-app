@@ -20,7 +20,7 @@ export function EmptyState({
           {icon}
         </div>
       )}
-      <h3 className="mt-4 text-base font-semibold text-foreground">{title}</h3>
+      <h3 className={`${icon ? "mt-4" : "mt-0"} text-base font-semibold text-foreground`}>{title}</h3>
       <p className="mx-auto mt-1.5 max-w-md break-words text-sm leading-relaxed text-text-muted [overflow-wrap:anywhere]">
         {description}
       </p>

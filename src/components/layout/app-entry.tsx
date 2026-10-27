@@ -1,15 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { logoutUser } from "@/lib/actions";
 import { appConfig } from "@/lib/config/app-config";
 import { isAdmin, isTeacher } from "@/lib/auth/permissions";
 import type { SessionUser } from "@/lib/auth/session";
 import { sessionExpiredEventName } from "@/lib/auth/session-expiry-event";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
-import { LoginCard } from "@/components/auth/login-card";
 import { ToastViewport } from "@/components/ui/toast-viewport";
 import type { UserPreferences } from "@/lib/theme/user-preferences";
+
+// Password managers can inject controls before hydration; mount this form on the client.
+const LoginCard = dynamic(
+  () => import("@/components/auth/login-card").then((module) => module.LoginCard),
+  { ssr: false },
+);
 
 type AppEntryProps = {
   initialUser: SessionUser | null;

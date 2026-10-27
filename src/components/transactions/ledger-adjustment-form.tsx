@@ -1,4 +1,5 @@
 "use client";
+import { minimumSearchCharacters, searchDebounceMilliseconds } from "@/lib/presentation/search";
 
 import { useEffect, useRef, useState } from "react";
 import {
@@ -39,8 +40,8 @@ type LedgerAdjustmentFormProps = {
   transactionCap: number | null;
 };
 
-const studentSearchDebounceMs = 250;
-const studentSearchMinChars = 2;
+const studentSearchDebounceMs = searchDebounceMilliseconds;
+const studentSearchMinChars = minimumSearchCharacters;
 const emptyStudentResults: StudentListItem[] = [];
 const emptyGroupResults: GroupListItem[] = [];
 export function LedgerAdjustmentForm({
@@ -548,6 +549,7 @@ function DirectionToggle({
       <p className="text-sm font-semibold text-text-control">Action</p>
       <div className="mt-2 grid grid-cols-2 overflow-hidden rounded-md border border-button-border">
         <button
+          aria-pressed={direction === "add"}
           className={`inline-flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition ${
             direction === "add"
               ? "bg-success-fill text-success-foreground"
@@ -560,6 +562,7 @@ function DirectionToggle({
           <span>Add</span>
         </button>
         <button
+          aria-pressed={direction === "remove"}
           className={`inline-flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition ${
             direction === "remove"
               ? "bg-danger text-danger-foreground"
@@ -603,10 +606,11 @@ function AmountField({
       >
         Amount <span className="font-normal text-text-muted">({currencyName})</span>
       </label>
-      <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-5">
+      <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1" role="group" aria-label="Quick amounts">
         {presets.map((preset) => (
           <button
-            className={`rounded-md border px-3 py-2 text-sm font-semibold transition ${
+            aria-pressed={amount === String(preset)}
+            className={`min-h-11 min-w-11 flex-1 shrink-0 rounded-md border px-2 py-2 text-sm font-semibold transition ${
               amount === String(preset)
                 ? "border-brand bg-brand text-white"
                 : "border-button-border text-text-control hover:bg-panel-soft"
@@ -681,25 +685,18 @@ function ReasonField({
           </option>
         ))}
       </select>
-      <div className="my-3 flex items-center gap-3" aria-hidden="true">
-        <span className="h-px flex-1 bg-border-subtle" />
-        <span className="text-xs font-medium text-text-muted">or write a custom reason</span>
-        <span className="h-px flex-1 bg-border-subtle" />
-      </div>
-      <label className="block text-sm font-semibold text-text-control" htmlFor="custom-reason">
+      <label className="mt-4 block text-sm font-semibold text-text-control" htmlFor="custom-reason">
         Custom reason <span className="font-normal text-text-muted">(optional)</span>
       </label>
-      <p className="mt-1 text-xs text-text-muted">
-        Type below to use a custom reason instead of the selected preset.
-      </p>
       <input
         className="mt-2 w-full rounded-md border border-border-strong bg-surface px-3 py-3 text-sm outline-none ring-brand transition focus:ring-2"
         id="custom-reason"
         maxLength={250}
         onChange={(event) => onCustomReasonChange(event.target.value)}
-        placeholder="Type a custom reason"
+        placeholder="Type here to override the preset"
         value={customReason}
       />
+      <p className="mt-1 text-xs text-text-muted">Leave blank to use the preset reason.</p>
     </div>
   );
 }

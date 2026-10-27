@@ -20,6 +20,7 @@ export type TableActionMenuItem = {
 type TableActionMenuProps = {
   items: TableActionMenuItem[];
   label?: string;
+  touchTarget?: boolean;
 };
 
 const itemToneClassNames: Record<
@@ -35,6 +36,7 @@ const itemToneClassNames: Record<
 export function TableActionMenu({
   items,
   label = "Open row actions",
+  touchTarget = false,
 }: TableActionMenuProps) {
   const menuRef = useRef<HTMLDivElement | null>(null);
   const popupRef = useRef<HTMLDivElement | null>(null);
@@ -89,7 +91,7 @@ export function TableActionMenu({
         aria-controls={isOpen ? menuId : undefined}
         aria-haspopup="menu"
         aria-label={label}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-muted transition hover:bg-panel-soft hover:text-text-control"
+        className={`inline-flex ${touchTarget ? "h-11 w-11" : "h-8 w-8"} items-center justify-center rounded-md text-text-muted transition hover:bg-panel-soft hover:text-text-control`}
         onClick={() => setIsOpen((currentValue) => !currentValue)}
         ref={triggerRef}
         type="button"
@@ -100,7 +102,7 @@ export function TableActionMenu({
       {isOpen && (
         <div
           aria-label={label}
-          className="motion-pop absolute right-0 top-9 z-[170] min-w-40 rounded-md border border-border bg-surface p-1.5 text-sm shadow-lg"
+          className={`motion-pop absolute right-0 ${touchTarget ? "top-12" : "top-9"} z-[170] min-w-40 rounded-md border border-border bg-surface p-1.5 text-sm shadow-lg`}
           id={menuId}
           onKeyDown={handleMenuKeyDown}
           ref={popupRef}
@@ -108,7 +110,7 @@ export function TableActionMenu({
         >
           {visibleItems.map((item) => (
             <button
-              className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${
+              className={`flex ${touchTarget ? "min-h-11" : ""} w-full items-center gap-2 rounded-md px-3 py-2 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${
                 itemToneClassNames[resolveActionTone(item.label, item.tone)]
               }`}
               disabled={item.disabled}

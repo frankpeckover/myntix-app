@@ -31,6 +31,7 @@ export function useDashboardNavigation(role: Role) {
     if (url !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
       // Next.js integrates native history changes with useSearchParams without a server navigation.
       window.history.pushState(null, "", url);
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
     }
   }, [role]);
 

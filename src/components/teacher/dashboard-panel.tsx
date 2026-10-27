@@ -1,4 +1,5 @@
 "use client";
+import { isSearchReady } from "@/lib/presentation/search";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
@@ -44,6 +45,8 @@ import type { StudentBalanceItem } from "@/domains/ledger/transaction-service";
 import type { StudentListItem } from "@/domains/users/user-service";
 import { ledgerChangeEventName } from "@/lib/ledger/ledger-change-event";
 import { useCurrentClassRefresh } from "@/components/teacher/use-current-class-refresh";
+import { useDashboardLayout } from "@/components/layout/use-dashboard-layout";
+import { MobileCreditAccounts } from "@/components/teacher/mobile/credit-accounts";
 
 type TeacherDashboardPanelProps = {
   currencyName: string;
@@ -94,6 +97,7 @@ export function TeacherDashboardPanel({
   showAllStudentsByDefault = false,
   transactionCap,
 }: TeacherDashboardPanelProps) {
+  const layout = useDashboardLayout();
   const [currentClass, setCurrentClass] = useState<CurrentClass | null>(null);
   const [studentBalances, setStudentBalances] = useState<StudentBalanceItem[]>(
     [],
@@ -224,6 +228,13 @@ export function TeacherDashboardPanel({
     () => getVisibleGroups(search, groups),
     [groups, search],
   );
+  const ambiguousStudentNames = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const student of visibleStudents) {
+      counts.set(student.displayName, (counts.get(student.displayName) ?? 0) + 1);
+    }
+    return new Set([...counts].filter(([, count]) => count > 1).map(([name]) => name));
+  }, [visibleStudents]);
   const studentBalanceById = useMemo(
     () => new Map(studentBalances.map((student) => [student.id, student])),
     [studentBalances],
@@ -549,26 +560,27 @@ export function TeacherDashboardPanel({
                 </button>
                 <div className="flex min-w-0 shrink-0 items-center gap-2">
                   <button
-                    className="inline-flex h-[46px] min-w-0 flex-1 items-center justify-center gap-2 rounded-md border border-brand bg-brand px-3 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:border-button-border disabled:bg-panel-soft disabled:text-text-muted disabled:shadow-none sm:px-4"
+                    className="inline-flex h-[46px] min-w-0 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-brand bg-brand px-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:border-button-border disabled:bg-panel-soft disabled:text-text-muted disabled:shadow-none sm:px-4"
                     disabled={visibleStudents.length === 0}
+                    aria-label={`Issue to all, ${visibleStudents.length} students`}
                     onClick={handleIssueAllShown}
                     type="button"
                   >
-                    <PlusIcon />
-                    <span>Issue all</span>
+                    <PlusIcon className="hidden h-4 w-4 sm:block" />
+                    <span>Issue to all</span>
                   </button>
-                  <InfoTooltip label="Opens one credit workflow for every student currently shown. Review the student count before submitting." />
+                  <InfoTooltip label="Includes every student matching the current class or search, across all pages. Review the student count before submitting." />
                 </div>
               </div>
 
               {isDefaultingToCurrentClass && !currentClass && (
-                <p className="mt-3 text-sm text-text-muted">
+                <p className="mx-auto mt-3 max-w-xl px-3 py-6 text-center text-base leading-relaxed text-text-muted sm:py-8">
                   No class is timetabled right now. Search for students or groups.
                 </p>
               )}
 
               {(visibleStudents.length > 0 || visibleGroups.length > 0) && (
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-3">
+                <div className="mt-3 hidden flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-3 lg:flex">
                   {visibleStudents.length > 0 && (
                     <div className="flex min-w-0 items-center gap-3">
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-brand-soft text-brand">
@@ -621,6 +633,23 @@ export function TeacherDashboardPanel({
 
             {(visibleStudents.length > 0 || visibleGroups.length > 0) && (
               <>
+                {layout === "mobile" ? (
+                  <MobileCreditAccounts
+                    ambiguousStudentNames={ambiguousStudentNames}
+                    currencyName={currencyName}
+                    groups={visibleGroups}
+                    students={visibleStudentPage}
+                    quickAddAmount={personalPresets.quickAdd.amount}
+                    quickRemoveAmount={personalPresets.quickRemove.amount}
+                    busyStudentId={quickActionStudentId}
+                    busyGroupId={quickActionGroupId}
+                    onStudentAdjustment={handleQuickAdjustment}
+                    onGroupAdjustment={handleQuickGroupAdjustment}
+                    onAdjustStudent={(student) => handleStudentsSelected([toStudentListItem(student)], "add")}
+                    onAdjustGroup={(group) => handleGroupSelected(group, "add")}
+                    onOpenGroup={handleGroupExpanded}
+                  />
+                ) : layout === null ? <LoadingSkeleton lines={3} /> : (
                 <div className="min-w-0">
                   <DataTable ariaLabel="Student credit accounts">
                     <colgroup>
@@ -750,6 +779,7 @@ export function TeacherDashboardPanel({
                     </tbody>
                   </DataTable>
                 </div>
+                )}
                 <ListPagination
                   onPageChange={setStudentPage}
                   onPageSizeChange={setStudentPageSize}
@@ -965,7 +995,7 @@ function getVisibleStudents(
 function getVisibleGroups(search: string, groups: GroupListItem[]) {
   const trimmedSearch = search.trim();
 
-  if (!trimmedSearch || hasSemicolonSearch(trimmedSearch)) {
+  if (!isSearchReady(trimmedSearch) || hasSemicolonSearch(trimmedSearch)) {
     return [];
   }
 
@@ -997,7 +1027,7 @@ function getStudentsMatchingTerm(
 ) {
   const query = normaliseSearchValue(term);
 
-  if (!query) {
+  if (!isSearchReady(query)) {
     return [];
   }
 
@@ -1018,7 +1048,7 @@ function splitSearchTerms(search: string) {
   return search
     .split(";")
     .map((term) => term.trim())
-    .filter(Boolean);
+    .filter(isSearchReady);
 }
 
 function hasSemicolonSearch(search: string) {

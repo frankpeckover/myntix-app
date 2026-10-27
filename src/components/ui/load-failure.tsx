@@ -16,7 +16,7 @@ export function LoadFailure({
     <EmptyState
       action={
         <button
-          className="inline-flex h-9 items-center justify-center rounded-md border border-button-border bg-surface px-3 text-sm font-medium text-text-control transition hover:bg-panel-soft"
+          className="inline-flex h-11 items-center justify-center rounded-md border border-button-border bg-surface px-3 text-sm font-medium text-text-control transition hover:bg-panel-soft lg:h-9"
           onClick={onRetry}
           type="button"
         >

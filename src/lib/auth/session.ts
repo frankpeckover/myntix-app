@@ -9,4 +9,5 @@ export type SessionUser = {
   displayName: string;
   profileImageUrl: string;
   role: Role;
+  yearLevel: number | null;
 };

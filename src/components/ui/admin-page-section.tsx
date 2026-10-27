@@ -17,7 +17,7 @@ export function AdminPageSection({
     <section
       aria-label={ariaLabel}
       className={`admin-page-section theme-panel motion-panel mt-3 min-w-0 sm:mt-5 ${
-        isFlush ? "p-0" : "p-3 sm:p-5"
+        isFlush ? "table-list-surface p-0" : "p-3 sm:p-5"
       } ${className}`}
     >
       {children}

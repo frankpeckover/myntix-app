@@ -1,5 +1,10 @@
 "use client";
 
+import { PageResultCount } from "@/components/ui/page-result-count";
+
+import { MobileTableToolbar } from "@/components/ui/mobile-table-toolbar";
+import { matchesTextSearch as includesFilter } from "@/lib/presentation/search";
+
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { listAuditLog } from "@/lib/actions";
@@ -153,9 +158,9 @@ export function AdminAuditLogPanel() {
                     />
                   }
                 >
-                  <p className="text-sm font-semibold text-text-muted">
+                  <PageResultCount>
                     Showing {visibleEntries.length} of {sortedEntries.length} audit events.
-                  </p>
+                  </PageResultCount>
                 </TableToolbar>
               }
             />
@@ -219,9 +224,86 @@ function AuditLogList({
     onFiltersChange({ ...filters, [field]: value });
   }
 
+  const tableHeader = (
+    <thead>
+      <tr className="border-b border-border-subtle text-text-muted">
+        <th scope="col" className="py-2 pr-4 font-semibold">
+          <TableHeaderFilter
+            onSortDirectionChange={(direction) => onSortChange("time", direction)}
+            sortDirection={tableSort?.column === "time" ? tableSort.direction : null}
+            label="Time"
+          />
+        </th>
+        <th scope="col" className="py-2 pr-4 font-semibold">
+          <TableHeaderFilter
+            isActive={Boolean(filters.action)}
+            label="Action"
+            onClear={() => updateFilter("action", "")}
+            onSortDirectionChange={(direction) => onSortChange("action", direction)}
+            sortDirection={tableSort?.column === "action" ? tableSort.direction : null}
+          >
+            <TableHeaderFilterInput
+              label="Action"
+              onChange={(value) => updateFilter("action", value)}
+              value={filters.action}
+            />
+          </TableHeaderFilter>
+        </th>
+        <th scope="col" className="py-2 pr-4 font-semibold">
+          <TableHeaderFilter
+            isActive={Boolean(filters.actor)}
+            label="Actor"
+            onClear={() => updateFilter("actor", "")}
+            onSortDirectionChange={(direction) => onSortChange("actor", direction)}
+            sortDirection={tableSort?.column === "actor" ? tableSort.direction : null}
+          >
+            <TableHeaderFilterInput
+              label="Actor"
+              onChange={(value) => updateFilter("actor", value)}
+              value={filters.actor}
+            />
+          </TableHeaderFilter>
+        </th>
+        <th scope="col" className="py-2 pr-4 font-semibold">
+          <TableHeaderFilter
+            isActive={Boolean(filters.record)}
+            label="Record"
+            onClear={() => updateFilter("record", "")}
+            onSortDirectionChange={(direction) => onSortChange("record", direction)}
+            sortDirection={tableSort?.column === "record" ? tableSort.direction : null}
+          >
+            <TableHeaderFilterInput
+              label="Record"
+              onChange={(value) => updateFilter("record", value)}
+              value={filters.record}
+            />
+          </TableHeaderFilter>
+        </th>
+        <th scope="col" className="py-2 pr-4 font-semibold">
+          <TableHeaderFilter
+            isActive={Boolean(filters.details)}
+            label="Details"
+            onClear={() => updateFilter("details", "")}
+            onSortDirectionChange={(direction) => onSortChange("details", direction)}
+            sortDirection={tableSort?.column === "details" ? tableSort.direction : null}
+          >
+            <TableHeaderFilterInput
+              label="Details"
+              onChange={(value) => updateFilter("details", value)}
+              value={filters.details}
+            />
+          </TableHeaderFilter>
+        </th>
+        <th scope="col" className="py-2 text-right font-semibold">
+          <span className="sr-only">Actions</span>
+        </th>
+      </tr>
+    </thead>
+  );
+
   return (
     <>
-      {toolbar && <div className="mb-3 md:hidden">{toolbar}</div>}
+      <MobileTableToolbar label="Audit log" toolbar={toolbar} header={tableHeader} />
       <div className="grid gap-2 md:hidden">
         {entries.map((entry) => (
           <AuditLogMobileRow
@@ -242,80 +324,7 @@ function AuditLogList({
             <col className="w-[24%]" />
             <col className="w-12" />
           </colgroup>
-          <thead>
-            <tr className="border-b border-border-subtle text-text-muted">
-              <th scope="col" className="py-2 pr-4 font-semibold">
-                <TableHeaderFilter
-                  onSortDirectionChange={(direction) => onSortChange("time", direction)}
-                  sortDirection={tableSort?.column === "time" ? tableSort.direction : null}
-                  label="Time"
-                />
-              </th>
-              <th scope="col" className="py-2 pr-4 font-semibold">
-                <TableHeaderFilter
-                  isActive={Boolean(filters.action)}
-                  label="Action"
-                  onClear={() => updateFilter("action", "")}
-                  onSortDirectionChange={(direction) => onSortChange("action", direction)}
-                  sortDirection={tableSort?.column === "action" ? tableSort.direction : null}
-                >
-                  <TableHeaderFilterInput
-                    label="Action"
-                    onChange={(value) => updateFilter("action", value)}
-                    value={filters.action}
-                  />
-                </TableHeaderFilter>
-              </th>
-              <th scope="col" className="py-2 pr-4 font-semibold">
-                <TableHeaderFilter
-                  isActive={Boolean(filters.actor)}
-                  label="Actor"
-                  onClear={() => updateFilter("actor", "")}
-                  onSortDirectionChange={(direction) => onSortChange("actor", direction)}
-                  sortDirection={tableSort?.column === "actor" ? tableSort.direction : null}
-                >
-                  <TableHeaderFilterInput
-                    label="Actor"
-                    onChange={(value) => updateFilter("actor", value)}
-                    value={filters.actor}
-                  />
-                </TableHeaderFilter>
-              </th>
-              <th scope="col" className="py-2 pr-4 font-semibold">
-                <TableHeaderFilter
-                  isActive={Boolean(filters.record)}
-                  label="Record"
-                  onClear={() => updateFilter("record", "")}
-                  onSortDirectionChange={(direction) => onSortChange("record", direction)}
-                  sortDirection={tableSort?.column === "record" ? tableSort.direction : null}
-                >
-                  <TableHeaderFilterInput
-                    label="Record"
-                    onChange={(value) => updateFilter("record", value)}
-                    value={filters.record}
-                  />
-                </TableHeaderFilter>
-              </th>
-              <th scope="col" className="py-2 pr-4 font-semibold">
-                <TableHeaderFilter
-                  isActive={Boolean(filters.details)}
-                  label="Details"
-                  onClear={() => updateFilter("details", "")}
-                  onSortDirectionChange={(direction) => onSortChange("details", direction)}
-                  sortDirection={tableSort?.column === "details" ? tableSort.direction : null}
-                >
-                  <TableHeaderFilterInput
-                    label="Details"
-                    onChange={(value) => updateFilter("details", value)}
-                    value={filters.details}
-                  />
-                </TableHeaderFilter>
-              </th>
-              <th scope="col" className="py-2 text-right font-semibold">
-                <span className="sr-only">Actions</span>
-              </th>
-            </tr>
-          </thead>
+          {tableHeader}
           <tbody>
             {entries.map((entry) => (
               <tr className="border-b border-border-subtle" key={entry.id}>
@@ -532,9 +541,6 @@ function matchesAuditFilters(entry: AuditLogItem, filters: AuditFilters) {
   );
 }
 
-function includesFilter(value: string, filter: string) {
-  return value.toLowerCase().includes(filter.trim().toLowerCase());
-}
 
 function downloadAuditLog(entries: AuditLogItem[]) {
   downloadCsv(

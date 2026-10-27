@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useId, useState } from "react";
+import { Fragment, useId, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { getActivityYearRange } from "@/lib/presentation/activity-calendar";
 import { formatDateKey } from "@/lib/presentation/formatters";
@@ -48,17 +48,48 @@ export function ActivityHeatmap({
 }: ActivityHeatmapProps) {
   const tooltipId = useId();
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+  const [focusedDate, setFocusedDate] = useState<string | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
   const calendarDays = buildYearCalendar(days, weekdaysOnly);
   const medianAmount = getMedianMovement(calendarDays);
   const weeks = buildWeeks(calendarDays, weekdaysOnly);
   const columnCount = weeks.length;
   const cellSize = size === "large" ? 16 : 12;
   const maxCalendarWidth = columnCount * cellSize + Math.max(columnCount - 1, 0) * 2;
+  const activeDate = focusedDate && calendarDays.some((day) => formatDateKey(day.date) === focusedDate)
+    ? focusedDate : calendarDays.length > 0 ? formatDateKey(calendarDays[calendarDays.length - 1].date) : null;
+
+  function handleCalendarKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    const target = event.target as HTMLElement;
+    const index = Number(target.dataset.heatmapCell);
+    if (target.dataset.heatmapCell === undefined) return;
+    if (event.key === "Escape") {
+      setTooltip(null);
+      return;
+    }
+    const rows = weekdaysOnly ? 5 : 7;
+    const step = { ArrowLeft: -rows, ArrowRight: rows, ArrowUp: -1, ArrowDown: 1 }[event.key];
+    const buttons = gridRef.current?.querySelectorAll<HTMLButtonElement>("[data-heatmap-cell]");
+    if (!buttons?.length) return;
+    if (event.key === "Home" || event.key === "End") {
+      event.preventDefault();
+      buttons[event.key === "Home" ? 0 : buttons.length - 1].focus();
+      return;
+    }
+    if (step === undefined) return;
+    event.preventDefault();
+    const nextIndex = index + step;
+    if (Math.abs(step) === 1 && Math.floor(nextIndex / rows) !== Math.floor(index / rows)) return;
+    gridRef.current?.querySelector<HTMLButtonElement>(`[data-heatmap-cell="${nextIndex}"]`)?.focus();
+  }
 
   if (columnCount === 0) return null;
 
   return (
-    <div aria-label={ariaLabel} className="w-full" role="group">
+    <div aria-label={ariaLabel} aria-describedby={`${tooltipId}-instructions`} className="w-full" role="group">
+      <span id={`${tooltipId}-instructions`} className="sr-only">
+        Use arrow keys to explore dates, Home and End for the first and last dates, and Escape to dismiss details.
+      </span>
       <div
         className="mx-auto"
         style={{ width: `min(100%, ${maxCalendarWidth}px)` }}
@@ -79,6 +110,8 @@ export function ActivityHeatmap({
         </div>
         <div
           className="grid gap-x-[2px]"
+          ref={gridRef}
+          onKeyDown={handleCalendarKeyDown}
           style={{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))` }}
         >
           {weeks.map((week, weekIndex) => (
@@ -106,6 +139,9 @@ export function ActivityHeatmap({
                   tooltipId,
                   setTooltip,
                   onSelectDate,
+                  formatDateKey(day.date) === activeDate,
+                  setFocusedDate,
+                  tooltip ? formatDateKey(tooltip.day.date) === formatDateKey(day.date) : false,
                 );
               })}
             </div>
@@ -178,11 +214,14 @@ function renderCell(
   tooltipId: string,
   setTooltip: (tooltip: TooltipState | null) => void,
   onSelectDate?: (date: string) => void,
+  isTabStop = false,
+  onCellFocus?: (date: string) => void,
+  isTooltipVisible = false,
 ) {
   const className = `block w-full aspect-square rounded-[2px] border border-black/5 transition-colors dark:border-white/10 ${
     onSelectDate
       ? "appearance-none cursor-pointer outline-none hover:brightness-95 focus-visible:ring-2 focus-visible:ring-brand"
-      : ""
+      : "appearance-none cursor-help outline-none focus-visible:ring-2 focus-visible:ring-brand"
   }`;
   const style = getCellStyle(day, medianAmount);
   const key = `${formatDateKey(day.date)}-${index}`;
@@ -205,28 +244,23 @@ function renderCell(
     });
   };
 
-  return onSelectDate ? (
+  return (
     <button
-      aria-describedby={tooltipId}
+      aria-describedby={isTooltipVisible ? tooltipId : undefined}
       aria-label={describeHeatmapDay(day)}
       className={className}
       key={key}
+      data-heatmap-cell={index}
+      tabIndex={isTabStop ? 0 : -1}
       onBlur={() => setTooltip(null)}
-      onClick={() => onSelectDate(formatDateKey(day.date))}
-      onFocus={(event) => showTooltip(event.currentTarget)}
+      onClick={(event) => onSelectDate ? onSelectDate(formatDateKey(day.date)) : showTooltip(event.currentTarget)}
+      onFocus={(event) => {
+        onCellFocus?.(formatDateKey(day.date));
+        showTooltip(event.currentTarget);
+      }}
       onMouseEnter={(event) => showTooltip(event.currentTarget)}
       onMouseLeave={() => setTooltip(null)}
       type="button"
-      style={style}
-    />
-  ) : (
-    <span
-      aria-label={describeHeatmapDay(day)}
-      className={className}
-      key={key}
-      onMouseEnter={(event) => showTooltip(event.currentTarget)}
-      onMouseLeave={() => setTooltip(null)}
-      role="img"
       style={style}
     />
   );

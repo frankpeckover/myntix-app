@@ -8,8 +8,10 @@ export function ListCount({
   totalCount: number;
 }) {
   return (
-    <p className="text-sm font-semibold text-text-muted">
+    <PageResultCount>
       Showing {count} of {totalCount} {label}.
-    </p>
+    </PageResultCount>
   );
 }
+import { PageResultCount } from "@/components/ui/page-result-count";
+

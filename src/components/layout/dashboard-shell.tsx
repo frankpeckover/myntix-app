@@ -12,8 +12,6 @@ import { CreditAnalyticsPanel } from "@/components/analytics/panel";
 import {
   DesktopAccountMenu,
   DesktopSideNav,
-  HeaderNavMenu,
-  NavigationItemIcon,
   type NavigationItem,
 } from "@/components/layout/app-nav";
 import { ChangePasswordModal } from "@/components/auth/change-password-modal";
@@ -26,8 +24,7 @@ import { TeacherHomePanel } from "@/components/teacher/home-panel";
 import { TeacherTimetablePanel } from "@/components/teacher/timetable-panel";
 import { TransactionLogPanel } from "@/components/transactions/transaction-log-panel";
 import { NotificationCentre } from "@/components/notifications/notification-centre";
-import { AppBrand } from "@/components/ui/app-brand";
-import { AppFooter } from "@/components/ui/app-footer";
+import { MobileBottomNavigation } from "@/components/layout/mobile/bottom-navigation";
 import { GlobalMaintenanceBanner } from "@/components/ui/global-maintenance-banner";
 import { OfflineBanner } from "@/components/ui/offline-banner";
 import { getSchoolInfo } from "@/lib/actions";
@@ -48,6 +45,8 @@ import { VoiceCreditAssistant } from "@/components/voice/voice-credit-assistant"
 import { UserPreferencesProvider } from "@/components/preferences/user-preferences-provider";
 import type { UserPreferences } from "@/lib/theme/user-preferences";
 import { useDashboardNavigation } from "@/components/layout/use-dashboard-navigation";
+import { PageResultCountTargetContext } from "@/components/ui/page-result-count";
+import { useDashboardLayout } from "@/components/layout/use-dashboard-layout";
 
 type DashboardShellProps = {
   initialPreferences: UserPreferences | null;
@@ -74,6 +73,7 @@ export function DashboardShell({
     transactionDateFilter: transactionHistoryDateFilter,
   } = useDashboardNavigation(user.role);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [resultCountTarget, setResultCountTarget] = useState<HTMLDivElement | null>(null);
   const [teacherGroupNavigation, setTeacherGroupNavigation] =
     useState<TeacherGroupNavigation | null>(null);
   const [greeting, setGreeting] = useState("Hello");
@@ -140,16 +140,32 @@ export function DashboardShell({
   }, [activeNavItem, user]);
 
   const schoolName = schoolInfo.name.trim() || appConfig.defaultSchoolName;
+  const layout = useDashboardLayout();
   const shellRoleClassName = getShellRoleClassName(user);
   const clearTeacherGroupNavigation = useCallback(() => {
     setTeacherGroupNavigation(null);
   }, []);
+  const headerControls = [
+    !isStudent(user) && (
+      <VoiceCreditAssistant key="voice"
+        currencyName={schoolInfo.currencyName}
+        transactionCap={schoolInfo.transactionCap} />
+    ),
+    <NotificationCentre key="notifications" onNavigate={navigateTo} />,
+    <DesktopAccountMenu key="account"
+      onItemChange={navigateTo}
+      onLogout={onLogout}
+      onPasswordChange={() => setIsPasswordModalOpen(true)}
+      profileImageUrl={user.profileImageUrl}
+      userDisplayName={user.displayName} />,
+  ];
 
   return (
     <UserPreferencesProvider
       initialPreferences={initialPreferences}
       userId={user.id}
     >
+    <PageResultCountTargetContext.Provider value={resultCountTarget}>
     <div className={`app-shell-surface min-h-screen overflow-x-clip bg-background text-foreground ${shellRoleClassName}`}>
       <OfflineBanner />
       <GlobalMaintenanceBanner message={maintenanceMessage} />
@@ -167,65 +183,32 @@ export function DashboardShell({
         />
 
         <main
-          className="mx-auto flex min-w-0 flex-1 flex-col px-3 py-1.5 sm:px-6 sm:py-2 lg:max-w-[calc(104rem-17rem)] lg:px-8"
+          className="mx-auto flex min-w-0 flex-1 flex-col px-3 pt-1.5 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-2 lg:max-w-[calc(104rem-17rem)] lg:px-8 lg:pb-2"
           id="main-content"
           tabIndex={-1}
         >
-          <header className="relative z-50 pb-1.5 pt-3 sm:pb-2 sm:pt-4">
-            <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 sm:gap-3 lg:flex-nowrap">
-              <div className="lg:hidden">
-                <AppBrand />
-              </div>
-              <p className="order-3 w-full min-w-0 basis-full truncate pt-0.5 text-left text-base font-medium text-text-control sm:pt-1 sm:text-xl lg:order-none lg:w-auto lg:basis-auto lg:flex-1 lg:pt-0 lg:text-left lg:text-2xl">
+          <header className="fixed inset-x-0 bottom-0 z-50 border-t border-border-subtle bg-surface px-2 pt-1 pb-[calc(0.25rem+env(safe-area-inset-bottom))] lg:relative lg:inset-auto lg:border-0 lg:bg-transparent lg:px-0 lg:pb-2 lg:pt-4">
+            <div className="flex min-w-0 items-center justify-between gap-1 lg:gap-3">
+              <p className="hidden min-w-0 truncate text-left text-sm text-text-muted lg:block lg:flex-1">
                 {greeting}, {getGreetingName(user)}!
               </p>
-              <div className="order-2 ml-auto flex shrink-0 items-center gap-2 lg:order-none lg:ml-0">
-                {!isStudent(user) && (
-                  <VoiceCreditAssistant
-                    currencyName={schoolInfo.currencyName}
-                    transactionCap={schoolInfo.transactionCap}
-                  />
-                )}
-                <NotificationCentre
-                  onNavigate={navigateTo}
-                />
-                <DesktopAccountMenu
-                  onItemChange={navigateTo}
-                  onLogout={onLogout}
-                  onPasswordChange={() => setIsPasswordModalOpen(true)}
-                  profileImageUrl={user.profileImageUrl}
-                  userDisplayName={user.displayName}
-                />
-                <HeaderNavMenu
-                  activeItem={activeNavItem}
-                  onItemChange={navigateTo}
-                  onLogout={onLogout}
-                  onPasswordChange={() => setIsPasswordModalOpen(true)}
-                  profileImageUrl={user.profileImageUrl}
-                  role={user.role}
-                  schoolLogoUrl={schoolInfo.logoUrl}
-                  schoolName={schoolName}
-                  userDisplayName={user.displayName}
-                />
+              <div className="flex shrink-0 items-center gap-0.5 border-r border-border-subtle pr-1 lg:ml-auto lg:gap-2 lg:border-0 lg:pr-0">
+                {layout === "mobile" ? [...headerControls].reverse() : headerControls}
               </div>
+              <MobileBottomNavigation activeItem={activeNavItem} onItemChange={navigateTo} role={user.role} />
             </div>
           </header>
 
           <div className="mb-1.5 flex min-h-0 items-center pt-2 pb-0 sm:mb-2 sm:pt-3">
             <div className="flex min-w-0 items-center gap-3.5 sm:gap-4">
-              <span className="shrink-0 text-brand" aria-hidden="true">
-                <NavigationItemIcon
-                  className="h-7 w-7 sm:h-8 sm:w-8"
-                  item={activeNavItem}
-                />
-              </span>
               <div className="min-w-0">
                 <h1 className="min-w-0 truncate text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
                   {getCurrentPageHeading(activeNavItem, user)}
                 </h1>
-                <p className="mt-1 text-sm leading-5 text-text-muted">
+                <p className="mt-1 text-xs leading-5 text-text-muted sm:text-sm">
                   {getCurrentPageDescription(activeNavItem, user)}
                 </p>
+                <div className="lg:hidden" ref={setResultCountTarget} />
               </div>
             </div>
           </div>
@@ -356,13 +339,10 @@ export function DashboardShell({
           />
         )}
 
-        <AppFooter
-          contactEmail={schoolInfo.contactEmail}
-          schoolName={schoolName}
-        />
         </main>
       </div>
     </div>
+    </PageResultCountTargetContext.Provider>
     </UserPreferencesProvider>
   );
 }

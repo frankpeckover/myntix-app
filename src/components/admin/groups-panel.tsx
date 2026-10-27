@@ -1,5 +1,9 @@
 "use client";
 
+import { PageResultCount } from "@/components/ui/page-result-count";
+import { matchesTextSearch as includesFilter } from "@/lib/presentation/search";
+import { searchDebounceMilliseconds } from "@/lib/presentation/search";
+
 import { useEffect, useMemo, useState } from "react";
 import {
   addStudentsToGroup,
@@ -41,7 +45,7 @@ import type {
 } from "@/domains/groups/group-service";
 import type { StudentListItem } from "@/domains/users/user-service";
 
-const studentSearchDebounceMs = 250;
+const studentSearchDebounceMs = searchDebounceMilliseconds;
 const emptyStudents: StudentListItem[] = [];
 
 type GroupFilters = {
@@ -624,9 +628,9 @@ export function AdminGroupsPanel() {
           >
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               {groups.length > 0 && (
-                <p className="text-sm font-semibold text-text-muted">
+                <PageResultCount>
                   Showing {filteredGroups.length} of {groups.length} groups.
-                </p>
+                </PageResultCount>
               )}
               <BulkSelectionControls
                 actions={archiveBulkActionsForFilter(groupStatusFilter).map((action) =>
@@ -777,9 +781,6 @@ function matchesGroupFilters(group: GroupListItem, filters: GroupFilters) {
   );
 }
 
-function includesFilter(value: string, filter: string) {
-  return value.toLowerCase().includes(filter.trim().toLowerCase());
-}
 
 function matchesMemberCountFilter(
   memberCount: number,

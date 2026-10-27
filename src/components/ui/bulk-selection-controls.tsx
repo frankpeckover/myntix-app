@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from "react";
+import { useRef } from "react";
 import {
   type TableActionMenuItem,
 } from "@/components/ui/table-action-menu";
@@ -26,18 +26,18 @@ export function BulkSelectionControls({
   return (
     <div className="flex flex-wrap items-center gap-2">
       {onVisibleSelectionChange && (
-        <div className="flex items-center gap-2 md:hidden">
+        <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md pr-2 text-text-muted hover:text-text-control md:hidden">
           <RowSelectionCheckbox
             checked={isAllSelected}
             label={allSelectedLabel}
             onChange={onVisibleSelectionChange}
           />
           <span className="text-xs text-text-muted">Select all</span>
-        </div>
+        </label>
       )}
       {selectedCount > 0 && (
         <>
-      <span className="text-xs text-text-muted">
+      <span className="text-xs text-text-muted" role="status" aria-live="polite" aria-atomic="true">
         {selectedCount} selected
       </span>
       <div className="flex flex-wrap items-center gap-2">
@@ -93,20 +93,5 @@ export function RowSelectionCheckbox({
       }}
       type="checkbox"
     />
-  );
-}
-
-export function MobileSelectionShell({
-  checkbox,
-  children,
-}: {
-  checkbox: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <div className="flex min-w-0 max-w-full items-start gap-2 sm:gap-3">
-      <div className="pt-1">{checkbox}</div>
-      <div className="min-w-0 flex-1">{children}</div>
-    </div>
   );
 }

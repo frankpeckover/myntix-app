@@ -14,6 +14,11 @@ import { StudentShopRequestsPanel } from "@/components/rewards/student-shop-requ
 import { StudentGoalCard } from "@/components/student/goal-card";
 import { StudentActivityRecap } from "@/components/student/activity-recap";
 import { StudentBestDayCard } from "@/components/student/best-day-card";
+import { SimpleStudentDashboard } from "@/components/student/simple-dashboard";
+import { MobileStudentDashboard } from "@/components/student/mobile/dashboard-layout";
+import { useDashboardLayout } from "@/components/layout/use-dashboard-layout";
+import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { usesSimpleStudentDashboard } from "@/domains/users/year-level";
 import {
   studentActivityTimeframeOptions,
   getStudentActivityRange,
@@ -39,7 +44,11 @@ import {
   getTimeAxisTicks,
   type BalanceTimePoint,
 } from "@/lib/presentation/chart-time-scale";
-import { formatAmount, formatCurrencyAmount, formatSignedAmount } from "@/lib/presentation/formatters";
+import {
+  formatAmount,
+  formatCurrencyAmount,
+  formatSignedAmount,
+} from "@/lib/presentation/formatters";
 import type { SessionUser } from "@/lib/auth/session";
 import type { TransactionLogItem } from "@/domains/ledger/transaction-service";
 import type { UnseenTransaction } from "@/domains/ledger/transaction-notification-service";
@@ -72,11 +81,14 @@ export function StudentDashboardPanel({
   schoolLogoUrl,
   schoolName,
 }: StudentDashboardPanelProps) {
+  const layout = useDashboardLayout();
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState<TransactionLogItem[]>([]);
   const [isTransactionsLoading, setIsTransactionsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [transactionsError, setTransactionsError] = useState<string | null>(null);
+  const [transactionsError, setTransactionsError] = useState<string | null>(
+    null,
+  );
   const [reloadKey, setReloadKey] = useState(0);
   const [unseenTransactions, setUnseenTransactions] = useState<
     UnseenTransaction[]
@@ -86,16 +98,20 @@ export function StudentDashboardPanel({
   );
   const [isDismissingNotifications, setIsDismissingNotifications] =
     useState(false);
-  const [selectedWindow, setSelectedWindow] = useState<StudentActivityWindow>("month");
+  const [selectedWindow, setSelectedWindow] =
+    useState<StudentActivityWindow>("month");
   const [customStartDate, setCustomStartDate] = useState(() =>
     formatDateInput(addDays(new Date(), -29)),
   );
-  const [customEndDate, setCustomEndDate] = useState(() => formatDateInput(new Date()));
+  const [customEndDate, setCustomEndDate] = useState(() =>
+    formatDateInput(new Date()),
+  );
   const activityRange = useMemo(
-    () => getStudentActivityRange(selectedWindow, {
-      startDate: customStartDate,
-      endDate: customEndDate,
-    }),
+    () =>
+      getStudentActivityRange(selectedWindow, {
+        startDate: customStartDate,
+        endDate: customEndDate,
+      }),
     [selectedWindow, customStartDate, customEndDate],
   );
 
@@ -168,7 +184,9 @@ export function StudentDashboardPanel({
 
       setUnseenTransactions([]);
     } catch {
-      setNotificationError("Could not dismiss these updates. Please try again.");
+      setNotificationError(
+        "Could not dismiss these updates. Please try again.",
+      );
     } finally {
       setIsDismissingNotifications(false);
     }
@@ -217,102 +235,151 @@ export function StudentDashboardPanel({
           />
         </div>
       )}
-      <div className="mb-2 mt-2 flex flex-wrap items-end justify-end gap-3">
-        {selectedWindow === "custom" && (
-          <div className="grid w-full grid-cols-2 gap-2 sm:w-auto">
-            <label className="text-xs font-medium text-text-muted">
-              Start
-              <input
-                className="mt-1 w-full min-w-0 rounded-md border border-border bg-surface px-2 py-1.5 text-xs text-text-control outline-none ring-brand focus:ring-2"
-                max={customEndDate}
-                onChange={(event) => setCustomStartDate(event.target.value)}
-                type="date"
-                value={customStartDate}
+      {layout === null ? (
+        <LoadingSkeleton lines={3} variant="cards" />
+      ) : layout === "mobile" ? (
+        <MobileStudentDashboard
+          balance={balance}
+          currencyName={currencyName}
+          isLoading={isTransactionsLoading}
+          onBrowseRewards={onBrowseRewards}
+          onOpenTransactionHistory={onOpenTransactionHistory}
+          transactions={transactions}
+          wallet={
+            <StudentWalletCard
+              balance={balance}
+              compact
+              celebrate={unseenTransactions.some((transaction) => transaction.amount > 0)}
+              currencyName={currencyName}
+              currentUser={currentUser}
+              schoolLogoUrl={schoolLogoUrl}
+              schoolName={schoolName}
+            />
+          }
+        />
+      ) : usesSimpleStudentDashboard(currentUser.yearLevel) ? (
+        <SimpleStudentDashboard
+          balance={balance}
+          currencyName={currencyName}
+          isLoading={isTransactionsLoading}
+          onBrowseRewards={onBrowseRewards}
+          onOpenTransactionHistory={onOpenTransactionHistory}
+          transactions={transactions}
+          wallet={
+            <StudentWalletCard
+              balance={balance}
+              celebrate={unseenTransactions.some(
+                (transaction) => transaction.amount > 0,
+              )}
+              currencyName={currencyName}
+              currentUser={currentUser}
+              schoolLogoUrl={schoolLogoUrl}
+              schoolName={schoolName}
+            />
+          }
+        />
+      ) : (
+        <>
+          <div className="mb-2 mt-2 flex flex-wrap items-end justify-end gap-3">
+            {selectedWindow === "custom" && (
+              <div className="grid w-full grid-cols-2 gap-2 sm:w-auto">
+                <label className="text-xs font-medium text-text-muted">
+                  Start
+                  <input
+                    className="mt-1 w-full min-w-0 rounded-md border border-border bg-surface px-2 py-1.5 text-xs text-text-control outline-none ring-brand focus:ring-2"
+                    max={customEndDate}
+                    onChange={(event) => setCustomStartDate(event.target.value)}
+                    type="date"
+                    value={customStartDate}
+                  />
+                </label>
+                <label className="text-xs font-medium text-text-muted">
+                  End
+                  <input
+                    className="mt-1 w-full min-w-0 rounded-md border border-border bg-surface px-2 py-1.5 text-xs text-text-control outline-none ring-brand focus:ring-2"
+                    max={formatDateInput(new Date())}
+                    min={customStartDate}
+                    onChange={(event) => setCustomEndDate(event.target.value)}
+                    type="date"
+                    value={customEndDate}
+                  />
+                </label>
+              </div>
+            )}
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-text-muted">Period</span>
+              <InlineSelectMenu
+                ariaLabel="Change student dashboard timeframe"
+                onChange={setSelectedWindow}
+                options={studentActivityTimeframeOptions}
+                value={selectedWindow}
               />
-            </label>
-            <label className="text-xs font-medium text-text-muted">
-              End
-              <input
-                className="mt-1 w-full min-w-0 rounded-md border border-border bg-surface px-2 py-1.5 text-xs text-text-control outline-none ring-brand focus:ring-2"
-                max={formatDateInput(new Date())}
-                min={customStartDate}
-                onChange={(event) => setCustomEndDate(event.target.value)}
-                type="date"
-                value={customEndDate}
-              />
-            </label>
+            </div>
           </div>
-        )}
-        <div className="flex items-center gap-1">
-          <span className="text-xs text-text-muted">Period</span>
-          <InlineSelectMenu
-            ariaLabel="Change student dashboard timeframe"
-            onChange={setSelectedWindow}
-            options={studentActivityTimeframeOptions}
-            value={selectedWindow}
+          <section className="student-dashboard-section dashboard-grid motion-panel mt-2">
+            <StudentWalletCard
+              balance={balance}
+              celebrate={unseenTransactions.some(
+                (transaction) => transaction.amount > 0,
+              )}
+              currencyName={currencyName}
+              currentUser={currentUser}
+              schoolLogoUrl={schoolLogoUrl}
+              schoolName={schoolName}
+            />
+            <BalanceTrendCard
+              currencyName={currencyName}
+              isLoading={isTransactionsLoading && !transactionsError}
+              range={activityRange}
+              selectedWindow={selectedWindow}
+              transactions={transactions}
+            />
+            <StudentGoalCard
+              balance={balance}
+              className="dashboard-unit-1 dashboard-height-4"
+              currencyName={currencyName}
+            />
+          </section>
+
+          <section className="student-dashboard-section dashboard-grid mt-5">
+            <StudentActivityRecap
+              className="dashboard-unit-3 dashboard-height-4 lg:row-start-1"
+              currencyName={currencyName}
+              isLoading={isTransactionsLoading && !transactionsError}
+              onBrowseRewards={onBrowseRewards}
+              onSelectDate={onOpenTransactionHistory}
+              transactions={transactions}
+            />
+            <StudentShopRequestsPanel
+              className="dashboard-unit-3 dashboard-height-3 lg:row-start-2"
+              onBrowseRewards={onBrowseRewards}
+            />
+            <StudentMetricStrip
+              className="dashboard-unit-1 dashboard-height-4 lg:row-start-1"
+              currencyName={currencyName}
+              onBrowseRewards={onBrowseRewards}
+              range={activityRange}
+              transactions={transactions}
+            />
+            <StudentBestDayCard
+              className="dashboard-unit-1 dashboard-height-3 lg:row-start-2"
+              currencyName={currencyName}
+              isLoading={isTransactionsLoading && !transactionsError}
+              onSelectDate={onOpenTransactionHistory}
+              range={activityRange}
+              transactions={transactions}
+            />
+          </section>
+
+          <TransactionLogPanel
+            className="student-dashboard-card student-dashboard-transaction-log"
+            currencyName={currencyName}
+            currentUser={currentUser}
+            onViewAll={onOpenTransactionHistory}
+            previewLimit={5}
           />
-        </div>
-      </div>
-      <section className="student-dashboard-section dashboard-grid motion-panel mt-2">
-        <StudentWalletCard
-          balance={balance}
-          celebrate={unseenTransactions.some((transaction) => transaction.amount > 0)}
-          currencyName={currencyName}
-          currentUser={currentUser}
-          schoolLogoUrl={schoolLogoUrl}
-          schoolName={schoolName}
-        />
-        <BalanceTrendCard
-          currencyName={currencyName}
-          isLoading={isTransactionsLoading && !transactionsError}
-          range={activityRange}
-          selectedWindow={selectedWindow}
-          transactions={transactions}
-        />
-        <StudentGoalCard
-          balance={balance}
-          className="dashboard-unit-1 dashboard-height-4"
-          currencyName={currencyName}
-        />
-      </section>
-
-      <section className="student-dashboard-section dashboard-grid mt-5">
-        <StudentActivityRecap
-          className="dashboard-unit-3 dashboard-height-4 lg:row-start-1"
-          currencyName={currencyName}
-          isLoading={isTransactionsLoading && !transactionsError}
-          onBrowseRewards={onBrowseRewards}
-          onSelectDate={onOpenTransactionHistory}
-          transactions={transactions}
-        />
-        <StudentShopRequestsPanel
-          className="dashboard-unit-3 dashboard-height-3 lg:row-start-2"
-          onBrowseRewards={onBrowseRewards}
-        />
-        <StudentMetricStrip
-          className="dashboard-unit-1 dashboard-height-4 lg:row-start-1"
-          currencyName={currencyName}
-          onBrowseRewards={onBrowseRewards}
-          range={activityRange}
-          transactions={transactions}
-        />
-        <StudentBestDayCard
-          className="dashboard-unit-1 dashboard-height-3 lg:row-start-2"
-          currencyName={currencyName}
-          isLoading={isTransactionsLoading && !transactionsError}
-          onSelectDate={onOpenTransactionHistory}
-          range={activityRange}
-          transactions={transactions}
-        />
-      </section>
-
-      <TransactionLogPanel
-        className="student-dashboard-card student-dashboard-transaction-log"
-        currencyName={currencyName}
-        currentUser={currentUser}
-        onViewAll={onOpenTransactionHistory}
-        previewLimit={5}
-      />
+        </>
+      )}
 
       {unseenTransactions.length > 0 && (
         <StudentTransactionNotificationModal
@@ -328,6 +395,7 @@ export function StudentDashboardPanel({
 }
 
 function StudentWalletCard({
+  compact = false,
   balance,
   celebrate,
   currencyName,
@@ -335,6 +403,7 @@ function StudentWalletCard({
   schoolLogoUrl,
   schoolName,
 }: {
+  compact?: boolean;
   balance: number;
   celebrate: boolean;
   currencyName: string;
@@ -352,9 +421,11 @@ function StudentWalletCard({
   }, []);
 
   return (
-    <article className={`student-dashboard-card student-wallet-card dashboard-unit-2 dashboard-height-4 wallet-card rounded-2xl ${celebrate ? "student-wallet-celebrate" : ""}`}>
-      <div className="relative flex h-full min-h-52 flex-col">
-        <div className="relative z-10 flex flex-1 flex-col p-5 sm:p-6">
+    <article
+      className={`student-dashboard-card student-wallet-card dashboard-unit-2 dashboard-height-4 wallet-card rounded-2xl ${celebrate ? "student-wallet-celebrate" : ""}`}
+    >
+      <div className={`relative flex h-full flex-col ${compact ? "min-h-40" : "min-h-52"}`}>
+        <div className={`relative z-10 flex flex-1 flex-col ${compact ? "p-4" : "p-5 sm:p-6"}`}>
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-2">
               <p className="text-xs font-medium uppercase tracking-[0.12em] text-[color:var(--student-card-muted)]">
@@ -371,10 +442,10 @@ function StudentWalletCard({
             </p>
           </div>
 
-          <div className="grid flex-1 grid-cols-[minmax(0,1.35fr)_minmax(7rem,0.65fr)] items-center gap-4 py-4 max-[360px]:grid-cols-[minmax(0,1fr)_5rem] max-[360px]:gap-2">
+          <div className={compact ? "flex flex-1 items-center py-4" : "grid flex-1 grid-cols-[minmax(0,1.35fr)_minmax(7rem,0.65fr)] items-center gap-4 py-4 max-[360px]:grid-cols-[minmax(0,1fr)_5rem] max-[360px]:gap-2"}>
             <div className="min-w-0">
               <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1 break-words text-[color:var(--student-card-text)]">
-                <span className="wallet-balance-number text-6xl leading-none max-[360px]:text-5xl sm:text-7xl">
+                <span className={`wallet-balance-number leading-none ${compact ? "text-5xl" : "text-6xl max-[360px]:text-5xl sm:text-7xl"}`}>
                   {formatAmount(balanceAmount)}
                 </span>
                 <span className="text-base font-medium text-[color:var(--student-card-accent)] sm:text-lg">
@@ -382,12 +453,12 @@ function StudentWalletCard({
                 </span>
               </p>
             </div>
-            <p
+            {!compact && <p
               aria-label={cardDate ? `Today's date ${cardDate}` : undefined}
               className="min-h-5 text-right font-number text-lg font-medium tracking-[0.18em] text-[color:var(--student-card-muted)] max-[360px]:text-base max-[360px]:tracking-[0.12em] sm:text-xl"
             >
               {cardDate}
-            </p>
+            </p>}
           </div>
 
           <div className="flex min-h-8 items-end justify-between gap-4">
@@ -429,7 +500,11 @@ function BalanceTrendCard({
   selectedWindow: StudentActivityWindow;
   transactions: TransactionLogItem[];
 }) {
-  const chartPoints = buildBalanceChartPoints(transactions, selectedWindow, range);
+  const chartPoints = buildBalanceChartPoints(
+    transactions,
+    selectedWindow,
+    range,
+  );
   const balanceTicks = getBalanceAxisTicks(chartPoints);
   const balanceLabelTicks = [
     balanceTicks[0],
@@ -456,9 +531,7 @@ function BalanceTrendCard({
         )}
         {!isLoading && chartPoints.length === 0 && (
           <div className="flex flex-1 items-center justify-center text-center">
-            <p className="text-sm text-text-muted">
-              No balance history yet.
-            </p>
+            <p className="text-sm text-text-muted">No balance history yet.</p>
           </div>
         )}
         {!isLoading && chartPoints.length > 0 && (
@@ -470,9 +543,23 @@ function BalanceTrendCard({
                 margin={{ bottom: 0, left: 0, right: 8, top: 8 }}
               >
                 <defs>
-                  <linearGradient id="studentBalanceFill" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="5%" stopColor="var(--brand)" stopOpacity={0.18} />
-                    <stop offset="95%" stopColor="var(--brand)" stopOpacity={0} />
+                  <linearGradient
+                    id="studentBalanceFill"
+                    x1="0"
+                    x2="0"
+                    y1="0"
+                    y2="1"
+                  >
+                    <stop
+                      offset="5%"
+                      stopColor="var(--brand)"
+                      stopOpacity={0.18}
+                    />
+                    <stop
+                      offset="95%"
+                      stopColor="var(--brand)"
+                      stopOpacity={0}
+                    />
                   </linearGradient>
                 </defs>
                 <CartesianGrid
@@ -548,47 +635,62 @@ function StudentMetricStrip({
   const metrics = getStudentMetrics(transactions, range);
 
   return (
-    <section className={`student-dashboard-card student-metric-strip flex min-w-0 flex-col rounded-2xl bg-surface p-4 sm:p-5 ${className}`}>
+    <section
+      className={`student-dashboard-card student-metric-strip flex min-w-0 flex-col rounded-2xl bg-surface p-4 sm:p-5 ${className}`}
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <PanelTitle title="Activity snapshot" />
       </div>
 
       {metrics.hasActivity ? (
-      <div className="flex flex-1 flex-col justify-center">
-      <div className="mt-4 flex items-center justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-[11px] text-text-muted">Average net per day</p>
-          <p className={`mt-1 font-number text-2xl font-semibold leading-none ${metrics.averageDailyNet >= 0 ? "text-positive-ink" : "text-negative-ink"}`}>
-            {formatSignedAmount(metrics.averageDailyNet)}
-            <span className="ml-1 text-xs font-medium text-text-muted">{currencyName}</span>
-          </p>
-          <p
-            aria-label={formatMetricComparison(metrics.comparison, currencyName)}
-            className={`mt-1.5 text-[11px] font-medium ${metrics.comparison > 0 ? "text-positive-ink" : metrics.comparison < 0 ? "text-negative-ink" : "text-text-muted"}`}
-            tabIndex={0}
-            title={formatMetricComparison(metrics.comparison, currencyName)}
-          >
-            {metrics.comparison > 0 ? "Improving" : metrics.comparison < 0 ? "Trending lower" : "Holding steady"}
-          </p>
+        <div className="flex flex-1 flex-col justify-center">
+          <div className="mt-4 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[11px] text-text-muted">Average net per day</p>
+              <p
+                className={`mt-1 font-number text-2xl font-semibold leading-none ${metrics.averageDailyNet >= 0 ? "text-positive-ink" : "text-negative-ink"}`}
+              >
+                {formatSignedAmount(metrics.averageDailyNet)}
+                <span className="ml-1 text-xs font-medium text-text-muted">
+                  {currencyName}
+                </span>
+              </p>
+              <p
+                aria-label={formatMetricComparison(
+                  metrics.comparison,
+                  currencyName,
+                )}
+                className={`mt-1.5 text-[11px] font-medium ${metrics.comparison > 0 ? "text-positive-ink" : metrics.comparison < 0 ? "text-negative-ink" : "text-text-muted"}`}
+                tabIndex={0}
+                title={formatMetricComparison(metrics.comparison, currencyName)}
+              >
+                {metrics.comparison > 0
+                  ? "Improving"
+                  : metrics.comparison < 0
+                    ? "Trending lower"
+                    : "Holding steady"}
+              </p>
+            </div>
+            <MiniMetricSparkline values={metrics.trend} />
+          </div>
+
+          <div className="mt-4 border-t border-border-subtle pt-3">
+            <CreditMovementSplitBar
+              earned={metrics.totalGain}
+              spent={metrics.totalLoss}
+              currencyName={currencyName}
+            />
+          </div>
         </div>
-        <MiniMetricSparkline values={metrics.trend} />
-      </div>
-
-      <div className="mt-4 border-t border-border-subtle pt-3">
-        <CreditMovementSplitBar
-          earned={metrics.totalGain}
-          spent={metrics.totalLoss}
-          currencyName={currencyName}
-        />
-      </div>
-
-      </div>
       ) : (
         <div className="mt-4 flex min-h-40 flex-col justify-between gap-4 rounded-xl bg-panel-soft px-4 py-3">
           <div>
-            <p className="text-sm font-semibold text-text-control">No activity in this period</p>
+            <p className="text-sm font-semibold text-text-control">
+              No activity in this period
+            </p>
             <p className="mt-1 text-xs text-text-muted">
-              Your averages and trends will appear after your next credit activity.
+              Your averages and trends will appear after your next credit
+              activity.
             </p>
           </div>
           <button
@@ -627,7 +729,10 @@ function CreditMovementSplitBar({
       tabIndex={0}
       title={description}
     >
-      <div aria-hidden="true" className="flex h-3.5 overflow-hidden rounded-full bg-panel-soft">
+      <div
+        aria-hidden="true"
+        className="flex h-3.5 overflow-hidden rounded-full bg-panel-soft"
+      >
         <span
           className="block h-full bg-positive-ink transition-[width] duration-500 motion-reduce:transition-none"
           style={{ width: `${earnedShare}%` }}
@@ -640,14 +745,23 @@ function CreditMovementSplitBar({
       <div aria-hidden="true" className="mt-2 grid grid-cols-2 gap-3">
         <div className="min-w-0">
           <p className="text-xs text-text-muted">Earned</p>
-          <p className="mt-0.5 font-number text-base font-semibold text-positive-ink">{formatSignedAmount(earned)}</p>
+          <p className="mt-0.5 font-number text-base font-semibold text-positive-ink">
+            {formatSignedAmount(earned)}
+          </p>
         </div>
         <div className="min-w-0 text-right">
           <p className="text-xs text-text-muted">Spent</p>
-          <p className="mt-0.5 font-number text-base font-semibold text-negative-ink">{formatSignedAmount(-spent)}</p>
+          <p className="mt-0.5 font-number text-base font-semibold text-negative-ink">
+            {formatSignedAmount(-spent)}
+          </p>
         </div>
       </div>
-      <p aria-hidden="true" className="mt-1 text-center text-[11px] text-text-muted">{currencyName} this period</p>
+      <p
+        aria-hidden="true"
+        className="mt-1 text-center text-[11px] text-text-muted"
+      >
+        {currencyName} this period
+      </p>
     </div>
   );
 }
@@ -658,8 +772,29 @@ function MiniMetricSparkline({ values }: { values: number[] }) {
   const minimum = Math.min(...values, 0);
   const maximum = Math.max(...values, 0);
   const range = Math.max(maximum - minimum, 1);
-  const points = values.map((value, index) => `${(index / Math.max(values.length - 1, 1)) * width},${height - ((value - minimum) / range) * height}`).join(" ");
-  return <svg aria-label="Net movement trend" className="h-10 w-24" role="img" viewBox={`0 0 ${width} ${height}`}><polyline fill="none" points={points} stroke="var(--brand)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" /></svg>;
+  const points = values
+    .map(
+      (value, index) =>
+        `${(index / Math.max(values.length - 1, 1)) * width},${height - ((value - minimum) / range) * height}`,
+    )
+    .join(" ");
+  return (
+    <svg
+      aria-label="Net movement trend"
+      className="h-10 w-24"
+      role="img"
+      viewBox={`0 0 ${width} ${height}`}
+    >
+      <polyline
+        fill="none"
+        points={points}
+        stroke="var(--brand)"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2.5"
+      />
+    </svg>
+  );
 }
 
 function useAnimatedWholeNumber(targetValue: number) {
@@ -694,7 +829,9 @@ function useAnimatedWholeNumber(targetValue: number) {
         1,
       );
       const easedProgress = 1 - (1 - progress) ** 3;
-      const nextValue = Math.round(startValue + valueDifference * easedProgress);
+      const nextValue = Math.round(
+        startValue + valueDifference * easedProgress,
+      );
 
       currentValueRef.current = nextValue;
       setDisplayValue(nextValue);
@@ -760,7 +897,9 @@ function buildBalanceChartPoints(
   }, 0);
   const windowTransactions = balanceTransactions.filter((transaction) => {
     const transactionTime = new Date(transaction.createdAt).getTime();
-    return transactionTime >= start.getTime() && transactionTime <= end.getTime();
+    return (
+      transactionTime >= start.getTime() && transactionTime <= end.getTime()
+    );
   });
 
   return buildBalanceTimeSeries({
@@ -810,17 +949,23 @@ function getStudentMetrics(
   });
   const recentTransactions = validTransactions.filter((transaction) => {
     const transactionTime = new Date(transaction.createdAt).getTime();
-    return transactionTime >= windowStartTime && transactionTime <= windowEndTime;
+    return (
+      transactionTime >= windowStartTime && transactionTime <= windowEndTime
+    );
   });
   const previousTransactions = validTransactions.filter((transaction) => {
     const transactionTime = new Date(transaction.createdAt).getTime();
-    return transactionTime >= previousWindowStartTime && transactionTime < windowStartTime;
+    return (
+      transactionTime >= previousWindowStartTime &&
+      transactionTime < windowStartTime
+    );
   });
 
   const totalGain = getPositiveTotal(recentTransactions);
   const totalLoss = getNegativeTotal(recentTransactions);
   const previousNet =
-    getPositiveTotal(previousTransactions) - getNegativeTotal(previousTransactions);
+    getPositiveTotal(previousTransactions) -
+    getNegativeTotal(previousTransactions);
   const averageDailyGain = Math.round(totalGain / timeframeDays);
   const averageDailyLoss = Math.round(totalLoss / timeframeDays);
   const averageDailyNet = averageDailyGain - averageDailyLoss;
@@ -832,11 +977,7 @@ function getStudentMetrics(
     totalLoss,
     comparison: averageDailyNet - previousAverageDailyNet,
     hasActivity: recentTransactions.length > 0,
-    trend: buildMetricTrend(
-      recentTransactions,
-      windowStartTime,
-      windowEndTime,
-    ),
+    trend: buildMetricTrend(recentTransactions, windowStartTime, windowEndTime),
   };
 }
 
@@ -886,7 +1027,5 @@ function formatMetricComparison(comparison: number, currencyName: string) {
 }
 
 function findChartPointLabel(points: BalanceTimePoint[], timestamp: number) {
-  return (
-    points.find((point) => point.timestamp === timestamp)?.dateLabel ?? ""
-  );
+  return points.find((point) => point.timestamp === timestamp)?.dateLabel ?? "";
 }

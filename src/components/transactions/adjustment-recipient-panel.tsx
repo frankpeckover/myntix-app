@@ -168,6 +168,7 @@ function StudentSelector({
   return (
     <>
       <SearchInput
+        debounceMilliseconds={0}
         className="mt-3"
         onChange={onQueryChange}
         placeholder="Start typing a student name"

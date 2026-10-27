@@ -1,5 +1,8 @@
 "use client";
 
+import { PageResultCount } from "@/components/ui/page-result-count";
+import { matchesTextSearch as includesFilter } from "@/lib/presentation/search";
+
 import { useEffect, useMemo, useState } from "react";
 import { TimetableEntryModal } from "@/components/admin/timetable/timetable-entry-modal";
 import { TimetableEntryTable } from "@/components/admin/timetable/timetable-entry-table";
@@ -529,9 +532,9 @@ export function AdminTimetablePanel() {
                   }
                 >
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-sm font-semibold text-text-muted">
+                    <PageResultCount>
                       Showing {visibleEntries.length} of {filteredEntries.length} timetable entries.
-                    </p>
+                    </PageResultCount>
                     <BulkSelectionControls
                       actions={archiveBulkActionsForFilter(filters.status).map((action) =>
                         action === "restore"
@@ -615,8 +618,4 @@ function matchesTimetableFilters(
     (!filters.dayOfWeek || entry.dayOfWeek === Number(filters.dayOfWeek)) &&
     matchesArchiveStatus(entry.isActive, filters.status)
   );
-}
-
-function includesFilter(value: string, filter: string) {
-  return value.toLowerCase().includes(filter.trim().toLowerCase());
 }

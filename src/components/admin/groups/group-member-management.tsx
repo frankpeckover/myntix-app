@@ -101,6 +101,7 @@ function GroupStudentSearch({
         Add student
       </label>
       <SearchInput
+        debounceMilliseconds={0}
         className="mt-2"
         disabled={!selectedGroup.isActive}
         id="studentSearch"

@@ -2,7 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 import { completePasswordReset } from "@/lib/actions";
-import { PasswordRequirements } from "@/components/auth/password-requirements";
+import { NewPasswordFields } from "@/components/auth/new-password-fields";
+import { validateConfirmedPassword } from "@/lib/security/password-policy";
 import { appConfig } from "@/lib/config/app-config";
 
 type ResetPasswordCardProps = {
@@ -22,16 +23,26 @@ export function ResetPasswordCard({ token }: ResetPasswordCardProps) {
     setMessage(null);
     setError(null);
 
-    if (newPassword !== confirmPassword) {
-      setError("Passwords do not match.");
+    const validation = validateConfirmedPassword(newPassword, confirmPassword);
+    if (!validation.ok) {
+      setError(validation.message);
       setIsSubmitting(false);
       return;
     }
 
-    const result = await completePasswordReset({
-      newPassword,
-      token,
-    });
+    let result;
+    try {
+      result = await completePasswordReset({
+        newPassword,
+        confirmPassword,
+        token,
+      });
+    } catch {
+      setError("Could not reset password. Please try again.");
+      return;
+    } finally {
+      setIsSubmitting(false);
+    }
 
     if (!result.ok) {
       setError(result.message);
@@ -68,19 +79,13 @@ export function ResetPasswordCard({ token }: ResetPasswordCardProps) {
           )}
 
           <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
-            <PasswordField
-              describedBy="resetPasswordRequirements"
-              id="newPassword"
-              label="New password"
-              onChange={setNewPassword}
-              value={newPassword}
-            />
-            <PasswordRequirements id="resetPasswordRequirements" />
-            <PasswordField
-              id="confirmPassword"
-              label="Confirm password"
-              onChange={setConfirmPassword}
-              value={confirmPassword}
+            <NewPasswordFields
+              idPrefix="reset-password"
+              disabled={isSubmitting}
+              password={newPassword}
+              confirmPassword={confirmPassword}
+              onPasswordChange={setNewPassword}
+              onConfirmPasswordChange={setConfirmPassword}
             />
 
             {message && (
@@ -105,36 +110,5 @@ export function ResetPasswordCard({ token }: ResetPasswordCardProps) {
         </section>
       </div>
     </main>
-  );
-}
-
-function PasswordField({
-  describedBy,
-  id,
-  label,
-  onChange,
-  value,
-}: {
-  describedBy?: string;
-  id: string;
-  label: string;
-  onChange: (value: string) => void;
-  value: string;
-}) {
-  return (
-    <div>
-      <label className="text-sm font-semibold text-text-control" htmlFor={id}>
-        {label}
-      </label>
-      <input
-        aria-describedby={describedBy}
-        autoComplete="new-password"
-        className="mt-2 w-full rounded-md border border-border bg-surface px-3 py-3 text-sm outline-none ring-brand transition focus:ring-2"
-        id={id}
-        onChange={(event) => onChange(event.target.value)}
-        type="password"
-        value={value}
-      />
-    </div>
   );
 }

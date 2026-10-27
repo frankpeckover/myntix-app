@@ -8,6 +8,7 @@ type SessionUserRow = {
   email: string;
   first_name: string;
   preferred_name: string;
+  year_level: number | null;
   id: string;
   last_name: string;
   profile_image_url: string;
@@ -26,8 +27,7 @@ const secondsPerMinute = 60;
 const millisecondsPerSecond = 1000;
 const sessionLengthSeconds =
   sessionLengthDays * hoursPerDay * minutesPerHour * secondsPerMinute;
-const sessionLengthMilliseconds =
-  sessionLengthSeconds * millisecondsPerSecond;
+const sessionLengthMilliseconds = sessionLengthSeconds * millisecondsPerSecond;
 const sessionTokenPattern = /^[A-Za-z0-9_-]{43}$/;
 
 export class SessionService {
@@ -48,7 +48,9 @@ export class SessionService {
         [userId, hashSessionToken(token), expiresAt],
       );
       if (previousToken && sessionTokenPattern.test(previousToken)) {
-        await client.query("delete from user_sessions where token_hash = $1", [hashSessionToken(previousToken)]);
+        await client.query("delete from user_sessions where token_hash = $1", [
+          hashSessionToken(previousToken),
+        ]);
       }
       await client.query("commit");
     } catch (error) {
@@ -86,6 +88,7 @@ export class SessionService {
             users.username,
             users.first_name,
             users.preferred_name,
+            users.year_level,
             users.last_name,
             users.profile_image_url,
             roles.role_key as role
@@ -120,7 +123,9 @@ export class SessionService {
       return mapSessionUserRow(user);
     } catch (error) {
       console.error("Get current session failed", error);
-      throw new Error("Could not verify the current session.", { cause: error });
+      throw new Error("Could not verify the current session.", {
+        cause: error,
+      });
     }
   }
 
@@ -147,11 +152,14 @@ export class SessionService {
 }
 
 async function deleteExpiredOrIdleSessions() {
-  await db.query(`
+  await db.query(
+    `
     delete from user_sessions
     where expires_at <= now()
        or last_seen_at <= now() - ($1::int * interval '1 hour')
-  `, [idleSessionTimeoutHours]);
+  `,
+    [idleSessionTimeoutHours],
+  );
 }
 
 async function deleteSessionToken(tokenHash: string) {
@@ -181,10 +189,15 @@ function mapSessionUserRow(user: SessionUserRow): SessionUser {
     lastName: user.last_name,
     profileImageUrl: user.profile_image_url,
     role: user.role,
+    yearLevel: user.year_level,
     username: user.username,
   };
 }
 
-function formatDisplayName(firstName: string, lastName: string, preferredName = "") {
+function formatDisplayName(
+  firstName: string,
+  lastName: string,
+  preferredName = "",
+) {
   return `${preferredName || firstName} ${lastName}`.trim();
 }

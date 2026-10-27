@@ -1,4 +1,5 @@
 import type { UserListItem } from "@/domains/users/user-service";
+import { matchesTextSearch as includesFilter } from "@/lib/presentation/search";
 import type { UserFilters } from "@/components/admin/users/user-management-types";
 import { matchesArchiveStatus, type ArchiveStatusFilter } from "@/components/ui/archive-status-filter";
 
@@ -21,9 +22,6 @@ export function matchesUserFilters(
   );
 }
 
-function includesFilter(value: string, filter: string) {
-  return value.toLowerCase().includes(filter.trim().toLowerCase());
-}
 
 function includesAnyFilter(values: string[], filter: string) {
   return values.some((value) => includesFilter(value, filter));

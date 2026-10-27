@@ -9,6 +9,7 @@ import {
 } from "@/lib/actions";
 import { StudentGroupsSection } from "@/components/admin/users/student-groups-section";
 import { UserFormFields } from "@/components/admin/users/user-form-fields";
+import { validateConfirmedPassword } from "@/lib/security/password-policy";
 import { UserModalActions } from "@/components/admin/users/user-modal-actions";
 import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import { useDialogFocus } from "@/components/ui/use-dialog-focus";
@@ -87,6 +88,16 @@ export function UserModal({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (mode === "create") {
+      const validation = validateConfirmedPassword(
+        form.password,
+        form.confirmPassword,
+      );
+      if (!validation.ok) {
+        setError(validation.message);
+        return;
+      }
+    }
     setIsSaving(true);
     setError(null);
     setMessage(null);
@@ -159,7 +170,10 @@ export function UserModal({
           <ModalCloseButton onClick={onClose} />
         </div>
 
-        <form className="app-modal-body space-y-3 sm:space-y-4" onSubmit={handleSubmit}>
+        <form
+          className="app-modal-body space-y-3 sm:space-y-4"
+          onSubmit={handleSubmit}
+        >
           <UserFormFields
             imageFileName={profileImageFile?.name ?? ""}
             form={form}
@@ -213,12 +227,14 @@ function getInitialFormState(
       username: user.username,
       firstName: user.firstName,
       preferredName: user.preferredName,
+      yearLevel: user.yearLevel,
       lastName: user.lastName,
       email: user.email,
       profileImageUrl: user.profileImageUrl,
       cardNumber: user.cardNumber,
       role: user.role,
       password: "",
+      confirmPassword: "",
       isActive: user.isActive,
     };
   }
@@ -235,6 +251,7 @@ function getUpdateUserInput(form: UserFormState): UpdateUserInput {
     username: form.username,
     firstName: form.firstName,
     preferredName: form.preferredName,
+    yearLevel: form.role === "student" ? form.yearLevel : null,
     lastName: form.lastName,
     email: form.email,
     profileImageUrl: form.profileImageUrl,

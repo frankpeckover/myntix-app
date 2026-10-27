@@ -1,5 +1,11 @@
 "use client";
 
+import { PageResultCount } from "@/components/ui/page-result-count";
+
+import { MobileTableToolbar } from "@/components/ui/mobile-table-toolbar";
+
+import { MobileListRow } from "@/components/ui/mobile-list-row";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
@@ -257,7 +263,7 @@ export function TransactionLogPanel({
   const filterEmpty = !isLoading && !error && hasAnyTransactions && totalCount === 0;
 
   return (
-    <section className={`theme-panel motion-panel mt-5 min-w-0 overflow-hidden p-0 ${className}`}>
+    <section className={`table-list-surface theme-panel motion-panel mt-5 min-w-0 overflow-hidden p-0 ${className}`}>
       <FixedNotification error={error} message={message} />
       <div aria-busy={isLoading}>
         {isLoading && !hasLoaded && (
@@ -330,11 +336,11 @@ export function TransactionLogPanel({
                     )
                   }
                 >
-                  <p className="text-sm font-semibold text-text-muted">
+                  <PageResultCount>
                     {isPreview
                       ? `Latest ${displayedTransactions.length} transactions`
                       : `Showing ${visibleTransactions.length} of ${totalCount} transactions.`}
-                  </p>
+                  </PageResultCount>
                   <span className="sr-only" role="status">
                     {isLoading ? "Updating transactions." : ""}
                   </span>
@@ -464,9 +470,173 @@ function TransactionList({
     onFiltersChange({ ...filters, [field]: value });
   }
 
+  const tableHeader = (
+    <thead>
+      <tr className="border-b border-border-subtle text-text-muted">
+        {!isPreview && <th scope="col" className="py-2 pr-4 font-semibold">
+          {isPreview ? "Description" : <TableHeaderFilter
+            isActive={Boolean(filters.reason)}
+            label="Description"
+            onClear={() => updateFilter("reason", "")}
+            onSortDirectionChange={(direction) => onSortChange("description", direction)}
+            sortDirection={tableSort?.column === "description" ? tableSort.direction : null}
+          >
+            <TableHeaderFilterInput
+              label="Reason"
+              onChange={(value) => updateFilter("reason", value)}
+              value={filters.reason}
+            />
+          </TableHeaderFilter>}
+        </th>}
+        {canViewAllTransactions && (
+          <th scope="col" className="py-2 pr-4 font-semibold">
+            {isPreview ? "Account" : <TableHeaderFilter
+              isActive={Boolean(filters.student)}
+              label="Account"
+              onClear={() => updateFilter("student", "")}
+              onSortDirectionChange={(direction) => onSortChange("account", direction)}
+              sortDirection={tableSort?.column === "account" ? tableSort.direction : null}
+            >
+              <TableHeaderFilterInput
+                label="Student"
+                onChange={(value) => updateFilter("student", value)}
+                value={filters.student}
+              />
+            </TableHeaderFilter>}
+          </th>
+        )}
+        <th scope="col" className="py-2 pr-4 font-semibold">
+          {isPreview ? "Type" : <TableHeaderFilter
+            isActive={Boolean(filters.type)}
+            label="Type"
+            onClear={() => updateFilter("type", "")}
+            onSortDirectionChange={(direction) => onSortChange("type", direction)}
+            sortDirection={tableSort?.column === "type" ? tableSort.direction : null}
+          >
+            <TableHeaderFilterSelect
+              label="Type"
+              onChange={(value) =>
+                updateFilter("type", value as TransactionFilters["type"])
+              }
+              options={transactionTypeOptions}
+              value={filters.type}
+            />
+          </TableHeaderFilter>}
+        </th>
+        <th scope="col" className="py-2 pr-4 font-semibold">
+          {isPreview ? "Time" : <TableHeaderFilter
+            isActive={Boolean(filters.createdDate)}
+            label="Time"
+            onClear={() => updateFilter("createdDate", "")}
+            onSortDirectionChange={(direction) => onSortChange("time", direction)}
+            sortDirection={tableSort?.column === "time" ? tableSort.direction : null}
+          >
+            <TableHeaderFilterInput
+              label="Date"
+              onChange={(value) => updateFilter("createdDate", value)}
+              type="date"
+              value={filters.createdDate}
+            />
+          </TableHeaderFilter>}
+        </th>
+        <th scope="col" className="py-2 pr-4 font-semibold">
+          {isPreview ? "Status" : <TableHeaderFilter
+            isActive={Boolean(
+              filters.purchaseStatus || filters.voidedStatus !== "active",
+            )}
+            label="Status"
+            onClear={() =>
+              onFiltersChange({
+                ...filters,
+                purchaseStatus: "",
+                voidedStatus: "active",
+              })
+            }
+            onSortDirectionChange={(direction) => onSortChange("status", direction)}
+            sortDirection={tableSort?.column === "status" ? tableSort.direction : null}
+          >
+            <div className="grid gap-3">
+              <TableHeaderFilterSelect
+                label="Archive status"
+                onChange={(value) =>
+                  updateFilter(
+                    "voidedStatus",
+                    value as TransactionFilters["voidedStatus"],
+                  )
+                }
+                options={voidedStatusOptions}
+                value={filters.voidedStatus}
+              />
+              <TableHeaderFilterSelect
+                label="Reward status"
+                onChange={(value) =>
+                  updateFilter(
+                    "purchaseStatus",
+                    value as TransactionFilters["purchaseStatus"],
+                  )
+                }
+                options={purchaseStatusOptions}
+                value={filters.purchaseStatus}
+              />
+            </div>
+          </TableHeaderFilter>}
+        </th>
+        <th scope="col" className="py-2 pr-4 text-right font-semibold">
+          {isPreview ? "Amount" : <TableHeaderFilter
+            isActive={Boolean(
+              filters.amountDirection ||
+                filters.amountMin ||
+                filters.amountMax,
+            )}
+            label="Amount"
+            onClear={() =>
+              onFiltersChange({
+                ...filters,
+                amountDirection: "",
+                amountMax: "",
+                amountMin: "",
+              })
+            }
+            onSortDirectionChange={(direction) => onSortChange("amount", direction)}
+            sortDirection={tableSort?.column === "amount" ? tableSort.direction : null}
+          >
+            <div className="grid gap-3">
+              <TableHeaderFilterSelect
+                label="Direction"
+                onChange={(value) =>
+                  updateFilter(
+                    "amountDirection",
+                    value as TransactionFilters["amountDirection"],
+                  )
+                }
+                options={amountDirectionOptions}
+                value={filters.amountDirection}
+              />
+              <TableHeaderFilterInput
+                label="Minimum"
+                onChange={(value) => updateFilter("amountMin", value)}
+                type="number"
+                value={filters.amountMin}
+              />
+              <TableHeaderFilterInput
+                label="Maximum"
+                onChange={(value) => updateFilter("amountMax", value)}
+                type="number"
+                value={filters.amountMax}
+              />
+            </div>
+          </TableHeaderFilter>}
+        </th>
+        {!isPreview && <th scope="col" className="py-2 text-right font-semibold">
+          <span className="sr-only">Actions</span>
+        </th>}
+      </tr>
+    </thead>
+  );
+
   return (
     <>
-      {toolbar && <div className="mb-3 md:hidden">{toolbar}</div>}
+      <MobileTableToolbar label="Transactions" toolbar={toolbar} header={tableHeader} />
       <div className="grid w-full min-w-0 gap-2 md:hidden">
         {transactions.map((transaction) => (
           <TransactionMobileRow
@@ -487,167 +657,7 @@ function TransactionList({
             canViewAllTransactions={canViewAllTransactions}
             isPreview={isPreview}
           />
-          <thead>
-            <tr className="border-b border-border-subtle text-text-muted">
-              {!isPreview && <th scope="col" className="py-2 pr-4 font-semibold">
-                {isPreview ? "Description" : <TableHeaderFilter
-                  isActive={Boolean(filters.reason)}
-                  label="Description"
-                  onClear={() => updateFilter("reason", "")}
-                  onSortDirectionChange={(direction) => onSortChange("description", direction)}
-                  sortDirection={tableSort?.column === "description" ? tableSort.direction : null}
-                >
-                  <TableHeaderFilterInput
-                    label="Reason"
-                    onChange={(value) => updateFilter("reason", value)}
-                    value={filters.reason}
-                  />
-                </TableHeaderFilter>}
-              </th>}
-              {canViewAllTransactions && (
-                <th scope="col" className="py-2 pr-4 font-semibold">
-                  {isPreview ? "Account" : <TableHeaderFilter
-                    isActive={Boolean(filters.student)}
-                    label="Account"
-                    onClear={() => updateFilter("student", "")}
-                    onSortDirectionChange={(direction) => onSortChange("account", direction)}
-                    sortDirection={tableSort?.column === "account" ? tableSort.direction : null}
-                  >
-                    <TableHeaderFilterInput
-                      label="Student"
-                      onChange={(value) => updateFilter("student", value)}
-                      value={filters.student}
-                    />
-                  </TableHeaderFilter>}
-                </th>
-              )}
-              <th scope="col" className="py-2 pr-4 font-semibold">
-                {isPreview ? "Type" : <TableHeaderFilter
-                  isActive={Boolean(filters.type)}
-                  label="Type"
-                  onClear={() => updateFilter("type", "")}
-                  onSortDirectionChange={(direction) => onSortChange("type", direction)}
-                  sortDirection={tableSort?.column === "type" ? tableSort.direction : null}
-                >
-                  <TableHeaderFilterSelect
-                    label="Type"
-                    onChange={(value) =>
-                      updateFilter("type", value as TransactionFilters["type"])
-                    }
-                    options={transactionTypeOptions}
-                    value={filters.type}
-                  />
-                </TableHeaderFilter>}
-              </th>
-              <th scope="col" className="py-2 pr-4 font-semibold">
-                {isPreview ? "Time" : <TableHeaderFilter
-                  isActive={Boolean(filters.createdDate)}
-                  label="Time"
-                  onClear={() => updateFilter("createdDate", "")}
-                  onSortDirectionChange={(direction) => onSortChange("time", direction)}
-                  sortDirection={tableSort?.column === "time" ? tableSort.direction : null}
-                >
-                  <TableHeaderFilterInput
-                    label="Date"
-                    onChange={(value) => updateFilter("createdDate", value)}
-                    type="date"
-                    value={filters.createdDate}
-                  />
-                </TableHeaderFilter>}
-              </th>
-              <th scope="col" className="py-2 pr-4 font-semibold">
-                {isPreview ? "Status" : <TableHeaderFilter
-                  isActive={Boolean(
-                    filters.purchaseStatus || filters.voidedStatus !== "active",
-                  )}
-                  label="Status"
-                  onClear={() =>
-                    onFiltersChange({
-                      ...filters,
-                      purchaseStatus: "",
-                      voidedStatus: "active",
-                    })
-                  }
-                  onSortDirectionChange={(direction) => onSortChange("status", direction)}
-                  sortDirection={tableSort?.column === "status" ? tableSort.direction : null}
-                >
-                  <div className="grid gap-3">
-                    <TableHeaderFilterSelect
-                      label="Archive status"
-                      onChange={(value) =>
-                        updateFilter(
-                          "voidedStatus",
-                          value as TransactionFilters["voidedStatus"],
-                        )
-                      }
-                      options={voidedStatusOptions}
-                      value={filters.voidedStatus}
-                    />
-                    <TableHeaderFilterSelect
-                      label="Reward status"
-                      onChange={(value) =>
-                        updateFilter(
-                          "purchaseStatus",
-                          value as TransactionFilters["purchaseStatus"],
-                        )
-                      }
-                      options={purchaseStatusOptions}
-                      value={filters.purchaseStatus}
-                    />
-                  </div>
-                </TableHeaderFilter>}
-              </th>
-              <th scope="col" className="py-2 pr-4 text-right font-semibold">
-                {isPreview ? "Amount" : <TableHeaderFilter
-                  isActive={Boolean(
-                    filters.amountDirection ||
-                      filters.amountMin ||
-                      filters.amountMax,
-                  )}
-                  label="Amount"
-                  onClear={() =>
-                    onFiltersChange({
-                      ...filters,
-                      amountDirection: "",
-                      amountMax: "",
-                      amountMin: "",
-                    })
-                  }
-                  onSortDirectionChange={(direction) => onSortChange("amount", direction)}
-                  sortDirection={tableSort?.column === "amount" ? tableSort.direction : null}
-                >
-                  <div className="grid gap-3">
-                    <TableHeaderFilterSelect
-                      label="Direction"
-                      onChange={(value) =>
-                        updateFilter(
-                          "amountDirection",
-                          value as TransactionFilters["amountDirection"],
-                        )
-                      }
-                      options={amountDirectionOptions}
-                      value={filters.amountDirection}
-                    />
-                    <TableHeaderFilterInput
-                      label="Minimum"
-                      onChange={(value) => updateFilter("amountMin", value)}
-                      type="number"
-                      value={filters.amountMin}
-                    />
-                    <TableHeaderFilterInput
-                      label="Maximum"
-                      onChange={(value) => updateFilter("amountMax", value)}
-                      type="number"
-                      value={filters.amountMax}
-                    />
-                  </div>
-                </TableHeaderFilter>}
-              </th>
-              {!isPreview && <th scope="col" className="py-2 text-right font-semibold">
-                <span className="sr-only">Actions</span>
-              </th>}
-            </tr>
-          </thead>
+          {tableHeader}
           <tbody>
             {transactions.map((transaction) => (
               <tr className="border-b border-border-subtle" key={transaction.id}>
@@ -755,25 +765,14 @@ function TransactionMobileRow({
   transaction: TransactionLogItem;
 }) {
   return (
-    <article className="theme-card grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 overflow-hidden p-3">
-      <div className="min-w-0 flex-1 overflow-hidden">
-        <p className="break-words text-sm font-semibold">
-          {transaction.reason}
-        </p>
-        <p className="mt-1 truncate text-xs text-text-muted">
-          {formatDateTime(transaction.createdAt)}
-        </p>
-      </div>
-      <TransactionAmount amount={transaction.amount} variant="mobile" />
-      <div className="shrink-0">
-        <IconButton
-          label="Transaction details"
-          onClick={() => onDetailsClick(transaction)}
-        >
-          <EyeIcon />
-        </IconButton>
-      </div>
-    </article>
+    <MobileListRow
+      value={<TransactionAmount amount={transaction.amount} variant="mobile" />}
+      actions={<IconButton label="Transaction details" onClick={() => onDetailsClick(transaction)}>
+        <EyeIcon />
+      </IconButton>}>
+      <p className="break-words text-sm font-semibold">{transaction.reason}</p>
+      <p className="mt-1 truncate text-xs text-text-muted">{formatDateTime(transaction.createdAt)}</p>
+    </MobileListRow>
   );
 }
 

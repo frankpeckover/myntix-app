@@ -1,5 +1,5 @@
 import type { Role } from "@/lib/auth/session";
-import { PasswordRequirements } from "@/components/auth/password-requirements";
+import { NewPasswordFields } from "@/components/auth/new-password-fields";
 import {
   type UserFormFieldChange,
   type UserFormState,
@@ -98,7 +98,10 @@ function AccountFields({
           value={form.username}
         />
         <div>
-          <label className="text-sm font-semibold text-text-control" htmlFor="role">
+          <label
+            className="text-sm font-semibold text-text-control"
+            htmlFor="role"
+          >
             Role
           </label>
           <select
@@ -116,6 +119,39 @@ function AccountFields({
         </div>
       </div>
 
+      {form.role === "student" && (
+        <div>
+          <label
+            className="text-sm font-semibold text-text-control"
+            htmlFor="yearLevel"
+          >
+            Year level{" "}
+            <span className="font-normal text-text-muted">(optional)</span>
+          </label>
+          <select
+            id="yearLevel"
+            className="mt-1.5 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-control outline-none ring-brand focus:ring-2"
+            value={form.yearLevel ?? ""}
+            onChange={(event) =>
+              onChange(
+                "yearLevel",
+                event.target.value === "" ? null : Number(event.target.value),
+              )
+            }
+          >
+            <option value="">Not set</option>
+            {Array.from({ length: 13 }, (_, year) => (
+              <option key={year} value={year}>
+                {year === 0 ? "Prep" : `Year ${year}`}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-text-muted">
+            Below Year 7 uses the simpler dashboard. Not set keeps the standard
+            dashboard.
+          </p>
+        </div>
+      )}
       <TextField
         id="email"
         label="Email"
@@ -132,24 +168,24 @@ function AccountFields({
       />
       <ProfileImageUploadField
         currentImageUrl={form.profileImageUrl}
-        displayName={`${form.preferredName || form.firstName} ${form.lastName}`.trim() || form.username}
+        displayName={
+          `${form.preferredName || form.firstName} ${form.lastName}`.trim() ||
+          form.username
+        }
         fileName={imageFileName}
         onChange={onProfileImageChange}
       />
 
       {mode === "create" && (
-        <TextField
-          autoComplete="new-password"
-          describedBy="createUserPasswordRequirements"
-          id="password"
-          label="Password"
-          onChange={(value) => onChange("password", value)}
-          type="password"
-          value={form.password}
+        <NewPasswordFields
+          idPrefix="create-user"
+          password={form.password}
+          confirmPassword={form.confirmPassword}
+          onPasswordChange={(value) => onChange("password", value)}
+          onConfirmPasswordChange={(value) =>
+            onChange("confirmPassword", value)
+          }
         />
-      )}
-      {mode === "create" && (
-        <PasswordRequirements id="createUserPasswordRequirements" />
       )}
     </>
   );

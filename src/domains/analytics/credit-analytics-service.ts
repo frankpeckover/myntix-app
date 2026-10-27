@@ -1,4 +1,5 @@
 import { db } from "@/lib/database/db";
+import { escapeLikeSearch, isSearchReady } from "@/lib/presentation/search";
 import { getActivityYearRange } from "@/lib/presentation/activity-calendar";
 
 export type CreditAnalyticsSummary = {
@@ -593,7 +594,7 @@ export class CreditAnalyticsService {
   async searchScopes(searchTerm: string): Promise<CreditAnalyticsScope[]> {
     const normalizedSearchTerm = searchTerm.trim().toLowerCase();
 
-    if (normalizedSearchTerm.length < 2) {
+    if (!isSearchReady(normalizedSearchTerm)) {
       return [];
     }
 
@@ -630,7 +631,7 @@ export class CreditAnalyticsService {
         order by kind desc, label asc
         limit $2
       `,
-      [normalizedSearchTerm, scopeSearchLimit],
+      [escapeLikeSearch(normalizedSearchTerm), scopeSearchLimit],
     );
 
     return result.rows.map(mapScopeSearchRow);

@@ -27,6 +27,7 @@ export type UserPreferences = {
   accentTheme: AccentTheme;
   customAccentColor: string;
   dashboardTheme: DashboardTheme;
+  navigationDefault: "expanded" | "collapsed";
   tableDensity: TableDensity;
   textSize: TextSize;
   themeMode: ThemeMode;
@@ -39,6 +40,7 @@ export const defaultUserPreferences: UserPreferences = {
   accentTheme: defaultAccentTheme,
   customAccentColor: defaultCustomAccentColor,
   dashboardTheme: defaultDashboardTheme,
+  navigationDefault: "expanded",
   tableDensity: defaultTableDensity,
   textSize: "default",
   themeMode: defaultThemeMode,
@@ -50,6 +52,7 @@ export const defaultUserPreferences: UserPreferences = {
 const allowedValues = {
   accentTheme: ["teal", "blue", "purple", "orange", "custom"],
   dashboardTheme: dashboardThemeOptions.map((option) => option.value),
+  navigationDefault: ["expanded", "collapsed"],
   tableDensity: ["compact", "default", "roomy"],
   textSize: ["small", "default", "large"],
   themeMode: ["light", "dark"],

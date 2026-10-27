@@ -1,14 +1,12 @@
+
+import { MobileTableToolbar } from "@/components/ui/mobile-table-toolbar";
+import { MobileTimetableRow } from "@/components/admin/timetable/mobile/timetable-row";
+import { TimetableActions } from "@/components/admin/timetable/shared/row-actions";
 import type { ReactNode } from "react";
 import { useTableLayout } from "@/components/ui/use-table-layout";
 import { weekDays } from "@/components/admin/timetable/timetable-constants";
-import { CheckIcon, CopyIcon, PencilIcon, TrashIcon } from "@/components/ui/icons";
-import {
-  MobileSelectionShell,
-  RowSelectionCheckbox,
-} from "@/components/ui/bulk-selection-controls";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { archiveStatusFilterOptions } from "@/components/ui/archive-status-filter";
-import { TableActionGrid } from "@/components/ui/table-action-grid";
 import {
   TableHeaderFilter,
   TableHeaderFilterInput,
@@ -64,13 +62,105 @@ export function TimetableEntryTable({
     entries.length > 0 &&
     entries.every((entry) => selectedEntryIdSet.has(entry.id));
 
+  const tableHeader = (
+    <thead>
+      <tr className="border-b border-border-subtle text-text-muted">
+        <DataTableSelectionHeader
+          checked={areAllVisibleEntriesSelected}
+          label={
+            areAllVisibleEntriesSelected
+              ? "Clear selected timetable entries"
+              : "Select all timetable entries"
+          }
+          onChange={onVisibleEntriesSelectionChange}
+        />
+        <th scope="col" className="py-2 pr-4 font-semibold">
+          <TableHeaderFilter
+            isActive={Boolean(filters.groupName)}
+            label="Group"
+            onClear={() => updateFilter("groupName", "")}
+            onSortDirectionChange={(direction) => onSortChange("group", direction)}
+            sortDirection={tableSort?.column === "group" ? tableSort.direction : null}
+          >
+            <TableHeaderFilterInput
+              label="Search groups"
+              onChange={(value) => updateFilter("groupName", value)}
+              value={filters.groupName}
+            />
+          </TableHeaderFilter>
+        </th>
+        <th scope="col" className="py-2 pr-4 font-semibold">
+          <TableHeaderFilter
+            isActive={Boolean(filters.teacherName)}
+            label="Teacher"
+            onClear={() => updateFilter("teacherName", "")}
+            onSortDirectionChange={(direction) => onSortChange("teacher", direction)}
+            sortDirection={tableSort?.column === "teacher" ? tableSort.direction : null}
+          >
+            <TableHeaderFilterInput
+              label="Search teachers"
+              onChange={(value) => updateFilter("teacherName", value)}
+              value={filters.teacherName}
+            />
+          </TableHeaderFilter>
+        </th>
+        <th scope="col" className="py-2 pr-4 font-semibold">
+          <TableHeaderFilter
+            isActive={Boolean(filters.dayOfWeek)}
+            label="Day"
+            onClear={() => updateFilter("dayOfWeek", "")}
+            onSortDirectionChange={(direction) => onSortChange("day", direction)}
+            sortDirection={tableSort?.column === "day" ? tableSort.direction : null}
+          >
+            <TableHeaderFilterSelect
+              label="Day"
+              onChange={(value) => updateFilter("dayOfWeek", value)}
+              options={[
+                { label: "All days", value: "" },
+                ...weekDays.map((day, index) => ({
+                  label: day,
+                  value: String(index),
+                })),
+              ]}
+              value={filters.dayOfWeek}
+            />
+          </TableHeaderFilter>
+        </th>
+        <th scope="col" className="py-2 pr-4 font-semibold">
+          <TableHeaderFilter label="Time" onSortDirectionChange={(direction) => onSortChange("time", direction)} sortDirection={tableSort?.column === "time" ? tableSort.direction : null} />
+        </th>
+        <th scope="col" className="py-2 pr-4 font-semibold">
+          <TableHeaderFilter
+            isActive={filters.status !== "active"}
+            label="Status"
+            onClear={() => updateFilter("status", "active")}
+            onSortDirectionChange={(direction) => onSortChange("status", direction)}
+            sortDirection={tableSort?.column === "status" ? tableSort.direction : null}
+          >
+            <TableHeaderFilterSelect
+              label="Status"
+              onChange={(value) =>
+                updateFilter("status", value as TimetableFiltersState["status"])
+              }
+              options={archiveStatusFilterOptions}
+              value={filters.status}
+            />
+          </TableHeaderFilter>
+        </th>
+        <th scope="col" className="py-2 text-right font-semibold">
+          <span className="sr-only">Actions</span>
+        </th>
+      </tr>
+    </thead>
+  );
+
   return (
     <>
-      {tableLayout !== "desktop" && toolbar && <div className="mb-3 md:hidden">{toolbar}</div>}
+      <MobileTableToolbar label="Timetable entries" toolbar={toolbar} header={tableHeader} />
       {tableLayout !== "desktop" && (
-        <div className="grid gap-3 md:hidden">
+        <div className="grid gap-2 md:hidden">
           {entries.map((entry) => (
-            <TimetableEntryMobileRow
+            <MobileTimetableRow
               entry={entry}
               key={entry.id}
               onDeleteEntry={onDeleteEntry}
@@ -94,95 +184,7 @@ export function TimetableEntryTable({
             <col className="w-24" />
             <col className="table-action-column" />
           </colgroup>
-          <thead>
-            <tr className="border-b border-border-subtle text-text-muted">
-              <DataTableSelectionHeader
-                checked={areAllVisibleEntriesSelected}
-                label={
-                  areAllVisibleEntriesSelected
-                    ? "Clear selected timetable entries"
-                    : "Select all timetable entries"
-                }
-                onChange={onVisibleEntriesSelectionChange}
-              />
-              <th scope="col" className="py-2 pr-4 font-semibold">
-                <TableHeaderFilter
-                  isActive={Boolean(filters.groupName)}
-                  label="Group"
-                  onClear={() => updateFilter("groupName", "")}
-                  onSortDirectionChange={(direction) => onSortChange("group", direction)}
-                  sortDirection={tableSort?.column === "group" ? tableSort.direction : null}
-                >
-                  <TableHeaderFilterInput
-                    label="Search groups"
-                    onChange={(value) => updateFilter("groupName", value)}
-                    value={filters.groupName}
-                  />
-                </TableHeaderFilter>
-              </th>
-              <th scope="col" className="py-2 pr-4 font-semibold">
-                <TableHeaderFilter
-                  isActive={Boolean(filters.teacherName)}
-                  label="Teacher"
-                  onClear={() => updateFilter("teacherName", "")}
-                  onSortDirectionChange={(direction) => onSortChange("teacher", direction)}
-                  sortDirection={tableSort?.column === "teacher" ? tableSort.direction : null}
-                >
-                  <TableHeaderFilterInput
-                    label="Search teachers"
-                    onChange={(value) => updateFilter("teacherName", value)}
-                    value={filters.teacherName}
-                  />
-                </TableHeaderFilter>
-              </th>
-              <th scope="col" className="py-2 pr-4 font-semibold">
-                <TableHeaderFilter
-                  isActive={Boolean(filters.dayOfWeek)}
-                  label="Day"
-                  onClear={() => updateFilter("dayOfWeek", "")}
-                  onSortDirectionChange={(direction) => onSortChange("day", direction)}
-                  sortDirection={tableSort?.column === "day" ? tableSort.direction : null}
-                >
-                  <TableHeaderFilterSelect
-                    label="Day"
-                    onChange={(value) => updateFilter("dayOfWeek", value)}
-                    options={[
-                      { label: "All days", value: "" },
-                      ...weekDays.map((day, index) => ({
-                        label: day,
-                        value: String(index),
-                      })),
-                    ]}
-                    value={filters.dayOfWeek}
-                  />
-                </TableHeaderFilter>
-              </th>
-              <th scope="col" className="py-2 pr-4 font-semibold">
-                <TableHeaderFilter label="Time" onSortDirectionChange={(direction) => onSortChange("time", direction)} sortDirection={tableSort?.column === "time" ? tableSort.direction : null} />
-              </th>
-              <th scope="col" className="py-2 pr-4 font-semibold">
-                <TableHeaderFilter
-                  isActive={filters.status !== "active"}
-                  label="Status"
-                  onClear={() => updateFilter("status", "active")}
-                  onSortDirectionChange={(direction) => onSortChange("status", direction)}
-                  sortDirection={tableSort?.column === "status" ? tableSort.direction : null}
-                >
-                  <TableHeaderFilterSelect
-                    label="Status"
-                    onChange={(value) =>
-                      updateFilter("status", value as TimetableFiltersState["status"])
-                    }
-                    options={archiveStatusFilterOptions}
-                    value={filters.status}
-                  />
-                </TableHeaderFilter>
-              </th>
-              <th scope="col" className="py-2 text-right font-semibold">
-                <span className="sr-only">Actions</span>
-              </th>
-            </tr>
-          </thead>
+          {tableHeader}
           <tbody>
             {entries.map((entry) => (
               <tr className="border-b border-border-subtle" key={entry.id}>
@@ -225,94 +227,6 @@ export function TimetableEntryTable({
         </DataTable>
       )}
     </>
-  );
-}
-
-function TimetableEntryMobileRow({
-  entry,
-  onDeleteEntry,
-  onDuplicateEntry,
-  onEntrySelectionChange,
-  onEditEntry,
-  selected,
-}: {
-  entry: TimetableEntry;
-  onDeleteEntry: (entry: TimetableEntry) => void;
-  onDuplicateEntry: (entry: TimetableEntry) => void;
-  onEntrySelectionChange: (entryId: string, isSelected: boolean) => void;
-  onEditEntry: (entry: TimetableEntry) => void;
-  selected: boolean;
-}) {
-  return (
-    <article className="theme-card p-3">
-      <MobileSelectionShell
-        checkbox={
-          <RowSelectionCheckbox
-            checked={selected}
-            label={`Select ${entry.groupName} timetable entry`}
-            onChange={(isSelected) =>
-              onEntrySelectionChange(entry.id, isSelected)
-            }
-          />
-        }
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h3 className="truncate text-sm font-semibold">{entry.groupName}</h3>
-            <p className="mt-1 truncate text-sm text-text-muted">
-              {entry.teacherName}
-            </p>
-          </div>
-          <TimetableActions
-            entry={entry}
-            onDeleteEntry={onDeleteEntry}
-            onDuplicateEntry={onDuplicateEntry}
-            onEditEntry={onEditEntry}
-          />
-        </div>
-        <div className="mt-3 grid gap-2 text-sm text-text-muted">
-          <p>{weekDays[entry.dayOfWeek]} · {formatCycleWeek(entry.cycleWeek)}</p>
-          <p>{formatTimeRange(entry)}</p>
-          <TimetableStatusBadge isActive={entry.isActive} />
-        </div>
-      </MobileSelectionShell>
-    </article>
-  );
-}
-
-function TimetableActions({
-  entry,
-  onDeleteEntry,
-  onDuplicateEntry,
-  onEditEntry,
-}: {
-  entry: TimetableEntry;
-  onDeleteEntry: (entry: TimetableEntry) => void;
-  onDuplicateEntry: (entry: TimetableEntry) => void;
-  onEditEntry: (entry: TimetableEntry) => void;
-}) {
-  return (
-    <TableActionGrid
-      label={`Open actions for ${entry.groupName}`}
-      items={[
-        {
-          icon: <PencilIcon />,
-          label: "Edit",
-          onSelect: () => onEditEntry(entry),
-        },
-        {
-          icon: <CopyIcon />,
-          label: "Duplicate",
-          onSelect: () => onDuplicateEntry(entry),
-        },
-        {
-          icon: entry.isActive ? <TrashIcon /> : <CheckIcon />,
-          label: entry.isActive ? "Archive" : "Restore",
-          onSelect: () => onDeleteEntry(entry),
-          tone: entry.isActive ? "danger" : "success",
-        },
-      ]}
-    />
   );
 }
 

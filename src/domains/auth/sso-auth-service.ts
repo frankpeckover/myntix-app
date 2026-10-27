@@ -80,6 +80,7 @@ type IdTokenClaims = {
 };
 
 type UserRow = {
+  year_level: number | null;
   email: string;
   first_name: string;
   id: string;
@@ -347,7 +348,10 @@ async function verifyIdToken(
   const [encodedHeader, encodedPayload, encodedSignature] = idToken.split(".");
 
   if (!encodedHeader || !encodedPayload || !encodedSignature) {
-    throw new SsoAuthError("invalid_id_token", "The SSO ID token is not valid.");
+    throw new SsoAuthError(
+      "invalid_id_token",
+      "The SSO ID token is not valid.",
+    );
   }
 
   const header = decodeJwtPart<JwtHeader>(encodedHeader);
@@ -441,11 +445,17 @@ function validateClaims(
   }
 
   if (claims.nonce !== expectedNonce) {
-    throw new SsoAuthError("invalid_nonce", "The SSO ID token nonce is not valid.");
+    throw new SsoAuthError(
+      "invalid_nonce",
+      "The SSO ID token nonce is not valid.",
+    );
   }
 
   if (!isValidIssuer(claims, provider)) {
-    throw new SsoAuthError("invalid_issuer", "The SSO ID token issuer is not valid.");
+    throw new SsoAuthError(
+      "invalid_issuer",
+      "The SSO ID token issuer is not valid.",
+    );
   }
 
   if (
@@ -466,7 +476,10 @@ function isValidIssuer(claims: IdTokenClaims, provider: SsoAuthProvider) {
   }
 
   if (provider.providerType === "google") {
-    return claims.iss === "https://accounts.google.com" || claims.iss === "accounts.google.com";
+    return (
+      claims.iss === "https://accounts.google.com" ||
+      claims.iss === "accounts.google.com"
+    );
   }
 
   return (
@@ -475,13 +488,8 @@ function isValidIssuer(claims: IdTokenClaims, provider: SsoAuthProvider) {
   );
 }
 
-function getVerifiedEmail(
-  claims: IdTokenClaims,
-  provider: SsoAuthProvider,
-) {
-  const email = getEmailClaim(claims, provider)
-    .trim()
-    .toLowerCase();
+function getVerifiedEmail(claims: IdTokenClaims, provider: SsoAuthProvider) {
+  const email = getEmailClaim(claims, provider).trim().toLowerCase();
 
   if (!email) {
     throw new SsoAuthError(
@@ -542,7 +550,10 @@ function getAllowedDomains(value: string) {
     .filter(Boolean);
 }
 
-function isValidAudience(audience: string | string[] | undefined, clientId: string) {
+function isValidAudience(
+  audience: string | string[] | undefined,
+  clientId: string,
+) {
   if (Array.isArray(audience)) {
     return audience.includes(clientId);
   }
@@ -641,6 +652,7 @@ async function findUserBySsoIdentity(
         users.email,
         users.username,
         users.first_name,
+        users.year_level,
         users.last_name,
         users.profile_image_url,
         users.is_active,
@@ -669,6 +681,7 @@ async function findUserByEmail(
         users.email,
         users.username,
         users.first_name,
+        users.year_level,
         users.last_name,
         users.profile_image_url,
         users.is_active,
@@ -691,7 +704,9 @@ async function createJitStudent(
 ) {
   const names = getJitNames(email, claims);
   const username = await getAvailableJitUsername(client, names);
-  const passwordHash = await hashPassword(randomBytes(32).toString("base64url"));
+  const passwordHash = await hashPassword(
+    randomBytes(32).toString("base64url"),
+  );
   const result = await client.query<UserRow>(
     `
       insert into users (
@@ -719,6 +734,7 @@ async function createJitStudent(
         profile_image_url,
         is_active,
         'student'::text as role
+        , year_level
     `,
     [username, names.firstName, names.lastName, email, passwordHash],
   );
@@ -744,7 +760,8 @@ function getJitNames(email: string, claims: IdTokenClaims) {
     .split("@")[0]
     .split(/[._-]+/)
     .filter(Boolean);
-  const displayNameParts = claims.name?.trim().split(/\s+/).filter(Boolean) ?? [];
+  const displayNameParts =
+    claims.name?.trim().split(/\s+/).filter(Boolean) ?? [];
   const firstName =
     claims.given_name || displayNameParts[0] || localParts[0] || "Student";
   const lastName =
@@ -801,7 +818,9 @@ function getDisplayNameSurname(
 
   if (
     trimmedGivenName &&
-    trimmedDisplayName.toLowerCase().startsWith(`${trimmedGivenName.toLowerCase()} `)
+    trimmedDisplayName
+      .toLowerCase()
+      .startsWith(`${trimmedGivenName.toLowerCase()} `)
   ) {
     return trimmedDisplayName.slice(trimmedGivenName.length).trim();
   }
@@ -821,12 +840,13 @@ function normaliseName(value: string) {
   return value
     .trim()
     .split(/\s+/)
-    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1).toLowerCase()}`)
+    .map(
+      (part) => `${part.charAt(0).toUpperCase()}${part.slice(1).toLowerCase()}`,
+    )
     .join(" ");
 }
 
 function mapSessionUser(user: UserRow): SessionUser {
-
   return {
     displayName: `${user.first_name} ${user.last_name}`.trim(),
     email: user.email,
@@ -834,6 +854,7 @@ function mapSessionUser(user: UserRow): SessionUser {
     id: user.id,
     lastName: user.last_name,
     profileImageUrl: user.profile_image_url,
+    yearLevel: user.year_level,
     role: user.role,
     username: user.username,
   };
