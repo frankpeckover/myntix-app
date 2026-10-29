@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { StaffSettingsPanel } from "@/components/preferences/staff-settings-panel";
 import { PreferencesSection } from "@/components/preferences/preferences-section";
+import { AvatarPreferences } from "@/components/preferences/avatar-preferences";
 import {
   MicrophoneIcon,
   MoonIcon,
@@ -35,6 +36,7 @@ export function PreferencesPanel({ user }: PreferencesPanelProps) {
         Your personal appearance and workflow settings. Changes save to your account.
       </p>
       <AppearancePreferences />
+      {isStudent(user) && <AvatarPreferences user={user} />}
       {isStaff(user) && <WorkflowPreferences />}
       {isStudent(user) && <WalletAppearancePreferences />}
       {isStaff(user) && <StaffSettingsPanel />}

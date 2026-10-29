@@ -1,6 +1,3 @@
-import { randomUUID } from "crypto";
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
 import { db } from "@/lib/database/db";
 import { getDatabaseErrorMessage } from "@/lib/database/database-error-message";
 import {
@@ -15,6 +12,7 @@ import { AuditService } from "@/domains/audit/audit-service";
 import { LedgerService } from "@/domains/ledger/ledger-service";
 import { parseOptionalYearLevel } from "@/domains/users/year-level";
 import { escapeLikeSearch, isSearchReady } from "@/lib/presentation/search";
+import { getPresetAvatarUrl } from "@/lib/theme/avatar-config";
 
 export type UserListItem = {
   yearLevel: number | null;
@@ -190,34 +188,6 @@ const ledgerService = new LedgerService();
 const auditService = new AuditService();
 const defaultStudentSearchLimit = 12;
 const primaryAccountName = "Primary account";
-const profileImageUploadDirectory = path.join(
-  process.cwd(),
-  "public",
-  "uploads",
-  "users",
-);
-const profileImagePublicPath = "/uploads/users";
-const bytesPerKilobyte = 1024;
-const kilobytesPerMegabyte = 1024;
-const maxProfileImageFileSizeMegabytes = 2;
-const maxProfileImageFileSizeBytes =
-  maxProfileImageFileSizeMegabytes * kilobytesPerMegabyte * bytesPerKilobyte;
-const allowedProfileImageTypes = new Map([
-  ["image/png", "png"],
-  ["image/jpeg", "jpg"],
-  ["image/webp", "webp"],
-  ["image/gif", "gif"],
-]);
-
-export type UploadUserProfileImageResult =
-  | {
-      ok: true;
-      imageUrl: string;
-    }
-  | {
-      ok: false;
-      message: string;
-    };
 
 export class UserService {
   async listUsers(): Promise<UserListItem[]> {
@@ -419,53 +389,6 @@ export class UserService {
       };
     } finally {
       client.release();
-    }
-  }
-
-  async uploadProfileImage(file: File): Promise<UploadUserProfileImageResult> {
-    if (!file || file.size === 0) {
-      return {
-        ok: false,
-        message: "Choose a profile image.",
-      };
-    }
-
-    if (file.size > maxProfileImageFileSizeBytes) {
-      return {
-        ok: false,
-        message: `Image must be ${maxProfileImageFileSizeMegabytes} MB or smaller.`,
-      };
-    }
-
-    const extension = allowedProfileImageTypes.get(file.type);
-
-    if (!extension) {
-      return {
-        ok: false,
-        message: "Image must be a PNG, JPG, WebP, or GIF file.",
-      };
-    }
-
-    try {
-      await mkdir(profileImageUploadDirectory, { recursive: true });
-
-      const fileName = `${randomUUID()}.${extension}`;
-      const filePath = path.join(profileImageUploadDirectory, fileName);
-      const fileBytes = Buffer.from(await file.arrayBuffer());
-
-      await writeFile(filePath, fileBytes);
-
-      return {
-        ok: true,
-        imageUrl: `${profileImagePublicPath}/${fileName}`,
-      };
-    } catch (error) {
-      console.error("Upload user profile image failed", error);
-
-      return {
-        ok: false,
-        message: "Could not upload profile image.",
-      };
     }
   }
 
@@ -746,6 +669,12 @@ export class UserService {
     try {
       await client.query("begin");
 
+      let resolvedProfileImageUrl = profileImageUrl;
+      if (!resolvedProfileImageUrl && input.role === "student") {
+        const saved = await client.query<{ avatar: unknown }>("select preferences->>'avatar' as avatar from user_preferences where user_id = $1", [input.id]);
+        resolvedProfileImageUrl = getPresetAvatarUrl(saved.rows[0]?.avatar);
+      }
+
       const result = await client.query<UserListRow>(
         `
           update users
@@ -785,7 +714,7 @@ export class UserService {
           preferredName,
           lastName,
           email,
-          profileImageUrl,
+          resolvedProfileImageUrl,
           cardNumber,
           input.role,
           input.isActive,

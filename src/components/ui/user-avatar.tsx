@@ -21,9 +21,9 @@ export const UserAvatar = memo(function UserAvatar({
   size = "md",
   tone = "brand",
 }: UserAvatarProps) {
-  const [didImageFail, setDidImageFail] = useState(false);
+  const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
   const cleanedImageUrl = imageUrl?.trim();
-  const shouldShowImage = Boolean(cleanedImageUrl && !didImageFail);
+  const shouldShowImage = Boolean(cleanedImageUrl && failedImageUrl !== cleanedImageUrl);
   const toneClassName =
     tone === "neutral"
       ? "bg-panel-soft text-text-control"
@@ -41,7 +41,7 @@ export const UserAvatar = memo(function UserAvatar({
           className="h-full w-full object-cover"
           decoding="async"
           loading="lazy"
-          onError={() => setDidImageFail(true)}
+          onError={() => setFailedImageUrl(cleanedImageUrl ?? null)}
           src={cleanedImageUrl}
         />
       ) : (

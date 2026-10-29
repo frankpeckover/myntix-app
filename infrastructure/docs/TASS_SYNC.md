@@ -8,6 +8,8 @@ students, teachers, classes, memberships, and teacher timetables.
 Run `infrastructure/database/tenant/09-directory-sync.sql` against the organisation database
 or schema, then rerun `infrastructure/database/tenant/99-access.sql` for an existing tenant.
 New tenants receive the required grants when `99-access.sql` is run last.
+Existing tenants must also apply `13-profile-photos.sql` for the optional photo
+sync setting. See [Profile photos](PROFILE_PHOTOS.md) for private bucket setup.
 
 ## TASS setup
 
@@ -31,8 +33,13 @@ before it is stored and is never returned to the browser.
   timetable entry.
 - Archival only affects records owned by the TASS source. Manual records are
   not archived, and administrator accounts are never archived.
-- Each sync applies in one database transaction. A failed run does not leave a
-  partially imported snapshot.
+- Roster, group and timetable changes apply in one database transaction.
+- Optional photo sync runs after the roster commits, without holding roster
+  locks while contacting object storage. Photo failures keep existing images
+  and are reported separately; they do not roll back roster changes.
+- Photo sync defaults off. When enabled, available TASS photos replace manually
+  uploaded photos. Missing photos never clear existing images. Photo bytes are
+  not included in backups; students cannot upload their own images.
 
 Save the settings, test the connection, then run **Sync Now** to validate the
 first import. Automatic syncs run once during each organisation's local

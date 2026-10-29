@@ -139,7 +139,6 @@ export {
   searchStudents,
   setUserActive,
   updateUser,
-  uploadUserProfileImage,
 } from "@/lib/actions/user-actions";
 export {
   getMyUserPreferences,

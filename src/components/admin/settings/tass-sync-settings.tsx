@@ -18,6 +18,7 @@ const fallbackSettings: TassSyncSettings = {
   apiVersion: 3,
   applicationCode: "",
   archiveMissingRecords: true,
+  syncProfilePhotos: false,
   baseUrl: "",
   companyCode: "",
   displayName: "TASS",
@@ -87,6 +88,7 @@ export function TassSyncSettingsPanel() {
         apiVersion: settings.apiVersion,
         applicationCode: settings.applicationCode,
         archiveMissingRecords: settings.archiveMissingRecords,
+        syncProfilePhotos: settings.syncProfilePhotos,
         baseUrl: settings.baseUrl,
         companyCode: settings.companyCode,
         displayName: settings.displayName,
@@ -204,6 +206,10 @@ export function TassSyncSettingsPanel() {
       </label>
 
       <SyncStatus settings={settings} />
+      <label className="flex min-h-11 items-start gap-3 text-sm text-text-control">
+        <input checked={settings.syncProfilePhotos} className="mt-1 h-4 w-4 accent-[var(--color-brand)]" onChange={(event) => update("syncProfilePhotos", event.target.checked)} type="checkbox" />
+        <span><span className="block font-semibold">Sync profile photos</span><span className="block text-text-muted">Optional. TASS photos replace existing photos when available. Requires private photo storage. Missing photos leave existing photos unchanged. Photos are not backed up.</span></span>
+      </label>
       <FixedNotification error={error} message={message} />
 
       <div className="flex flex-wrap justify-end gap-2">
@@ -239,11 +245,11 @@ function SyncSelectField({ id, label, onChange, options, value }: { id: string; 
 
 function SyncStatus({ settings }: { settings: TassSyncSettings }) {
   if (!settings.lastSyncStartedAt) return null;
-  return <div className="rounded-md bg-panel-soft px-3 py-3 text-sm"><div className="flex flex-wrap items-center justify-between gap-2"><span className="font-semibold text-text-control">Last sync: {settings.lastSyncStatus ?? "unknown"}</span><span className="text-text-muted">{formatDateTime(settings.lastSyncCompletedAt ?? settings.lastSyncStartedAt)}</span></div>{settings.lastError && <p className="mt-2 text-danger">{settings.lastError}</p>}</div>;
+  return <div className="rounded-md bg-panel-soft px-3 py-3 text-sm"><div className="flex flex-wrap items-center justify-between gap-2"><span className="font-semibold text-text-control">Last sync: {settings.lastSyncStatus ?? "unknown"}</span><span className="text-text-muted">{formatDateTime(settings.lastSyncCompletedAt ?? settings.lastSyncStartedAt)}</span></div>{settings.lastError && <p className="mt-2 text-danger">{settings.lastError}</p>}{Boolean(settings.lastSyncSummary?.photosFailed) && <p className="mt-2 text-warning">{settings.lastSyncSummary?.photosFailed} photos could not be synced. Existing photos were kept; other records can still sync.</p>}</div>;
 }
 
 function formatSyncResult(summary: NonNullable<TassSyncSettings["lastSyncSummary"]>) {
-  return [`${summary.usersCreated} users created`, `${summary.groupsCreated} groups created`, `${summary.timetableCreated} timetable entries created`, `${summary.usersArchived + summary.groupsArchived + summary.timetableArchived} records archived`].join(". ") + ".";
+  return [`${summary.usersCreated} users created`, `${summary.groupsCreated} groups created`, `${summary.timetableCreated} timetable entries created`, `${summary.usersArchived + summary.groupsArchived + summary.timetableArchived} records archived`, ...(summary.photosUpdated ? [`${summary.photosUpdated} photos updated`] : []), ...(summary.photosFailed ? [`${summary.photosFailed} photos could not be synced; existing photos kept`] : [])].join(". ") + ".";
 }
 
 function formatDateTime(value: string) {

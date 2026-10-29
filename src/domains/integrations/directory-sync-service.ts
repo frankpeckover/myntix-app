@@ -1,6 +1,7 @@
 import { randomBytes } from "crypto";
 import type { PoolClient } from "pg";
 import { db } from "@/lib/database/db";
+import { createProfilePhotoWriter, isPhotoStorageConfigured, prepareProfilePhoto } from "@/domains/users/photos/photo-storage";
 import { decryptServerSecret, encryptServerSecret } from "@/lib/security/server-crypto";
 import { hashPassword } from "@/lib/auth/passwords";
 import type { ActionResult } from "@/lib/actions/action-results";
@@ -30,6 +31,7 @@ type DirectorySyncSourceRow = {
   api_version: 2 | 3;
   application_code: string;
   archive_missing_records: boolean;
+  sync_profile_photos: boolean;
   base_url: string;
   company_code: string;
   display_name: string;
@@ -77,6 +79,10 @@ export class DirectorySyncService {
     const companyCode = input.companyCode.trim();
     const applicationCode = input.applicationCode.trim();
     const tokenKey = input.tokenKey.trim();
+
+    if (input.syncProfilePhotos && !isPhotoStorageConfigured()) {
+      return { ok: false, message: "Configure private profile photo storage before enabling photo sync." };
+    }
 
     if (baseUrl) {
       try {
@@ -130,6 +136,7 @@ export class DirectorySyncService {
               semester = $8,
               is_enabled = $9,
               archive_missing_records = $10,
+              sync_profile_photos = $12,
               updated_at = now()
           where provider_type = $11
         `,
@@ -145,6 +152,7 @@ export class DirectorySyncService {
           input.isEnabled,
           input.archiveMissingRecords,
           providerType,
+          Boolean(input.syncProfilePhotos),
         ],
       );
       await auditService.logWithClient(client, {
@@ -154,6 +162,7 @@ export class DirectorySyncService {
           academicYear: input.academicYear,
           apiVersion: input.apiVersion,
           archiveMissingRecords: input.archiveMissingRecords,
+          syncProfilePhotos: Boolean(input.syncProfilePhotos),
           hasTokenKey: Boolean(encryptedTokenKey),
           isEnabled: input.isEnabled,
           providerType,
@@ -341,6 +350,13 @@ export class DirectorySyncService {
         await archiveMissingUsers(context, snapshot.users);
       }
 
+      if (source.sync_profile_photos) {
+        // Keep roster changes atomic, without holding their locks during object-storage requests.
+        await client.query("commit");
+        await syncProfilePhotos(client, snapshot.users, userIds, summary);
+        await client.query("begin");
+      }
+
       await client.query(
         `
           update directory_sync_sources
@@ -381,7 +397,7 @@ export class DirectorySyncService {
       `
         select id, provider_type, display_name, base_url, company_code,
                application_code, token_key_encrypted, api_version,
-               academic_year, semester, is_enabled, archive_missing_records,
+               academic_year, semester, is_enabled, archive_missing_records, sync_profile_photos,
                last_sync_started_at, last_sync_completed_at, last_sync_status,
                last_sync_summary, last_error
         from directory_sync_sources
@@ -487,6 +503,35 @@ async function syncUsers(context: SyncContext, users: NormalisedDirectoryUser[])
   }
 
   return localIds;
+}
+
+async function syncProfilePhotos(client: PoolClient, users: NormalisedDirectoryUser[], userIds: Map<string, string>, summary: DirectorySyncSummary) {
+  const photos = users.filter((user) => user.photoBase64 && userIds.has(user.externalId));
+  let writePhoto: Awaited<ReturnType<typeof createProfilePhotoWriter>>;
+  try { writePhoto = await createProfilePhotoWriter(); }
+  catch { summary.photosFailed = photos.length; return; }
+  let storageUnavailable = false;
+  for (let index = 0; index < photos.length; index += 4) {
+    await Promise.all(photos.slice(index, index + 4).map(async (user) => {
+      if (storageUnavailable) { summary.photosFailed = (summary.photosFailed ?? 0) + 1; return; }
+      let bytes: Buffer;
+      try {
+        if (user.photoBase64!.length > 2_800_000) throw new Error("Photo too large.");
+        const encoded = user.photoBase64!.replace(/^data:image\/(?:png|jpeg|webp|gif);base64,/i, "").replace(/\s/g, "");
+        if (!/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) throw new Error("Invalid photo.");
+        bytes = await prepareProfilePhoto(Buffer.from(encoded, "base64"));
+      } catch { summary.photosFailed = (summary.photosFailed ?? 0) + 1; return; }
+      let imageUrl: string;
+      try { imageUrl = await writePhoto(bytes); }
+      catch {
+        storageUnavailable = true;
+        summary.photosFailed = (summary.photosFailed ?? 0) + 1;
+        return;
+      }
+      const changed = await client.query("update users set profile_image_url = $1, updated_at = now() where id = $2 and profile_image_url <> $1 returning id", [imageUrl, userIds.get(user.externalId)]);
+      summary.photosUpdated = (summary.photosUpdated ?? 0) + (changed.rowCount ?? 0);
+    }));
+  }
 }
 
 async function findMappedOrMatchingUser(context: SyncContext, user: NormalisedDirectoryUser) {
@@ -807,7 +852,7 @@ async function getSourceWithClient(client: PoolClient) {
     `
       select id, provider_type, display_name, base_url, company_code,
              application_code, token_key_encrypted, api_version,
-             academic_year, semester, is_enabled, archive_missing_records,
+             academic_year, semester, is_enabled, archive_missing_records, sync_profile_photos,
              last_sync_started_at, last_sync_completed_at, last_sync_status,
              last_sync_summary, last_error
       from directory_sync_sources
@@ -882,6 +927,7 @@ function getConnectionConfig(source: DirectorySyncSourceRow): TassConnectionConf
 
   return {
     academicYear: source.academic_year,
+    syncProfilePhotos: source.sync_profile_photos,
     apiVersion: source.api_version,
     applicationCode: source.application_code,
     baseUrl: source.base_url,
@@ -897,6 +943,7 @@ function mapSettings(source: DirectorySyncSourceRow): TassSyncSettings {
     apiVersion: source.api_version,
     applicationCode: source.application_code,
     archiveMissingRecords: source.archive_missing_records,
+    syncProfilePhotos: source.sync_profile_photos,
     baseUrl: source.base_url,
     companyCode: source.company_code,
     displayName: source.display_name,

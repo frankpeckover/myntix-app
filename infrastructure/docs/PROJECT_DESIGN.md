@@ -29,6 +29,16 @@ The app should feel like a simple, trustworthy bank account without implying tha
 
 ## Product goals
 
+Privacy, terms and data-retention policies are maintained on the marketing site
+(`https://myntix.com` by default), not duplicated in the app. Existing policy
+routes permanently redirect to the matching marketing-site paths. Login and
+the in-app Help page share policy and support links. A small Help button at the
+bottom of the profile dropdown opens that page for every role; do not list the
+individual policy links in Preferences or the dropdown. No page footer is needed.
+Policy links open a new tab so users do not lose their place in the app. Support
+uses the configured support email, defaulting to `support@myntix.com`. Keep all
+three policy paths published on the marketing site before deploying this change.
+
 - Make issuing or removing currency fast enough to use during a class.
 - Give students an understandable, rewarding view of their own account.
 - Provide administrators with reliable controls, auditability, and exports.
@@ -58,6 +68,18 @@ The app should feel like a simple, trustworthy bank account without implying tha
 Balances are derived from ledger entries. Do not add a mutable `balance` column as an independent source of truth. Every movement must be explainable from ledger records.
 
 ### Fast for staff, private for students
+
+Profile photos are optional and admin-controlled; students never upload files.
+Students without school photos can select a bundled avatar or initials in
+Preferences. Store the validated choice in the existing preferences JSONB and
+keep its shared profile image reference in sync. School photos always take
+precedence. Presets are local assets, never external API requests or uploads.
+Single uploads, username-matched ZIP imports and optional TASS photo sync share
+one image validation and private S3-compatible storage module under
+`domains/users/photos`. Photos use tenant-scoped opaque keys and authenticated
+delivery, not public object URLs. TASS photo sync defaults off. Photos are not
+backed up; restored or missing references fall back to initials. See
+`infrastructure/docs/PROFILE_PHOTOS.md` for deployment and privacy boundaries.
 
 Staff workflows prioritise speed, search, bulk selection, current classes, and clear feedback. Students only see their own balance, transactions, goals, groups, and requests. Cohort metrics and other students' records are never exposed to students.
 

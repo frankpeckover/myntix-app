@@ -8,6 +8,9 @@ const immutableAssetCacheHeader = {
 const nextConfig: NextConfig = {
   compress: true,
   devIndicators: false,
+  experimental: {
+    proxyClientMaxBodySize: "26mb",
+  },
   logging: {
     serverFunctions: false,
     incomingRequests: {

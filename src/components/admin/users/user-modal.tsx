@@ -5,7 +5,6 @@ import {
   createUser,
   listUserGroups,
   updateUser,
-  uploadUserProfileImage,
 } from "@/lib/actions";
 import { StudentGroupsSection } from "@/components/admin/users/student-groups-section";
 import { UserFormFields } from "@/components/admin/users/user-form-fields";
@@ -108,15 +107,18 @@ export function UserModal({
       const imageFormData = new FormData();
       imageFormData.append("image", profileImageFile);
 
-      const uploadResult = await uploadUserProfileImage(imageFormData);
-
-      if (uploadResult.ok === false) {
-        setError(uploadResult.message);
+      let uploadResult: { imageUrl?: string; message?: string };
+      try {
+        const response = await fetch("/api/admin/photos", { method: "POST", body: imageFormData });
+        uploadResult = await response.json();
+        if (!response.ok || !uploadResult.imageUrl) throw new Error(uploadResult.message || "Could not upload photo.");
+      } catch (error) {
+        setError(error instanceof Error ? error.message : "Could not upload photo.");
         setIsSaving(false);
         return;
       }
 
-      profileImageUrl = uploadResult.imageUrl;
+      profileImageUrl = uploadResult.imageUrl!;
     }
 
     const formWithImage = {

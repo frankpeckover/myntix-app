@@ -12,6 +12,7 @@ import {
   CoinStackIcon,
   CogIcon,
   EyeIcon,
+  InfoIcon,
   KeyRoundIcon,
   ListIcon,
   LogOutIcon,
@@ -27,6 +28,7 @@ import { AppBrand } from "@/components/ui/app-brand";
 import { SchoolLogo } from "@/components/ui/school-logo";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { useUserPreferences } from "@/components/preferences/user-preferences-provider";
+import { getAccountAvatarUrl } from "@/lib/theme/avatar-config";
 
 export type { NavigationItem } from "@/lib/navigation/dashboard-navigation";
 
@@ -126,10 +128,9 @@ export function HeaderNavMenu({
         }
         type="button"
       >
-        <UserAvatar
+        <AccountAvatar
           displayName={userDisplayName}
           imageUrl={profileImageUrl}
-          size="sm"
         />
       </button>
 
@@ -155,6 +156,7 @@ export function HeaderNavMenu({
             onLogout={handleLogout}
             onPasswordChange={handlePasswordChange}
             onPreferences={handlePreferences}
+            onHelp={() => handleItemChange("Help")}
           />
         </NavMenuPanel>
       )}
@@ -381,10 +383,9 @@ export function DesktopAccountMenu({
         onClick={() => setIsAccountMenuOpen((currentValue) => !currentValue)}
         type="button"
       >
-        <UserAvatar
+        <AccountAvatar
           displayName={userDisplayName}
           imageUrl={profileImageUrl}
-          size="sm"
         />
       </button>
 
@@ -395,11 +396,17 @@ export function DesktopAccountMenu({
             onLogout={handleLogout}
             onPasswordChange={handlePasswordChange}
             onPreferences={handlePreferences}
+            onHelp={() => { closeMenu(); onItemChange("Help"); }}
           />
         </NavMenuPanel>
       )}
     </div>
   );
+}
+
+function AccountAvatar({ displayName, imageUrl }: { displayName: string; imageUrl: string }) {
+  const { preferences } = useUserPreferences();
+  return <UserAvatar displayName={displayName} imageUrl={getAccountAvatarUrl(imageUrl, preferences.avatar)} size="sm" />;
 }
 
 function SideNavButton({
@@ -518,11 +525,13 @@ function NavMenuSection({
 
 function AccountMenuItems({
   hasTopBorder,
+  onHelp,
   onLogout,
   onPasswordChange,
   onPreferences,
 }: {
   hasTopBorder: boolean;
+  onHelp: () => void;
   onLogout: () => void;
   onPasswordChange: () => void;
   onPreferences: () => void;
@@ -555,6 +564,16 @@ function AccountMenuItems({
         <LogOutIcon />
         <span>Sign out</span>
       </button>
+      <div className="border-t border-border-subtle pt-1">
+        <button
+          className="flex min-h-11 w-full items-center gap-2 border-l-2 border-transparent px-3 py-2.5 text-left text-xs font-light text-text-muted transition hover:bg-surface-muted hover:text-text-control"
+          onClick={onHelp}
+          type="button"
+        >
+          <InfoIcon className="h-4 w-4 shrink-0" />
+          <span>Help</span>
+        </button>
+      </div>
     </div>
   );
 }
@@ -598,6 +617,8 @@ export function NavigationItemIcon({
       return <CogIcon className={iconClassName} />;
     case "Preferences":
       return <SlidersHorizontalIcon className={iconClassName} />;
+    case "Help":
+      return <InfoIcon className={iconClassName} />;
     default:
       return <ListIcon className={iconClassName} />;
   }

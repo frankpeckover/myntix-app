@@ -14,7 +14,8 @@ const adminNavigationItems = [
 export type NavigationItem =
   | (typeof adminNavigationItems)[number]
   | (typeof studentNavigationItems)[number]
-  | "Preferences";
+  | "Preferences"
+  | "Help";
 
 export const dashboardPageSlugs: Record<NavigationItem, string> = {
   Dashboard: "dashboard",
@@ -31,6 +32,7 @@ export const dashboardPageSlugs: Record<NavigationItem, string> = {
   "Error Log": "error-log",
   Settings: "settings",
   Preferences: "preferences",
+  Help: "help",
 };
 
 export function getPrimaryNavigationItems(role: Role): readonly NavigationItem[] {
@@ -40,7 +42,7 @@ export function getPrimaryNavigationItems(role: Role): readonly NavigationItem[]
 }
 
 function isAllowedNavigationItem(item: NavigationItem, role: Role) {
-  return item === "Preferences" || getPrimaryNavigationItems(role).includes(item);
+  return item === "Preferences" || item === "Help" || getPrimaryNavigationItems(role).includes(item);
 }
 
 export function getDashboardNavigation(

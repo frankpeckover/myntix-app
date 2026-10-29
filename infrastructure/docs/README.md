@@ -7,6 +7,7 @@
 - [PostgreSQL tenant backups](BACKUPS.md)
 - [Database access model](DATABASE_ACCESS.md)
 - [TASS directory and timetable sync](TASS_SYNC.md)
+- [Optional private profile photos and ZIP import](PROFILE_PHOTOS.md)
 
 Database setup details remain beside the SQL scripts in [database/README.md](../database/README.md). Domain boundaries are documented in [src/domains/README.md](../../src/domains/README.md).
 Container provisioning is documented in the

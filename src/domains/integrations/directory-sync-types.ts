@@ -5,6 +5,7 @@ export type TassSyncSettings = {
   apiVersion: 2 | 3;
   applicationCode: string;
   archiveMissingRecords: boolean;
+  syncProfilePhotos: boolean;
   baseUrl: string;
   companyCode: string;
   displayName: string;
@@ -24,6 +25,7 @@ export type UpdateTassSyncSettingsInput = {
   apiVersion: 2 | 3;
   applicationCode: string;
   archiveMissingRecords: boolean;
+  syncProfilePhotos: boolean;
   baseUrl: string;
   companyCode: string;
   displayName: string;
@@ -33,6 +35,8 @@ export type UpdateTassSyncSettingsInput = {
 };
 
 export type DirectorySyncSummary = {
+  photosUpdated?: number;
+  photosFailed?: number;
   groupsArchived: number;
   groupsCreated: number;
   groupsUpdated: number;
@@ -55,6 +59,7 @@ export type TassConnectionTestResult =
   | { ok: false; message: string };
 
 export type NormalisedDirectoryUser = {
+  photoBase64?: string;
   email: string;
   externalId: string;
   firstName: string;

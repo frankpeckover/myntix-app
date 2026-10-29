@@ -6,8 +6,9 @@ import {
   type UserModalMode,
 } from "@/components/admin/users/user-modal-types";
 import { userRoles } from "@/components/admin/users/user-management-types";
-import { PlusIcon } from "@/components/ui/icons";
+import { PlusIcon, TrashIcon } from "@/components/ui/icons";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { hasSchoolProfilePhoto } from "@/lib/theme/avatar-config";
 
 type UserFormFieldsProps = {
   form: UserFormState;
@@ -174,6 +175,7 @@ function AccountFields({
         }
         fileName={imageFileName}
         onChange={onProfileImageChange}
+        onRemove={() => { onProfileImageChange(null); onChange("profileImageUrl", ""); }}
       />
 
       {mode === "create" && (
@@ -196,16 +198,18 @@ function ProfileImageUploadField({
   displayName,
   fileName,
   onChange,
+  onRemove,
 }: {
   currentImageUrl: string;
   displayName: string;
   fileName: string;
   onChange: (file: File | null) => void;
+  onRemove: () => void;
 }) {
   return (
     <div>
       <span className="text-sm font-semibold text-text-control">
-        Profile Image
+        Profile Image <span className="font-normal text-text-muted">(optional)</span>
       </span>
       <div className="theme-subpanel mt-1.5 flex items-center gap-3 p-2.5 sm:mt-2 sm:p-3">
         <UserAvatar
@@ -217,18 +221,20 @@ function ProfileImageUploadField({
         <div className="min-w-0 flex-1">
           <input
             accept="image/png,image/jpeg,image/webp,image/gif"
-            className="hidden"
+            className="peer sr-only"
             id="profileImage"
+            key={currentImageUrl || fileName || "empty"}
             onChange={(event) => onChange(event.target.files?.[0] ?? null)}
             type="file"
           />
           <label
-            className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md border border-button-border bg-surface text-text-control transition hover:bg-panel-soft sm:h-10 sm:w-10"
+            className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-md border border-button-border bg-surface text-text-control transition hover:bg-panel-soft peer-focus-visible:ring-2 peer-focus-visible:ring-brand"
             htmlFor="profileImage"
             title="Upload profile image"
           >
             <PlusIcon />
           </label>
+          {(hasSchoolProfilePhoto(currentImageUrl) || fileName) && <button type="button" onClick={onRemove} aria-label="Remove profile photo" title="Remove profile photo" className="ml-2 inline-flex h-11 w-11 items-center justify-center rounded-md border border-danger-border text-danger-strong transition hover:bg-danger-soft"><TrashIcon /></button>}
           <p className="mt-1 truncate text-xs text-text-muted sm:mt-2 sm:text-sm">
             {fileName || profileImageHelpText}
           </p>

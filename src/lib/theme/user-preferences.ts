@@ -13,6 +13,7 @@ import {
   type TableDensity,
 } from "@/lib/theme/table-density-config";
 import { defaultThemeMode, type ThemeMode } from "@/lib/theme/theme-config";
+import { avatarOptions, type AvatarChoice } from "@/lib/theme/avatar-config";
 import {
   defaultWalletPattern,
   defaultWalletStyle,
@@ -24,6 +25,7 @@ export type VoiceShortcut = "F2" | "F8" | "Control+Shift+Space" | "click";
 export type TextSize = "small" | "default" | "large";
 
 export type UserPreferences = {
+  avatar: AvatarChoice;
   accentTheme: AccentTheme;
   customAccentColor: string;
   dashboardTheme: DashboardTheme;
@@ -37,6 +39,7 @@ export type UserPreferences = {
 };
 
 export const defaultUserPreferences: UserPreferences = {
+  avatar: "initials",
   accentTheme: defaultAccentTheme,
   customAccentColor: defaultCustomAccentColor,
   dashboardTheme: defaultDashboardTheme,
@@ -50,6 +53,7 @@ export const defaultUserPreferences: UserPreferences = {
 };
 
 const allowedValues = {
+  avatar: avatarOptions.map((option) => option.value),
   accentTheme: ["teal", "blue", "purple", "orange", "custom"],
   dashboardTheme: dashboardThemeOptions.map((option) => option.value),
   navigationDefault: ["expanded", "collapsed"],

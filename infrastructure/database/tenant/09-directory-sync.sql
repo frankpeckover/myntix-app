@@ -21,6 +21,7 @@ create table if not exists directory_sync_sources (
   semester integer not null default 1,
   is_enabled boolean not null default false,
   archive_missing_records boolean not null default true,
+  sync_profile_photos boolean not null default false,
   last_sync_started_at timestamptz,
   last_sync_completed_at timestamptz,
   last_sync_status text,

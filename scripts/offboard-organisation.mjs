@@ -3,6 +3,7 @@ import { rm } from "node:fs/promises";
 import { resolve, sep } from "node:path";
 import { spawn } from "node:child_process";
 import pg from "pg";
+import { DeleteObjectsCommand, ListObjectsV2Command, S3Client } from "@aws-sdk/client-s3";
 import { parseEnvFile } from "./env-file-loader.mjs";
 
 const environment = loadEnvironment();
@@ -87,6 +88,7 @@ async function executeOffboarding(slug, confirmedSlug) {
   try {
     const uploadPaths = await collectUploadPaths(request);
     await purgeRemoteBackups(request.organisation_slug);
+    await purgeProfilePhotos(request.organisation_slug);
     await purgeBackupCatalogue(request.organisation_id);
     await removeUploads(uploadPaths);
     await dropTenant(request);
@@ -118,6 +120,32 @@ async function collectUploadPaths(request) {
 async function purgeRemoteBackups(slug) {
   console.log(`[offboard] purging encrypted backups for ${slug}`);
   await command("rclone", ["--config", rcloneConfig, "purge", `${rcloneRemote}/tenants/${slug}`]);
+}
+
+async function purgeProfilePhotos(slug) {
+  const keys = ["PHOTO_STORAGE_ENDPOINT", "PHOTO_STORAGE_BUCKET", "PHOTO_STORAGE_ACCESS_KEY_ID", "PHOTO_STORAGE_SECRET_ACCESS_KEY"];
+  if (!keys.some((key) => environment[key]?.trim())) return;
+  keys.forEach(required);
+  const endpoint = new URL(environment.PHOTO_STORAGE_ENDPOINT);
+  if (endpoint.protocol !== "https:") throw new Error("Photo storage must use HTTPS.");
+  const client = new S3Client({
+    endpoint: endpoint.href, region: environment.PHOTO_STORAGE_REGION || "auto",
+    credentials: { accessKeyId: environment.PHOTO_STORAGE_ACCESS_KEY_ID, secretAccessKey: environment.PHOTO_STORAGE_SECRET_ACCESS_KEY },
+    requestHandler: { connectionTimeout: 5_000, requestTimeout: 15_000 },
+  });
+  const Bucket = environment.PHOTO_STORAGE_BUCKET;
+  const Prefix = `tenants/${slug}/profiles/`;
+  console.log(`[offboard] purging private profile photos for ${slug}`);
+  try {
+    // Re-list the first page after deletion; continuation tokens can be invalidated by mutations.
+    while (true) {
+      const objects = await client.send(new ListObjectsV2Command({ Bucket, Prefix, MaxKeys: 1000 }));
+      const Objects = (objects.Contents ?? []).flatMap(({ Key }) => Key ? [{ Key }] : []);
+      if (!Objects.length) break;
+      const deleted = await client.send(new DeleteObjectsCommand({ Bucket, Delete: { Objects, Quiet: true } }));
+      if (deleted.Errors?.length) throw new Error("Some profile photos could not be deleted; offboarding stopped.");
+    }
+  } finally { client.destroy(); }
 }
 
 async function purgeBackupCatalogue(organisationId) {

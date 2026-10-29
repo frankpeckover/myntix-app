@@ -18,6 +18,7 @@ import { ChangePasswordModal } from "@/components/auth/change-password-modal";
 import { ShopPanel } from "@/components/rewards/shop-panel";
 import { StaffRewardRequestsPage } from "@/components/rewards/staff-reward-requests-page";
 import { PreferencesPanel } from "@/components/preferences/preferences-panel";
+import { HelpPanel } from "@/components/help/help-panel";
 import { StudentDashboardPanel } from "@/components/student/dashboard-panel";
 import { TeacherDashboardPanel } from "@/components/teacher/dashboard-panel";
 import { TeacherHomePanel } from "@/components/teacher/home-panel";
@@ -332,6 +333,7 @@ export function DashboardShell({
         {activeNavItem === "Preferences" && (
           <PreferencesPanel user={user} />
         )}
+        {activeNavItem === "Help" && <HelpPanel />}
 
         {isPasswordModalOpen && (
           <ChangePasswordModal
@@ -410,6 +412,8 @@ function getCurrentPageDescription(
       return "Configure school-wide rules, access and appearance.";
     case "Preferences":
       return "Personalise your appearance and everyday workflow.";
+    case "Help":
+      return "Find support and read Myntix policies.";
   }
 }
 

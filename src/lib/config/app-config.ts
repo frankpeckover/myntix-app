@@ -26,7 +26,7 @@ export const appConfig = {
   ),
   name: configuredAppName,
   supportEmail:
-    process.env.NEXT_PUBLIC_APP_SUPPORT_EMAIL?.trim() || "support@example.com",
+    process.env.NEXT_PUBLIC_APP_SUPPORT_EMAIL?.trim() || "support@myntix.com",
   tagline:
     process.env.NEXT_PUBLIC_APP_TAGLINE?.trim() ||
     "Internal currency, made simple.",

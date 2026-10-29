@@ -13,6 +13,7 @@ import { AppBrand } from "@/components/ui/app-brand";
 import { GlobalMaintenanceBanner } from "@/components/ui/global-maintenance-banner";
 import { EyeIcon } from "@/components/ui/icons";
 import { ModalCloseButton } from "@/components/ui/modal-close-button";
+import { PublicLinks } from "@/components/ui/public-links";
 import { SchoolLogo } from "@/components/ui/school-logo";
 import { useDialogFocus } from "@/components/ui/use-dialog-focus";
 import type { SchoolInfo } from "@/domains/organisation/school-service";
@@ -276,6 +277,9 @@ export function LoginCard({
               </button>
             </div>
           </form>
+          <div className="login-entry-item mt-3">
+            <PublicLinks />
+          </div>
         </section>
       </div>
 

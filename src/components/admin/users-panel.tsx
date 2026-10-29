@@ -8,6 +8,7 @@ import {
   type UserFilters,
 } from "@/components/admin/users/user-management-types";
 import { UserImportModal } from "@/components/admin/users/user-import-modal";
+import { PhotoImportModal } from "@/components/admin/users/photo-import-modal";
 import { UserModal } from "@/components/admin/users/user-modal";
 import { ResetUserPasswordModal } from "@/components/admin/users/reset-user-password-modal";
 import { UsersTable } from "@/components/admin/users/users-table";
@@ -77,6 +78,7 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isPhotoImportOpen, setIsPhotoImportOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isChangingUserStatus, setIsChangingUserStatus] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -361,6 +363,11 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
                             label: "Import users: CSV",
                             onSelect: () => setIsImportModalOpen(true),
                           },
+                          {
+                            icon: <FileUpIcon />,
+                            label: "Import student photos: ZIP",
+                            onSelect: () => setIsPhotoImportOpen(true),
+                          },
                         ]}
                       />
                     </>
@@ -490,6 +497,12 @@ export function AdminUsersPanel({ schoolName }: AdminUsersPanelProps) {
           onImported={handleUsersImported}
         />
       )}
+
+      {isPhotoImportOpen && <PhotoImportModal onClose={() => setIsPhotoImportOpen(false)} onImported={(count) => {
+        setIsPhotoImportOpen(false);
+        setMessage(`Imported ${count} student photos.`);
+        refreshUsers();
+      }} />}
 
       {editingUser && (
         <UserModal

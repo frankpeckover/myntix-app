@@ -8,7 +8,6 @@ import type {
   ImportUsersInput,
   ResetUserPasswordInput,
   UpdateUserInput,
-  UploadUserProfileImageResult,
 } from "@/domains/users/user-service";
 import { UserService } from "@/domains/users/user-service";
 
@@ -57,22 +56,6 @@ export async function previewImportUsers(input: ImportUsersInput) {
 export async function updateUser(input: UpdateUserInput) {
   const currentUser = await requireAdmin();
   return userService.updateUser(input, currentUser);
-}
-
-export async function uploadUserProfileImage(
-  formData: FormData,
-): Promise<UploadUserProfileImageResult> {
-  await requireAdmin();
-  const file = formData.get("image");
-
-  if (!(file instanceof File)) {
-    return {
-      ok: false,
-      message: "Choose a profile image.",
-    };
-  }
-
-  return userService.uploadProfileImage(file);
 }
 
 export async function resetUserPassword(input: ResetUserPasswordInput) {

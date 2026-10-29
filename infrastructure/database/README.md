@@ -38,6 +38,7 @@ infrastructure/database/tenant/09-directory-sync.sql
 infrastructure/database/tenant/10-timetable-cycles.sql
 infrastructure/database/tenant/11-query-performance.sql
 infrastructure/database/tenant/12-student-year-level.sql
+infrastructure/database/tenant/13-profile-photos.sql
 infrastructure/database/tenant/99-access.sql
 ```
 

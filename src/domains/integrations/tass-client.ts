@@ -7,6 +7,7 @@ import type {
 } from "@/domains/integrations/directory-sync-types";
 
 export type TassConnectionConfig = {
+  syncProfilePhotos?: boolean;
   academicYear: number;
   apiVersion: 2 | 3;
   applicationCode: string;
@@ -19,6 +20,7 @@ export type TassConnectionConfig = {
 type JsonRecord = Record<string, unknown>;
 
 type TassStudent = {
+  photoBase64?: string;
   email: string;
   externalId: string;
   firstName: string;
@@ -91,8 +93,8 @@ export class TassClient {
   private async fetchStudents() {
     const response = await this.call("getStudents", {
       currentstatus: "current",
-      includephoto: false,
-      thumbnail: false,
+      includephoto: Boolean(this.config.syncProfilePhotos),
+      thumbnail: Boolean(this.config.syncProfilePhotos),
     });
 
     return getArray(response, "students").map(normaliseStudent);
@@ -101,8 +103,8 @@ export class TassClient {
   private async fetchTeachers() {
     const response = await this.call("getTeachers", {
       currentstatus: "current",
-      includephoto: false,
-      thumbnail: false,
+      includephoto: Boolean(this.config.syncProfilePhotos),
+      thumbnail: Boolean(this.config.syncProfilePhotos),
     });
 
     return getArray(response, "teachers").map(normaliseTeacher);
@@ -236,6 +238,7 @@ function normaliseStudent(value: unknown): TassStudent {
   return {
     email: getString(school, "email_address").trim().toLowerCase(),
     externalId: `student:${externalId}`,
+    photoBase64: getString(getRecord(getRecord(record, "student_photo"), "file_info"), "image"),
     firstName: getString(general, "first_name") || firstGivenName(getString(general, "given_names")),
     lastName: getString(general, "preferred_surname") || getString(general, "surname") || "Student",
     preferredName: getString(general, "preferred_name"),
@@ -255,6 +258,7 @@ function normaliseTeacher(value: unknown): TassTeacher {
   return {
     email: (getString(record, "school_email_address") || getString(record, "email_address")).trim().toLowerCase(),
     externalId: `teacher:${employeeCode}`,
+    photoBase64: getString(getRecord(getRecord(record, "teacher_photo"), "file_info"), "image"),
     firstName: getString(record, "first_name") || firstGivenName(getString(record, "given_names")),
     lastName: getString(record, "surname") || getString(record, "employee_surname") || "Teacher",
     preferredName: getString(record, "preferred_name"),
@@ -269,6 +273,7 @@ function mapStudentUser(student: TassStudent): NormalisedDirectoryUser {
 
 function mapTeacherUser(teacher: TassTeacher): NormalisedDirectoryUser {
   return {
+    photoBase64: teacher.photoBase64,
     email: teacher.email,
     externalId: teacher.externalId,
     firstName: teacher.firstName,
